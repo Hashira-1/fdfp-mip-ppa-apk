@@ -550,7 +550,7 @@ export default function MipPpaApp() {
         html { scroll-behavior: smooth; }
       `}</style>
       {/* ---------------- SIDEBAR ---------------- */}
-      <aside className="w-64 shrink-0 flex flex-col text-stone-300 min-h-screen" style={{ background: C.sidebar }}>
+      <aside className="w-64 shrink-0 flex flex-col text-stone-300 h-screen sticky top-0 overflow-hidden" style={{ background: C.sidebar }}>
         <div className="flex items-center gap-3 px-5 py-5">
           <div className="bg-white rounded-xl px-2 py-1.5 flex items-center justify-center shrink-0">
             <LogoFDFP h={30} />
