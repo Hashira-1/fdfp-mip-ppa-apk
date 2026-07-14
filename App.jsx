@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { jsPDF } from "jspdf";
+import { createClient } from "@supabase/supabase-js";
 import {
   ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   Radar, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -102,20 +103,19 @@ const SUIVIS_DEMO = [
   { id: "s9", formationId: "f3", jalon: "M+12", echeance: "2027-06-02", statut: "programmé", note: "" },
 ];
 
-// ----------------- COMPTES & AUTHENTIFICATION (démo front) ------
-// L'administrateur lead est pré-enregistré ; son mot de passe est défini
-// lors de sa PREMIÈRE connexion (aucun mot de passe n'est stocké dans le code).
-const COMPTES_INIT = [
-  { id: "u1", email: "hashiraluc@gmail.com", nom: "EHOUNI Luc-Emmanuel Behira Levy", org: "INP-HB", role: "Administrateur lead", mdp: null },
-];
-
-// Empreinte simple du mot de passe (niveau démonstration — la version
-// d'exploitation utilisera une vraie authentification serveur type Supabase)
-function empreinte(txt) {
-  let h = 5381; const s = "mip-ppa·" + txt;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
-  return "h" + (h >>> 0).toString(36);
+// ----------------- CONNEXION À SUPABASE --------------------------
+// Les deux clés (URL du projet + clé « anon public ») sont saisies une seule
+// fois sur l'écran de configuration, puis conservées dans le navigateur.
+function creerClientSupabase() {
+  try {
+    const c = JSON.parse(window.localStorage.getItem("mip-ppa-sb") || "null");
+    if (c && c.url && c.url.startsWith("https://") && c.cle) return createClient(c.url, c.cle);
+  } catch (e) {}
+  return null;
 }
+const sb = creerClientSupabase();
+
+// ----------------- COMPTES & AUTHENTIFICATION ------
 function lireStock(cle, defaut) {
   try { const v = window.localStorage.getItem(cle); return v ? JSON.parse(v) : defaut; } catch (e) { return defaut; }
 }
@@ -278,36 +278,99 @@ function Toast({ msg }) {
 }
 
 
-// ================= ÉCRAN DE CONNEXION ============================
-function EcranConnexion({ comptes, setComptes, onConnexion }) {
+// ================= ÉCRANS D'ACCÈS ================================
+function CadreAccueil({ enfants }) {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-10"
+      style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", background: "radial-gradient(120% 120% at 20% 0%, #14506f 0%, #0d2637 55%, #0a1d2a 100%)" }}>
+      <style>{`@keyframes pageIn { from { opacity: 0; transform: translateY(10px);} to { opacity: 1; transform: none;} } .page-anim{animation:pageIn .32s ease-out both}`}</style>
+      <div className="flex items-center gap-3 mb-6">
+        <LogoFDFP h={34} />
+        <div>
+          <div className="text-white font-bold text-lg leading-tight">FDFP · MIP-PPA</div>
+          <div className="text-sky-200 text-sm">Suivi des formations IAA</div>
+        </div>
+      </div>
+      {enfants}
+    </div>
+  );
+}
+
+// Premier lancement : coller les deux clés Supabase (une seule fois par appareil)
+function EcranConfiguration() {
+  const [url, setUrl] = useState("");
+  const [cle, setCle] = useState("");
+  const [err, setErr] = useState("");
+  return (
+    <CadreAccueil enfants={
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-7 page-anim">
+        <div className="flex items-center gap-2 font-bold text-stone-900"><Icone n="bouclier" t={18} /> Configuration initiale</div>
+        <p className="text-sm text-stone-500 mt-1">Collez les deux clés de votre projet Supabase (Settings → API). Cette étape n'est faite qu'une fois par appareil.</p>
+        {err && <div className="mt-3 text-sm rounded-xl px-3.5 py-2.5 bg-red-50 text-red-700 border border-red-200">{err}</div>}
+        <label className="block text-sm font-semibold text-stone-800 mt-4">URL du projet <span className="font-normal text-stone-400">(Project URL)</span>
+          <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://xxxx.supabase.co"
+            className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
+        </label>
+        <label className="block text-sm font-semibold text-stone-800 mt-4">Clé publique <span className="font-normal text-stone-400">(anon public)</span>
+          <textarea rows={3} value={cle} onChange={(e) => setCle(e.target.value)} placeholder="eyJhbGciOi..."
+            className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600 resize-y" />
+        </label>
+        <button onClick={() => {
+          if (!url.trim().startsWith("https://") || cle.trim().length < 20) { setErr("Vérifiez les deux valeurs : l'URL commence par https:// et la clé est une longue chaîne."); return; }
+          ecrireStock("mip-ppa-sb", { url: url.trim(), cle: cle.trim() });
+          window.location.reload();
+        }} className="w-full mt-6 text-white font-semibold py-3 rounded-xl" style={{ background: C.vertFonce }}>Enregistrer et démarrer</button>
+      </div>
+    } />
+  );
+}
+
+// Compte authentifié mais sans rôle : accès bloqué
+function EcranAttente({ session, surActualiser, surDeconnexion }) {
+  return (
+    <CadreAccueil enfants={
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-7 page-anim text-center">
+        <div className="flex justify-center text-amber-500"><Icone n="horloge" t={36} /></div>
+        <h2 className="font-bold text-lg mt-3">Compte en attente d'activation</h2>
+        <p className="text-sm text-stone-500 mt-2">Bonjour {session.nom.split(" ")[0]} — votre compte ({session.email}) est bien créé et votre email est vérifié. L'administrateur lead doit maintenant vous attribuer un rôle pour activer votre accès.</p>
+        <div className="flex justify-center gap-3 mt-6">
+          <button onClick={surActualiser} className="border border-stone-300 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50 flex items-center gap-1.5"><Icone n="rotation" t={14} /> Vérifier à nouveau</button>
+          <button onClick={surDeconnexion} className="text-white px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-1.5" style={{ background: C.vertFonce }}><Icone n="deconnexion" t={14} /> Se déconnecter</button>
+        </div>
+      </div>
+    } />
+  );
+}
+
+function EcranConnexion() {
   const [onglet, setOnglet] = useState("connexion");
   const [email, setEmail] = useState("");
   const [mdp, setMdp] = useState("");
   const [nom, setNom] = useState("");
   const [org, setOrg] = useState("");
-  const [msg, setMsg] = useState(null); // {type:'erreur'|'ok', txt}
+  const [msg, setMsg] = useState(null);
   const [voirMdp, setVoirMdp] = useState(false);
+  const [envoi, setEnvoi] = useState(false);
 
-  const connecter = () => {
-    const c = comptes.find((x) => x.email.toLowerCase() === email.trim().toLowerCase());
-    if (!c) return setMsg({ type: "erreur", txt: "Aucun compte pour cet email. Créez un compte via l'onglet ci-contre." });
-    if (mdp.length < 6) return setMsg({ type: "erreur", txt: "Mot de passe : 6 caractères minimum." });
-    if (c.mdp === null) {
-      // Première connexion de l'administrateur lead : ce mot de passe devient le sien
-      setComptes((cs) => cs.map((x) => x.id === c.id ? { ...x, mdp: empreinte(mdp) } : x));
-      return onConnexion(c);
+  const connecter = async () => {
+    setEnvoi(true); setMsg(null);
+    const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password: mdp });
+    setEnvoi(false);
+    if (error) {
+      const t = error.message.includes("Invalid login") ? "Email ou mot de passe incorrect."
+        : error.message.includes("Email not confirmed") ? "Email non confirmé : cliquez d'abord sur le lien reçu dans votre boîte mail (vérifiez les spams)."
+        : error.message;
+      setMsg({ type: "erreur", txt: t });
     }
-    if (c.mdp !== empreinte(mdp)) return setMsg({ type: "erreur", txt: "Mot de passe incorrect." });
-    if (c.role === "En attente d'activation") return setMsg({ type: "erreur", txt: "Compte en attente d'activation. L'administrateur lead doit vous attribuer un rôle." });
-    onConnexion(c);
   };
-  const creer = () => {
+  const creer = async () => {
     if (!nom.trim() || !org.trim()) return setMsg({ type: "erreur", txt: "Renseignez votre nom complet et votre organisation." });
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) return setMsg({ type: "erreur", txt: "Email invalide." });
-    if (comptes.some((x) => x.email.toLowerCase() === email.trim().toLowerCase())) return setMsg({ type: "erreur", txt: "Un compte existe déjà pour cet email." });
     if (mdp.length < 6) return setMsg({ type: "erreur", txt: "Mot de passe : 6 caractères minimum." });
-    setComptes((cs) => [...cs, { id: "u" + Date.now(), email: email.trim().toLowerCase(), nom: nom.trim(), org: org.trim(), role: "En attente d'activation", mdp: empreinte(mdp) }]);
-    setMsg({ type: "ok", txt: "Compte créé ! Il est en attente d'activation : l'administrateur lead va vous attribuer un rôle, puis vous pourrez vous connecter." });
+    setEnvoi(true); setMsg(null);
+    const { error } = await sb.auth.signUp({ email: email.trim(), password: mdp, options: { data: { nom: nom.trim(), org: org.trim() } } });
+    setEnvoi(false);
+    if (error) return setMsg({ type: "erreur", txt: error.message.includes("already registered") ? "Un compte existe déjà pour cet email." : error.message });
+    setMsg({ type: "ok", txt: "Compte créé ! Un email de confirmation vient de vous être envoyé : cliquez sur le lien pour vérifier votre adresse, puis revenez vous connecter. L'administrateur lead activera ensuite votre accès." });
     setOnglet("connexion"); setMdp("");
   };
   const champ = (label, type, val, set, aide) => (
@@ -318,15 +381,7 @@ function EcranConnexion({ comptes, setComptes, onConnexion }) {
     </label>
   );
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-10"
-      style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", background: "radial-gradient(120% 120% at 20% 0%, #14506f 0%, #0d2637 55%, #0a1d2a 100%)" }}>
-      <div className="flex items-center gap-3 mb-6">
-        <LogoFDFP h={34} />
-        <div>
-          <div className="text-white font-bold text-lg leading-tight">FDFP · MIP-PPA</div>
-          <div className="text-sky-200 text-sm">Suivi des formations IAA</div>
-        </div>
-      </div>
+    <CadreAccueil enfants={
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-7 page-anim">
         <div className="flex items-center gap-2 font-bold text-stone-900"><Icone n="bouclier" t={18} /> Espace sécurisé</div>
         <p className="text-sm text-stone-500 mt-1">Connectez-vous ou créez un compte. Un administrateur lead activera votre accès.</p>
@@ -349,22 +404,22 @@ function EcranConnexion({ comptes, setComptes, onConnexion }) {
               className="w-full border border-stone-300 rounded-xl px-3.5 py-2.5 pr-12 font-normal outline-none focus:border-sky-600" />
             <button type="button" onClick={() => setVoirMdp(!voirMdp)} tabIndex={-1}
               title={voirMdp ? "Masquer le mot de passe" : "Afficher le mot de passe"}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 text-lg">
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700">
               {voirMdp ? <Icone n="oeilBarre" t={19} /> : <Icone n="oeil" t={19} />}
             </button>
           </div>
         </label>
-        <button onClick={onglet === "connexion" ? connecter : creer}
-          className="w-full mt-6 text-white font-semibold py-3 rounded-xl" style={{ background: C.vertFonce }}>
-          {onglet === "connexion" ? "Se connecter" : "Créer le compte"}
+        <button onClick={onglet === "connexion" ? connecter : creer} disabled={envoi}
+          className="w-full mt-6 text-white font-semibold py-3 rounded-xl disabled:opacity-60" style={{ background: C.vertFonce }}>
+          {envoi ? "Un instant…" : onglet === "connexion" ? "Se connecter" : "Créer le compte"}
         </button>
         <p className="text-xs text-stone-400 mt-4 text-center">
           {onglet === "creation"
-            ? "Votre compte sera activé par l'administrateur lead avant votre premier accès."
-            : "Administrateur lead : votre première connexion définit votre mot de passe."}
+            ? "Un email de confirmation vous sera envoyé pour vérifier votre adresse."
+            : "Votre accès dépend du rôle attribué par l'administrateur lead."}
         </p>
       </div>
-    </div>
+    } />
   );
 }
 
@@ -379,11 +434,36 @@ export default function MipPpaApp() {
   const setSuivis = (fn) => setSuivisBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-suivis", n); return n; });
   const [secteurs, setSecteursBrut] = useState(() => lireStock("mip-ppa-secteurs", SECTEURS_DEFAUT));
   const setSecteurs = (fn) => setSecteursBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-secteurs", n); return n; });
-  const [comptes, setComptesBrut] = useState(() => lireStock("mip-ppa-comptes", COMPTES_INIT));
-  const [session, setSessionBrut] = useState(() => lireStock("mip-ppa-session", null));
-  const setComptes = (fn) => setComptesBrut((c) => { const n = typeof fn === "function" ? fn(c) : fn; ecrireStock("mip-ppa-comptes", n); return n; });
-  const setSession = (s) => { setSessionBrut(s); ecrireStock("mip-ppa-session", s); };
-  const roleActif = session ? (comptes.find((c) => c.id === session.id)?.role ?? "") : "";
+  const [comptes, setComptes] = useState([]);          // liste chargée depuis Supabase (page Utilisateurs)
+  const [session, setSession] = useState(null);         // { id, email, nom, org, role }
+  const [chargementAuth, setChargementAuth] = useState(true);
+  const roleActif = session?.role ?? "";
+
+  // Charger le profil + rôle de l'utilisateur connecté
+  const chargerProfil = async (utilisateur) => {
+    const { data: p } = await sb.from("profiles").select("*").eq("id", utilisateur.id).maybeSingle();
+    const { data: r } = await sb.from("user_roles").select("role").eq("user_id", utilisateur.id).maybeSingle();
+    setSession({ id: utilisateur.id, email: utilisateur.email, nom: p?.nom || utilisateur.email, org: p?.org || "", role: r?.role || "En attente d'activation" });
+    setChargementAuth(false);
+  };
+  useEffect(() => {
+    if (!sb) { setChargementAuth(false); return; }
+    sb.auth.getSession().then(({ data }) => { if (data.session?.user) chargerProfil(data.session.user); else setChargementAuth(false); });
+    const { data: abo } = sb.auth.onAuthStateChange((_ev, s) => { if (s?.user) chargerProfil(s.user); else { setSession(null); setChargementAuth(false); } });
+    return () => abo.subscription.unsubscribe();
+  }, []);
+
+  // Liste des comptes (réservée au lead — la sécurité est aussi appliquée côté serveur)
+  const chargerComptes = async () => {
+    const { data: profils } = await sb.from("profiles").select("*").order("cree_le");
+    const { data: roles } = await sb.from("user_roles").select("*");
+    setComptes((profils || []).map((p) => ({ id: p.id, email: p.email, nom: p.nom || p.email, org: p.org || "—", role: (roles || []).find((r) => r.user_id === p.id)?.role || "En attente d'activation" })));
+  };
+  const attribuerRole = async (userId, role) => {
+    const { error } = await sb.from("user_roles").update({ role }).eq("user_id", userId);
+    if (error) { notif("Échec : " + error.message); return; }
+    notif("Rôle mis à jour"); chargerComptes();
+  };
   const [evalId, setEvalId] = useState(null);
   const [recherche, setRecherche] = useState("");
   const [formOuvert, setFormOuvert] = useState(false);
@@ -393,8 +473,9 @@ export default function MipPpaApp() {
   const [indEdit, setIndEdit] = useState(null);     // fenêtre Modifier l'indicateur
   const lead = roleActif === "Administrateur lead";
   const P = PERMS[roleActif] || PERMS["En attente d'activation"];
-  const monCompte = comptes.find((c) => c.id === session?.id);
+  const monCompte = session;
   useEffect(() => { if (session && !P.pages.includes(page)) setPage(P.pages[0]); }, [roleActif, session]); // redirection selon le rôle
+  useEffect(() => { if (page === "users" && P.users && sb) chargerComptes(); }, [page, roleActif]);
   const [nouvelle, setNouvelle] = useState({ titre: "", entreprise: "", filiere: secteurs[0] || "Autre IAA", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
   const [toast, setToast] = useState("");
   const notif = (m) => { setToast(m); setTimeout(() => setToast(""), 2500); };
@@ -616,13 +697,15 @@ export default function MipPpaApp() {
   };
 
   // =================== GARDE D'ACCÈS =============================
-  if (!session) {
-    return (<>
-      <style>{`@keyframes pageIn { from { opacity: 0; transform: translateY(10px);} to { opacity: 1; transform: none;} } .page-anim{animation:pageIn .32s ease-out both}`}</style>
-      <EcranConnexion comptes={comptes} setComptes={setComptes}
-        onConnexion={(c) => { setSession({ id: c.id, nom: c.nom, email: c.email }); notif("Bienvenue, " + c.nom.split(" ")[0] + " !"); }} />
-      <Toast msg={toast} />
-    </>);
+  if (!sb) return <EcranConfiguration />;
+  if (chargementAuth) {
+    return <CadreAccueil enfants={<div className="text-sky-100 text-sm page-anim">Connexion au serveur…</div>} />;
+  }
+  if (!session) return (<><EcranConnexion /><Toast msg={toast} /></>);
+  if (roleActif === "En attente d'activation") {
+    return <EcranAttente session={session}
+      surActualiser={() => sb.auth.getUser().then(({ data }) => data.user && chargerProfil(data.user))}
+      surDeconnexion={() => { sb.auth.signOut(); setSession(null); }} />;
   }
 
   // =================== RENDU =====================================
@@ -667,7 +750,7 @@ export default function MipPpaApp() {
         </nav>
         <div className="px-5 py-4 border-t" style={{ borderColor: "#1c4a66" }}>
           <div className="flex items-center gap-2 text-sm" style={{ color: C.gold }}><Icone n="bouclier" t={16} /> {roleActif}</div>
-          <button onClick={() => { setSession(null); setPage("dashboard"); }}
+          <button onClick={() => { if (sb) sb.auth.signOut(); setSession(null); setPage("dashboard"); }}
             className="mt-2 text-xs text-stone-400 hover:text-white flex items-center gap-1.5" title="Fermer votre session"><Icone n="deconnexion" t={13} /> Se déconnecter</button>
         </div>
       </aside>
@@ -1145,7 +1228,11 @@ export default function MipPpaApp() {
           {/* =========== UTILISATEURS & RÔLES =========== */}
           {page === "users" && (P.users ? (<>
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
-              <h3 className="font-bold mb-1">Comptes ({comptes.length})</h3>
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="font-bold">Comptes ({comptes.length})</h3>
+                <button onClick={chargerComptes} title="Recharger la liste depuis la base"
+                  className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50 flex items-center gap-1.5"><Icone n="rotation" t={14} /> Actualiser</button>
+              </div>
               <p className="text-sm text-stone-500 mb-4">Sélectionnez un rôle pour chaque utilisateur. Les comptes « En attente » n'ont aucun accès tant qu'aucun rôle ne leur est attribué. Seul l'administrateur lead peut modifier les rôles.</p>
               <div className="divide-y divide-stone-100">
                 {comptes.map((u) => (
@@ -1162,14 +1249,14 @@ export default function MipPpaApp() {
                     <div className="flex items-center gap-3">
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${u.role === "En attente d'activation" ? "bg-stone-100 text-stone-500" : "bg-sky-100 text-sky-800"}`}>{u.role}</span>
                       <select value={u.role} disabled={roleActif !== "Administrateur lead" || session?.id === u.id}
-                        onChange={(e) => { setComptes((cs) => cs.map((x) => x.id === u.id ? { ...x, role: e.target.value } : x)); notif("Rôle mis à jour"); }}
+                        onChange={(e) => attribuerRole(u.id, e.target.value)}
                         className="text-sm border border-stone-200 rounded-lg px-3 py-2 bg-stone-50">
                         <option value="En attente d'activation">Choisir…</option>
                         {ROLES.filter((r) => r !== "En attente d'activation").map((r) => <option key={r}>{r}</option>)}
                       </select>
-                      {roleActif === "Administrateur lead" && session?.id !== u.id && (
-                        <button onClick={() => { if (window.confirm(`Supprimer le compte de ${u.nom} ?`)) { setComptes((cs) => cs.filter((x) => x.id !== u.id)); notif("Compte supprimé"); } }}
-                          className="text-red-500 hover:text-red-700" ><Icone n="poubelle" t={16} /></button>
+                      {roleActif === "Administrateur lead" && session?.id !== u.id && u.role !== "En attente d'activation" && (
+                        <button title="Retirer l'accès (repasse le compte en attente)" onClick={() => attribuerRole(u.id, "En attente d'activation")}
+                          className="text-red-500 hover:text-red-700"><Icone n="poubelle" t={16} /></button>
                       )}
                     </div>
                   </div>
