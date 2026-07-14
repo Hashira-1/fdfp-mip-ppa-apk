@@ -1,0 +1,1156 @@
+import React, { useState, useMemo } from "react";
+import { jsPDF } from "jspdf";
+import {
+  ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  Radar, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+} from "recharts";
+
+/* ================================================================
+   FDFP · MIP-PPA — Suivi des formations PPA dans les IAA
+   Reconstruction fidèle de l'application (modèle : 5 dimensions,
+   23 indicateurs, notes 0–4, suivi post-formation à 3/6/12 mois)
+   ================================================================ */
+
+// ----------------- RÉFÉRENTIEL PAR DÉFAUT -----------------------
+const REFERENTIEL_DEFAUT = [
+  {
+    id: "P", nom: "Pertinence", poids: 20,
+    desc: "Alignement de la formation aux besoins métiers et aux normes IAA.",
+    indicateurs: [
+      { id: "P1", phase: "À la conception", label: "Alignement des objectifs pédagogiques avec les besoins en compétences" },
+      { id: "P2", phase: "À la conception", label: "Adéquation du contenu avec les référentiels métiers du secteur agro-alimentaire" },
+      { id: "P3", phase: "À la conception", label: "Pertinence du profil des formateurs par rapport aux contenus dispensés" },
+      { id: "P4", phase: "À la conception", label: "Conformité avec les normes HACCP et réglementations alimentaires applicables" },
+    ],
+  },
+  {
+    id: "EP", nom: "Efficacité pédagogique", poids: 25,
+    desc: "Acquisition réelle des connaissances et gestes techniques.",
+    indicateurs: [
+      { id: "EP1", phase: "En fin de formation", label: "Taux d'acquisition des connaissances théoriques (test avant/après)" },
+      { id: "EP2", phase: "En fin de formation", label: "Taux de maîtrise des gestes techniques évalués en situation de travail" },
+      { id: "EP3", phase: "En fin de formation", label: "Taux d'assiduité et de participation active des apprenants" },
+      { id: "EP4", phase: "En fin de formation", label: "Satisfaction globale des apprenants envers la formation" },
+      { id: "EP5", phase: "En fin de formation", label: "Satisfaction des tuteurs en entreprise envers la qualité pédagogique" },
+      { id: "EP6", phase: "En fin de formation", label: "Taux d'obtention de la certification ou attestation visée" },
+    ],
+  },
+  {
+    id: "EE", nom: "Efficience économique", poids: 20,
+    desc: "Optimisation des coûts et utilisation du financement PPA.",
+    indicateurs: [
+      { id: "EE1", phase: "À la conception", label: "Coût de la formation par apprenant formé" },
+      { id: "EE2", phase: "En fin de formation", label: "Coût de formation par compétence certifiée acquise" },
+      { id: "EE3", phase: "En fin de formation", label: "Taux d'utilisation du financement PPA alloué" },
+      { id: "EE4", phase: "En fin de formation", label: "Ratio coût-bénéfice estimé de la formation (méthode simplifiée)" },
+    ],
+  },
+  {
+    id: "IO", nom: "Impact organisationnel", poids: 25,
+    desc: "Effets mesurables sur la qualité, la productivité et la sécurité.",
+    indicateurs: [
+      { id: "IO1", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Évolution du taux de non-conformité qualité avant/après formation" },
+      { id: "IO2", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Variation du taux de productivité de la ligne ou du poste concerné" },
+      { id: "IO3", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Réduction du taux d'accidents ou d'incidents de sécurité alimentaire" },
+      { id: "IO4", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Transfert observable des compétences à 3 mois (évaluation managériale)" },
+      { id: "IO5", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Satisfaction du management sur l'amélioration des performances des formés" },
+    ],
+  },
+  {
+    id: "DC", nom: "Durabilité des compétences", poids: 10,
+    desc: "Ancrage durable des compétences acquises (6 et 12 mois).",
+    indicateurs: [
+      { id: "DC1", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Taux de rétention des apprenants dans l'entreprise à 6 mois" },
+      { id: "DC2", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Proportion des formés promus ou évolués dans les 12 mois" },
+      { id: "DC3", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Intégration des compétences dans les fiches de poste et procédures" },
+      { id: "DC4", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Continuité des pratiques apprises mesurée par observation à 6 mois" },
+    ],
+  },
+];
+
+// ----------------- DONNÉES DÉMO ---------------------------------
+const FORMATIONS_DEMO = [
+  {
+    id: "f1", titre: "Maîtrise HACCP en ligne de conditionnement cacao",
+    entreprise: "CocoaPro Côte d'Ivoire", filiere: "Cacao-Café", region: "Abidjan",
+    apprenants: 18, budget: 12500000, statut: "Terminée",
+    notes: { P1: 4, P2: 3, P3: 4, P4: 4, EP1: 3, EP2: 3, EP3: 4, EP4: 4, EP5: 3, EP6: 4, EE1: 3, EE2: 3, EE3: 4, EE4: 3, IO1: 3, IO2: 3, IO3: 4, IO4: 3, IO5: 3, DC1: 3, DC2: 2, DC3: 3, DC4: 3 },
+  },
+  {
+    id: "f2", titre: "Conduite de séchoir industriel — fruits tropicaux",
+    entreprise: "Tropic'Or SARL", filiere: "Fruits & Légumes", region: "Yamoussoukro",
+    apprenants: 9, budget: 6800000, statut: "Terminée",
+    notes: { P1: 3, P2: 2, P3: 3, P4: 2, EP1: 2, EP2: 2, EP3: 3, EP4: 4, EP5: 2, EP6: 2, EE1: 2, EE2: 3, EE3: 2, EE4: 2, IO1: 2, IO2: 2, IO3: 3, IO4: 2, IO5: 2, DC1: 3, DC2: 2, DC3: 2, DC4: 2 },
+  },
+  {
+    id: "f3", titre: "Sécurité alimentaire & traçabilité ISO 22000",
+    entreprise: "LaitiAfrique", filiere: "Lait & Dérivés", region: "San-Pédro",
+    apprenants: 24, budget: 15200000, statut: "Terminée",
+    notes: { P1: 4, P2: 4, P3: 4, P4: 4, EP1: 4, EP2: 3, EP3: 4, EP4: 4, EP5: 4, EP6: 4, EE1: 3, EE2: 3, EE3: 4, EE4: 3, IO1: 4, IO2: 3, IO3: 4, IO4: 4, IO5: 3, DC1: 3, DC2: 3, DC3: 4, DC4: 3 },
+  },
+];
+
+const SUIVIS_DEMO = [
+  { id: "s1", formationId: "f1", jalon: "M+3", echeance: "2026-05-20", statut: "effectué", note: "Transfert observé sur la ligne 2." },
+  { id: "s2", formationId: "f1", jalon: "M+6", echeance: "2026-08-20", statut: "programmé", note: "" },
+  { id: "s3", formationId: "f1", jalon: "M+12", echeance: "2027-02-20", statut: "programmé", note: "" },
+  { id: "s4", formationId: "f2", jalon: "M+3", echeance: "2026-07-17", statut: "programmé", note: "" },
+  { id: "s5", formationId: "f2", jalon: "M+6", echeance: "2026-10-17", statut: "programmé", note: "" },
+  { id: "s6", formationId: "f2", jalon: "M+12", echeance: "2027-04-17", statut: "programmé", note: "" },
+  { id: "s7", formationId: "f3", jalon: "M+3", echeance: "2026-09-02", statut: "programmé", note: "" },
+  { id: "s8", formationId: "f3", jalon: "M+6", echeance: "2026-12-02", statut: "programmé", note: "" },
+  { id: "s9", formationId: "f3", jalon: "M+12", echeance: "2027-06-02", statut: "programmé", note: "" },
+];
+
+// ----------------- COMPTES & AUTHENTIFICATION (démo front) ------
+// L'administrateur lead est pré-enregistré ; son mot de passe est défini
+// lors de sa PREMIÈRE connexion (aucun mot de passe n'est stocké dans le code).
+const COMPTES_INIT = [
+  { id: "u1", email: "hashiraluc@gmail.com", nom: "EHOUNI Luc-Emmanuel Behira Levy", org: "INP-HB", role: "Administrateur lead", mdp: null },
+];
+
+// Empreinte simple du mot de passe (niveau démonstration — la version
+// d'exploitation utilisera une vraie authentification serveur type Supabase)
+function empreinte(txt) {
+  let h = 5381; const s = "mip-ppa·" + txt;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return "h" + (h >>> 0).toString(36);
+}
+function lireStock(cle, defaut) {
+  try { const v = window.localStorage.getItem(cle); return v ? JSON.parse(v) : defaut; } catch (e) { return defaut; }
+}
+function ecrireStock(cle, val) {
+  try { window.localStorage.setItem(cle, JSON.stringify(val)); } catch (e) {}
+}
+
+const ROLES = ["Administrateur lead", "Administrateur FDFP", "Agent FDFP", "Référent entreprise", "Formateur", "En attente d'activation"];
+const FILIERES = ["Cacao-Café", "Fruits & Légumes", "Lait & Dérivés", "Anacarde", "Céréales", "Autre IAA"];
+const AUJOURDHUI = new Date("2026-07-13");
+
+// ----------------- COULEURS -------------------------------------
+const C = {
+  sidebar: "#0d2233", sidebarActive: "#1d3d57", gold: "#f2a33c",
+  vert: "#1d6fa8", vertFonce: "#0e3c60", vertClair: "#2280bf",
+  excellent: "#16a34a", satisfaisant: "#1d6fa8", dev: "#ef8f1c", insuffisant: "#dc2626",
+};
+
+// ----------------- CALCULS --------------------------------------
+const noteLabel = (n) => (n === 4 ? "Excellent" : n === 3 ? "Bon" : n === 2 ? "Partiel" : n === 1 ? "Faible" : n === 0 ? "Insuffisant" : "—");
+
+function scoreDimension(referentiel, dimId, notes) {
+  const dim = referentiel.find((d) => d.id === dimId);
+  const vals = dim.indicateurs.map((i) => notes[i.id]).filter((v) => v !== undefined && v !== null);
+  if (!vals.length) return null;
+  return (vals.reduce((a, b) => a + b, 0) / vals.length / 4) * 100;
+}
+function scoreGlobal(referentiel, notes) {
+  let tot = 0, poidsTot = 0;
+  referentiel.forEach((d) => {
+    const s = scoreDimension(referentiel, d.id, notes);
+    if (s !== null) { tot += s * d.poids; poidsTot += d.poids; }
+  });
+  return poidsTot ? tot / poidsTot : null;
+}
+function niveau(score) {
+  if (score === null) return { txt: "Non évalué", bg: "#e7e5e4", fg: "#57534e" };
+  if (score >= 80) return { txt: "Excellent", bg: C.excellent, fg: "#fff" };
+  if (score >= 60) return { txt: "Satisfaisant", bg: C.satisfaisant, fg: "#fff" };
+  if (score >= 40) return { txt: "En développement", bg: C.dev, fg: "#fff" };
+  return { txt: "Insuffisant", bg: C.insuffisant, fg: "#fff" };
+}
+const fmtPct = (v) => (v === null ? "—" : `${Math.round(v)} %`);
+const fmtFCFA = (v) => `${Number(v).toLocaleString("fr-FR")} FCFA`;
+const joursRestants = (dateStr) => Math.ceil((new Date(dateStr) - AUJOURDHUI) / 86400000);
+
+function telecharger(nomFichier, contenu, type = "text/csv;charset=utf-8") {
+  const blob = new Blob(["\ufeff" + contenu], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = nomFichier; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ----------------- LOGO FDFP (reproduction vectorielle) ---------
+// Logo officiel du FDFP (image incorporée au code — aucun fichier externe requis)
+const LOGO_FDFP = "data:image/jpeg;base64,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";
+
+function LogoFDFP({ h = 32 }) {
+  return (
+    <div className="bg-white rounded-lg px-2 py-1 flex items-center justify-center shadow-sm" style={{ height: h + 10 }}>
+      <img src={LOGO_FDFP} alt="FDFP — Fonds de Développement de la Formation Professionnelle" style={{ height: h, width: "auto" }} />
+    </div>
+  );
+}
+
+// ----------------- PETITS COMPOSANTS ----------------------------
+function Badge({ score }) {
+  const n = niveau(score);
+  return (
+    <span className="text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: n.bg, color: n.fg }}>
+      {n.txt}{score !== null ? ` · ${Math.round(score)}%` : ""}
+    </span>
+  );
+}
+function StatCard({ icone, titre, valeur, sous, teinte = "#e3eef7", fg = C.vert }) {
+  return (
+    <div className="carte-hover bg-white rounded-2xl border border-stone-200 p-5 flex items-start gap-4">
+      <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ background: teinte, color: fg }}>{icone}</div>
+      <div>
+        <div className="text-[11px] uppercase tracking-wide text-stone-500 font-medium">{titre}</div>
+        <div className="text-3xl font-bold text-stone-900">{valeur}</div>
+        {sous && <div className="text-xs text-stone-400 mt-0.5">{sous}</div>}
+      </div>
+    </div>
+  );
+}
+function Toast({ msg }) {
+  if (!msg) return null;
+  return (
+    <div className="toast-anim fixed bottom-5 right-5 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg z-50" style={{ background: C.vertFonce }}>
+      ✓ {msg}
+    </div>
+  );
+}
+
+
+// ================= ÉCRAN DE CONNEXION ============================
+function EcranConnexion({ comptes, setComptes, onConnexion }) {
+  const [onglet, setOnglet] = useState("connexion");
+  const [email, setEmail] = useState("");
+  const [mdp, setMdp] = useState("");
+  const [nom, setNom] = useState("");
+  const [org, setOrg] = useState("");
+  const [msg, setMsg] = useState(null); // {type:'erreur'|'ok', txt}
+
+  const connecter = () => {
+    const c = comptes.find((x) => x.email.toLowerCase() === email.trim().toLowerCase());
+    if (!c) return setMsg({ type: "erreur", txt: "Aucun compte pour cet email. Créez un compte via l'onglet ci-contre." });
+    if (mdp.length < 6) return setMsg({ type: "erreur", txt: "Mot de passe : 6 caractères minimum." });
+    if (c.mdp === null) {
+      // Première connexion de l'administrateur lead : ce mot de passe devient le sien
+      setComptes((cs) => cs.map((x) => x.id === c.id ? { ...x, mdp: empreinte(mdp) } : x));
+      return onConnexion(c);
+    }
+    if (c.mdp !== empreinte(mdp)) return setMsg({ type: "erreur", txt: "Mot de passe incorrect." });
+    if (c.role === "En attente d'activation") return setMsg({ type: "erreur", txt: "Compte en attente d'activation. L'administrateur lead doit vous attribuer un rôle." });
+    onConnexion(c);
+  };
+  const creer = () => {
+    if (!nom.trim() || !org.trim()) return setMsg({ type: "erreur", txt: "Renseignez votre nom complet et votre organisation." });
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) return setMsg({ type: "erreur", txt: "Email invalide." });
+    if (comptes.some((x) => x.email.toLowerCase() === email.trim().toLowerCase())) return setMsg({ type: "erreur", txt: "Un compte existe déjà pour cet email." });
+    if (mdp.length < 6) return setMsg({ type: "erreur", txt: "Mot de passe : 6 caractères minimum." });
+    setComptes((cs) => [...cs, { id: "u" + Date.now(), email: email.trim().toLowerCase(), nom: nom.trim(), org: org.trim(), role: "En attente d'activation", mdp: empreinte(mdp) }]);
+    setMsg({ type: "ok", txt: "Compte créé ! Il est en attente d'activation : l'administrateur lead va vous attribuer un rôle, puis vous pourrez vous connecter." });
+    setOnglet("connexion"); setMdp("");
+  };
+  const champ = (label, type, val, set, aide) => (
+    <label key={label} className="block text-sm font-semibold text-stone-800 mt-4">{label}{aide && <span className="font-normal text-stone-400"> {aide}</span>}
+      <input type={type} value={val} onChange={(e) => set(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && (onglet === "connexion" ? connecter() : creer())}
+        className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
+    </label>
+  );
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-10"
+      style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", background: "radial-gradient(120% 120% at 20% 0%, #14506f 0%, #0d2637 55%, #0a1d2a 100%)" }}>
+      <div className="flex items-center gap-3 mb-6">
+        <LogoFDFP h={34} />
+        <div>
+          <div className="text-white font-bold text-lg leading-tight">FDFP · MIP-PPA</div>
+          <div className="text-sky-200 text-sm">Suivi des formations IAA</div>
+        </div>
+      </div>
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-7 page-anim">
+        <div className="flex items-center gap-2 font-bold text-stone-900">🛡 Espace sécurisé</div>
+        <p className="text-sm text-stone-500 mt-1">Connectez-vous ou créez un compte. Un administrateur lead activera votre accès.</p>
+        <div className="grid grid-cols-2 bg-stone-100 rounded-full p-1 mt-5 text-sm font-semibold">
+          {[["connexion", "Connexion"], ["creation", "Créer un compte"]].map(([id, lbl]) => (
+            <button key={id} onClick={() => { setOnglet(id); setMsg(null); }}
+              className={`py-2 rounded-full ${onglet === id ? "bg-white shadow text-stone-900" : "text-stone-500"}`}>{lbl}</button>
+          ))}
+        </div>
+        {msg && <div className={`mt-4 text-sm rounded-xl px-3.5 py-2.5 ${msg.type === "erreur" ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-800 border border-emerald-200"}`}>{msg.txt}</div>}
+        {onglet === "creation" && <>
+          {champ("Nom complet", "text", nom, setNom)}
+          {champ("Organisation", "text", org, setOrg, "(entreprise / cabinet)")}
+        </>}
+        {champ("Email professionnel", "email", email, setEmail)}
+        {champ("Mot de passe", "password", mdp, setMdp, onglet === "creation" ? "(6 caractères min.)" : "")}
+        <button onClick={onglet === "connexion" ? connecter : creer}
+          className="w-full mt-6 text-white font-semibold py-3 rounded-xl" style={{ background: C.vertFonce }}>
+          {onglet === "connexion" ? "Se connecter" : "Créer le compte"}
+        </button>
+        <p className="text-xs text-stone-400 mt-4 text-center">
+          {onglet === "creation"
+            ? "Votre compte sera activé par l'administrateur lead avant votre premier accès."
+            : "Administrateur lead : votre première connexion définit votre mot de passe."}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ================= APPLICATION ===================================
+export default function MipPpaApp() {
+  const [page, setPage] = useState("dashboard");
+  const [referentiel, setReferentielBrut] = useState(() => lireStock("mip-ppa-referentiel", REFERENTIEL_DEFAUT));
+  const [formations, setFormationsBrut] = useState(() => lireStock("mip-ppa-formations", FORMATIONS_DEMO));
+  const [suivis, setSuivisBrut] = useState(() => lireStock("mip-ppa-suivis", SUIVIS_DEMO));
+  const setReferentiel = (fn) => setReferentielBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-referentiel", n); return n; });
+  const setFormations = (fn) => setFormationsBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-formations", n); return n; });
+  const setSuivis = (fn) => setSuivisBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-suivis", n); return n; });
+  const [comptes, setComptesBrut] = useState(() => lireStock("mip-ppa-comptes", COMPTES_INIT));
+  const [session, setSessionBrut] = useState(() => lireStock("mip-ppa-session", null));
+  const setComptes = (fn) => setComptesBrut((c) => { const n = typeof fn === "function" ? fn(c) : fn; ecrireStock("mip-ppa-comptes", n); return n; });
+  const setSession = (s) => { setSessionBrut(s); ecrireStock("mip-ppa-session", s); };
+  const roleActif = session ? (comptes.find((c) => c.id === session.id)?.role ?? "") : "";
+  const [evalId, setEvalId] = useState(null);
+  const [recherche, setRecherche] = useState("");
+  const [formOuvert, setFormOuvert] = useState(false);
+  const [editionId, setEditionId] = useState(null);
+  const [suiviEdit, setSuiviEdit] = useState(null); // fenêtre Notes & date & documents
+  const lead = roleActif === "Administrateur lead";
+  const [nouvelle, setNouvelle] = useState({ titre: "", entreprise: "", filiere: FILIERES[0], region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
+  const [toast, setToast] = useState("");
+  const notif = (m) => { setToast(m); setTimeout(() => setToast(""), 2500); };
+
+  const admin = roleActif === "Administrateur lead" || roleActif === "Administrateur FDFP";
+
+  // ---------- Calculs consolidés ----------
+  const stats = useMemo(() => {
+    const scores = formations.map((f) => scoreGlobal(referentiel, f.notes)).filter((s) => s !== null);
+    const moy = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+    const alertesScore = formations.filter((f) => { const s = scoreGlobal(referentiel, f.notes); return s !== null && s < 40; });
+    const enRetard = suivis.filter((s) => s.statut === "programmé" && joursRestants(s.echeance) < 0);
+    return {
+      nb: formations.length,
+      apprenants: formations.reduce((a, f) => a + Number(f.apprenants || 0), 0),
+      budget: formations.reduce((a, f) => a + Number(f.budget || 0), 0),
+      moy, alertes: alertesScore.length + enRetard.length, alertesScore, enRetard,
+    };
+  }, [formations, suivis, referentiel]);
+
+  const radarData = useMemo(() =>
+    referentiel.map((d) => {
+      const vals = formations.map((f) => scoreDimension(referentiel, d.id, f.notes)).filter((v) => v !== null);
+      return { dim: d.nom, score: vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0 };
+    }), [formations, referentiel]);
+
+  const filiereData = useMemo(() => {
+    const map = {};
+    formations.forEach((f) => {
+      const s = scoreGlobal(referentiel, f.notes);
+      if (s === null) return;
+      if (!map[f.filiere]) map[f.filiere] = []; map[f.filiere].push(s);
+    });
+    return Object.entries(map).map(([fil, arr]) => ({ filiere: fil, score: arr.reduce((a, b) => a + b, 0) / arr.length }));
+  }, [formations, referentiel]);
+
+  // ---------- Actions ----------
+  const noter = (fid, indId, note) => {
+    setFormations((fs) => fs.map((f) => f.id === fid ? { ...f, notes: { ...f.notes, [indId]: f.notes[indId] === note ? undefined : note } } : f));
+  };
+  const ajouterFormation = () => {
+    if (!nouvelle.titre.trim() || !nouvelle.entreprise.trim()) { notif("Renseignez au minimum l'intitulé et l'entreprise"); return; }
+    if (editionId) {
+      setFormations((fs) => fs.map((f) => f.id === editionId ? { ...f, ...nouvelle } : f));
+      setEditionId(null); setFormOuvert(false);
+      setNouvelle({ titre: "", entreprise: "", filiere: FILIERES[0], region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
+      notif("Formation mise à jour"); return;
+    }
+    const id = "f" + Date.now();
+    setFormations((fs) => [...fs, { id, ...nouvelle, notes: {} }]);
+    ["M+3", "M+6", "M+12"].forEach((j, i) => {
+      const d = new Date(AUJOURDHUI); d.setMonth(d.getMonth() + [3, 6, 12][i]);
+      setSuivis((ss) => [...ss, { id: "s" + Date.now() + i, formationId: id, jalon: j, echeance: d.toISOString().slice(0, 10), statut: "programmé", note: "", docs: [] }]);
+    });
+    setFormOuvert(false);
+    setNouvelle({ titre: "", entreprise: "", filiere: FILIERES[0], region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
+    notif("Formation créée — 3 suivis (M+3/M+6/M+12) planifiés");
+  };
+  const editerFormation = (f) => {
+    setNouvelle({ titre: f.titre, entreprise: f.entreprise, filiere: f.filiere, region: f.region, apprenants: f.apprenants, budget: f.budget, statut: f.statut });
+    setEditionId(f.id); setFormOuvert(true); setPage("formations");
+  };
+
+  const exportExcel = () => {
+    const entetes = ["Formation", "Entreprise", "Filière", "Région", "Apprenants", "Budget FCFA", "Statut",
+      ...referentiel.map((d) => `${d.nom} (%)`), "Score global (%)", "Niveau"];
+    const lignes = formations.map((f) => {
+      const g = scoreGlobal(referentiel, f.notes);
+      return [f.titre, f.entreprise, f.filiere, f.region, f.apprenants, f.budget, f.statut,
+        ...referentiel.map((d) => { const s = scoreDimension(referentiel, d.id, f.notes); return s === null ? "" : Math.round(s); }),
+        g === null ? "" : Math.round(g), niveau(g).txt].join(";");
+    });
+    telecharger("MIP-PPA_export_consolide.csv", [entetes.join(";"), ...lignes].join("\n"));
+    notif("Export Excel (CSV) téléchargé");
+  };
+  const fichePDF = (f) => {
+    const g = scoreGlobal(referentiel, f.notes);
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const W = 210, M = 16;
+    let y = 0;
+    const bleu = [29, 111, 168], orange = [242, 163, 60], gris = [90, 90, 90];
+    const nv = niveau(g);
+    const hexRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+
+    // ------ En-tête institutionnel ------
+    doc.setFillColor(13, 34, 51); doc.rect(0, 0, W, 30, "F");
+    try { doc.addImage(LOGO_FDFP, "JPEG", M, 5.5, 42, 19); } catch (e) {}
+    doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(14);
+    doc.text("FICHE D'ÉVALUATION MIP-PPA", W - M, 13, { align: "right" });
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+    doc.text("Projet Apprentissage — Industries agro-alimentaires", W - M, 19, { align: "right" });
+    doc.setDrawColor(...orange); doc.setLineWidth(1.6); doc.line(0, 30, W, 30);
+    y = 40;
+
+    // ------ Identification de la formation ------
+    doc.setTextColor(20, 20, 20); doc.setFont("helvetica", "bold"); doc.setFontSize(13);
+    doc.text(doc.splitTextToSize(f.titre, W - 2 * M), M, y); y += 7 * doc.splitTextToSize(f.titre, W - 2 * M).length;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(...gris);
+    doc.text(`${f.entreprise}  ·  ${f.filiere}  ·  ${f.region}`, M, y); y += 5.5;
+    doc.text(`${f.apprenants} apprenants  ·  Budget : ${Number(f.budget).toLocaleString("fr-FR")} FCFA  ·  Statut : ${f.statut}`, M, y); y += 9;
+
+    // ------ Score global ------
+    doc.setFillColor(...hexRgb(nv.bg === "#e7e5e4" ? "#a8a29e" : nv.bg)); doc.roundedRect(M, y, W - 2 * M, 16, 2.5, 2.5, "F");
+    doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+    doc.text(`SCORE GLOBAL MIP-PPA : ${fmtPct(g)} — ${nv.txt}`, W / 2, y + 10, { align: "center" });
+    y += 24;
+
+    // ------ Tableau des dimensions ------
+    doc.setTextColor(...bleu); doc.setFontSize(11.5);
+    doc.text("Synthèse par dimension", M, y); y += 6;
+    doc.setFontSize(9.5);
+    referentiel.forEach((d) => {
+      const s = scoreDimension(referentiel, d.id, f.notes);
+      doc.setTextColor(30, 30, 30); doc.setFont("helvetica", "bold");
+      doc.text(`${d.nom} (${d.poids} %)`, M, y);
+      doc.setFont("helvetica", "normal");
+      doc.text(fmtPct(s), W - M - 24, y, { align: "right" });
+      // barre de progression
+      doc.setFillColor(230, 230, 230); doc.roundedRect(W - M - 22, y - 3, 22, 3.4, 1.2, 1.2, "F");
+      if (s !== null) { doc.setFillColor(...bleu); doc.roundedRect(W - M - 22, y - 3, Math.max(1.5, 22 * s / 100), 3.4, 1.2, 1.2, "F"); }
+      y += 6.5;
+    });
+    y += 3;
+
+    // ------ Détail des indicateurs ------
+    const pied = () => {
+      const pages = doc.getNumberOfPages();
+      for (let p = 1; p <= pages; p++) {
+        doc.setPage(p);
+        doc.setDrawColor(...orange); doc.setLineWidth(0.6); doc.line(M, 285, W - M, 285);
+        doc.setFontSize(7.5); doc.setTextColor(...gris); doc.setFont("helvetica", "normal");
+        doc.text("FDFP — Fonds de Développement de la Formation Professionnelle · Modèle MIP-PPA · PFE ESA / INP-HB", M, 290);
+        doc.text(`Page ${p} / ${pages} · Édité le ${new Date().toLocaleDateString("fr-FR")}`, W - M, 290, { align: "right" });
+      }
+    };
+    const sautSiBesoin = (h) => { if (y + h > 278) { doc.addPage(); y = 20; } };
+
+    referentiel.forEach((d) => {
+      sautSiBesoin(14);
+      doc.setFillColor(232, 240, 247); doc.rect(M, y - 4.5, W - 2 * M, 7.5, "F");
+      doc.setTextColor(...bleu); doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+      doc.text(`${d.nom} — ${fmtPct(scoreDimension(referentiel, d.id, f.notes))}`, M + 2, y); y += 8;
+      doc.setFontSize(8.8);
+      d.indicateurs.forEach((ind) => {
+        const lignes = doc.splitTextToSize(`${ind.id} · ${ind.label}`, W - 2 * M - 30);
+        sautSiBesoin(lignes.length * 4 + 3);
+        doc.setTextColor(45, 45, 45); doc.setFont("helvetica", "normal");
+        doc.text(lignes, M + 2, y);
+        const n = f.notes[ind.id];
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(...(n >= 3 ? [22, 122, 61] : n === 2 ? [200, 130, 20] : n !== undefined && n !== null ? [190, 40, 40] : gris));
+        doc.text(`${n ?? "—"} / 4  ·  ${noteLabel(n)}`, W - M - 2, y, { align: "right" });
+        y += lignes.length * 4 + 2.5;
+      });
+      y += 3;
+    });
+
+    // ------ Documents de suivi rattachés ------
+    const suivisF = suivis.filter((s) => s.formationId === f.id && (s.docs || []).length > 0);
+    if (suivisF.length) {
+      sautSiBesoin(16);
+      doc.setFillColor(232, 240, 247); doc.rect(M, y - 4.5, W - 2 * M, 7.5, "F");
+      doc.setTextColor(...bleu); doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+      doc.text("Documents de suivi rattachés", M + 2, y); y += 8;
+      doc.setFontSize(8.8);
+      suivisF.forEach((s) => {
+        (s.docs || []).forEach((d) => {
+          sautSiBesoin(8);
+          doc.setTextColor(45, 45, 45); doc.setFont("helvetica", "normal");
+          doc.text(`${s.jalon} · ${d.nom} (${(d.taille / 1024).toFixed(0)} Ko, ajouté le ${d.date})`, M + 2, y); y += 5;
+          if (d.type && d.type.startsWith("image/")) {
+            sautSiBesoin(40);
+            try { doc.addImage(d.data, undefined, M + 2, y, 52, 36); y += 40; } catch (e) {}
+          }
+        });
+        if (s.note) {
+          const ln = doc.splitTextToSize(`Observations ${s.jalon} : ${s.note}`, W - 2 * M - 4);
+          sautSiBesoin(ln.length * 4 + 3);
+          doc.setTextColor(...gris); doc.setFont("helvetica", "italic");
+          doc.text(ln, M + 2, y); y += ln.length * 4 + 2;
+        }
+      });
+    }
+
+    pied();
+    doc.save(`Fiche_MIP-PPA_${f.entreprise.replace(/\s+/g, "_")}.pdf`);
+    notif("Fiche PDF téléchargée");
+  };
+
+  const fEval = formations.find((f) => f.id === evalId);
+  const poidsTotal = referentiel.reduce((a, d) => a + Number(d.poids), 0);
+
+  const NAV = [
+    { section: "Pilotage", items: [
+      ["dashboard", "▦", "Tableau de bord"], ["formations", "🎓", "Formations PPA"],
+      ["evaluation", "☑", "Évaluation MIP"], ["suivi", "🗓", "Suivi post-formation"],
+      ["indicateurs", "📊", "Indicateurs"], ["alertes", "🔔", "Alertes"], ["exports", "⬇", "Exports"],
+    ]},
+    { section: "Aide", items: [["guide", "📖", "Guide d'utilisation"]] },
+    ...(admin ? [{ section: "Administration", items: [["users", "👥", "Utilisateurs & rôles"]] }] : []),
+  ];
+  const titres = {
+    dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des formations PPA dans les IAA"],
+    formations: ["Formations PPA", "Portefeuille des formations financées par le FDFP"],
+    evaluation: ["Évaluation MIP-PPA", fEval ? fEval.titre : "Sélectionnez une formation à évaluer"],
+    suivi: ["Suivi post-formation", "Évaluations à 3, 6 et 12 mois — impact et durabilité"],
+    indicateurs: ["Référentiel des indicateurs", "Modèle MIP-PPA — dimensions, pondérations, indicateurs"],
+    alertes: ["Alertes & risques", "Formations sous-performantes et suivis en retard"],
+    exports: ["Exports", "Fiches PDF et tableaux Excel pour les rapports FDFP"],
+    guide: ["Guide d'utilisation", "Tout ce qu'il faut savoir pour utiliser la plateforme MIP-PPA"],
+    users: ["Utilisateurs & rôles", "Attribution des accès à la plateforme"],
+  };
+
+  // =================== GARDE D'ACCÈS =============================
+  if (!session) {
+    return (<>
+      <style>{`@keyframes pageIn { from { opacity: 0; transform: translateY(10px);} to { opacity: 1; transform: none;} } .page-anim{animation:pageIn .32s ease-out both}`}</style>
+      <EcranConnexion comptes={comptes} setComptes={setComptes}
+        onConnexion={(c) => { setSession({ id: c.id, nom: c.nom, email: c.email }); notif("Bienvenue, " + c.nom.split(" ")[0] + " !"); }} />
+      <Toast msg={toast} />
+    </>);
+  }
+
+  // =================== RENDU =====================================
+  return (
+    <div className="min-h-screen flex bg-stone-100 text-stone-900" style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
+      <style>{`
+        @keyframes pageIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+        .page-anim { animation: pageIn .32s ease-out both; }
+        .toast-anim { animation: toastIn .25s ease-out both; }
+        .carte-hover { transition: transform .18s ease, box-shadow .18s ease; }
+        .carte-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(13,34,51,.10); }
+        button { transition: background-color .15s ease, color .15s ease, border-color .15s ease, transform .12s ease, opacity .15s ease; }
+        button:active { transform: scale(.97); }
+        * { scrollbar-width: thin; }
+        html { scroll-behavior: smooth; }
+      `}</style>
+      {/* ---------------- SIDEBAR ---------------- */}
+      <aside className="w-64 shrink-0 flex flex-col text-stone-300 min-h-screen" style={{ background: C.sidebar }}>
+        <div className="flex items-center gap-3 px-5 py-5">
+          <div className="bg-white rounded-xl px-2 py-1.5 flex items-center justify-center shrink-0">
+            <LogoFDFP h={30} />
+          </div>
+          <div>
+            <div className="text-white font-bold leading-tight">MIP-PPA</div>
+            <div className="text-xs text-stone-400">Suivi des formations IAA</div>
+          </div>
+        </div>
+        <nav className="flex-1 px-3 space-y-5 overflow-y-auto pb-4">
+          {NAV.map((g) => (
+            <div key={g.section}>
+              <div className="text-[11px] uppercase tracking-wider text-stone-500 px-3 mb-1.5">{g.section}</div>
+              {g.items.map(([id, ic, lbl]) => (
+                <button key={id} onClick={() => setPage(id)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left transition"
+                  style={page === id ? { background: C.sidebarActive, color: "#fff", fontWeight: 600 } : {}}>
+                  <span className="w-5 text-center">{ic}</span>{lbl}
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+        <div className="px-5 py-4 border-t" style={{ borderColor: "#1c4a66" }}>
+          <div className="flex items-center gap-2 text-sm" style={{ color: C.gold }}>🛡 {roleActif}</div>
+          <button onClick={() => { setSession(null); setPage("dashboard"); }}
+            className="mt-2 text-xs text-stone-400 hover:text-white underline underline-offset-2">Se déconnecter</button>
+        </div>
+      </aside>
+
+      {/* ---------------- ZONE PRINCIPALE ---------------- */}
+      <div className="flex-1 min-w-0 flex flex-col">
+        <header className="bg-white border-b border-stone-200 px-6 py-3.5 flex items-center justify-between gap-4 sticky top-0 z-10">
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold truncate">{titres[page][0]}</h1>
+            <div className="text-xs text-stone-500 truncate">{titres[page][1]}</div>
+          </div>
+          <div className="flex items-center gap-5 shrink-0">
+            <button onClick={() => setPage("guide")} className="text-sm text-stone-600 hover:text-stone-900 flex items-center gap-1.5">📖 Guide</button>
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-full text-white flex items-center justify-center text-sm font-semibold" style={{ background: C.vert }}>{(session?.nom || "?").split(" ").map((m) => m[0]).slice(0, 2).join("").toUpperCase()}</div>
+              <div className="hidden md:block">
+                <div className="text-sm font-semibold leading-tight">{session?.nom}</div>
+                <div className="text-xs text-stone-500">{roleActif}</div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main key={page + (evalId || "")} className="page-anim flex-1 p-6 space-y-5 max-w-5xl w-full mx-auto">
+
+          {/* =========== TABLEAU DE BORD =========== */}
+          {page === "dashboard" && (<>
+            <section className="rounded-3xl p-8 text-white" style={{ background: "linear-gradient(120deg,#0e3c60 0%,#1d6fa8 100%)" }}>
+              <span className="text-xs font-semibold px-3 py-1 rounded-full text-stone-900" style={{ background: C.gold }}>FDFP · Côte d'Ivoire</span>
+              <h2 className="text-4xl font-bold mt-4 leading-tight">Mesurer la vraie valeur<br />des formations PPA</h2>
+              <p className="mt-3 text-sky-100 max-w-2xl">
+                Le modèle MIP-PPA évalue chaque formation sur {referentiel.length} dimensions et {referentiel.reduce((a, d) => a + d.indicateurs.length, 0)} indicateurs,
+                de la conception jusqu'à 12 mois après — pour des décisions éclairées au service des industries agro-alimentaires ivoiriennes.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <button onClick={() => setPage("formations")} className="bg-white text-stone-900 font-semibold px-5 py-2.5 rounded-xl hover:bg-stone-100">Évaluer une formation →</button>
+                <button onClick={() => setPage("formations")} className="border border-sky-300/50 text-white px-5 py-2.5 rounded-xl hover:bg-white/10">Voir le portefeuille</button>
+              </div>
+            </section>
+
+            <section className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard icone="🎓" titre="Formations suivies" valeur={stats.nb} />
+              <StatCard icone="🏭" titre="Apprenants concernés" valeur={stats.apprenants} teinte="#fdf0da" fg="#b07515" />
+              <StatCard icone="◎" titre="Score moyen MIP" valeur={fmtPct(stats.moy)} sous="Moyenne pondérée du portefeuille" teinte="#dcebf7" fg={C.vert} />
+              <StatCard icone="⚠" titre="Alertes actives" valeur={stats.alertes} sous={stats.alertes ? "À traiter en priorité" : "Rien à signaler"} teinte="#fde8e8" fg={C.insuffisant} />
+            </section>
+
+            <section className="bg-white rounded-2xl border border-stone-200 p-5">
+              <h3 className="font-bold">Performance moyenne par dimension</h3>
+              <p className="text-sm text-stone-500 mb-2">Profil consolidé du portefeuille PPA en cours.</p>
+              <ResponsiveContainer width="100%" height={300}>
+                <RadarChart data={radarData}>
+                  <PolarGrid stroke="#e7e5e4" />
+                  <PolarAngleAxis dataKey="dim" tick={{ fontSize: 11 }} />
+                  <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 9 }} />
+                  <Radar dataKey="score" stroke={C.vert} fill={C.vert} fillOpacity={0.35} />
+                  <Tooltip formatter={(v) => `${Math.round(v)} %`} />
+                </RadarChart>
+              </ResponsiveContainer>
+            </section>
+
+            <section className="bg-white rounded-2xl border border-stone-200 p-5">
+              <h3 className="font-bold">Score moyen par filière</h3>
+              <p className="text-sm text-stone-500 mb-2">Comparaison sectorielle.</p>
+              <ResponsiveContainer width="100%" height={60 * filiereData.length + 40}>
+                <BarChart data={filiereData} layout="vertical" margin={{ left: 30 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
+                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10 }} />
+                  <YAxis type="category" dataKey="filiere" width={100} tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(v) => `${Math.round(v)} %`} />
+                  <Bar dataKey="score" fill={C.vert} radius={[0, 6, 6, 0]} barSize={34} />
+                </BarChart>
+              </ResponsiveContainer>
+            </section>
+
+            <section className="bg-white rounded-2xl border border-stone-200 p-5">
+              <div className="flex items-center justify-between">
+                <div><h3 className="font-bold">Formations récentes</h3><p className="text-sm text-stone-500">Cliquez pour évaluer ou consulter.</p></div>
+                <button onClick={() => setPage("formations")} className="text-sm font-semibold hover:underline" style={{ color: C.vert }}>Tout voir →</button>
+              </div>
+              <div className="divide-y divide-stone-100 mt-2">
+                {formations.slice(-4).map((f) => (
+                  <button key={f.id} onClick={() => { setEvalId(f.id); setPage("evaluation"); }}
+                    className="w-full flex items-center justify-between gap-4 py-3.5 text-left hover:bg-stone-50 px-2 rounded-lg">
+                    <div>
+                      <div className="font-semibold">{f.titre}</div>
+                      <div className="text-sm text-stone-500">{f.entreprise} · {f.filiere} · {f.apprenants} apprenants</div>
+                    </div>
+                    <Badge score={scoreGlobal(referentiel, f.notes)} />
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section className="bg-white rounded-2xl border border-stone-200 p-5">
+              <h3 className="font-bold flex items-center gap-2">📈 Niveaux de performance</h3>
+              <p className="text-sm text-stone-500 mb-3">Lecture du score global MIP-PPA.</p>
+              <div className="flex flex-wrap gap-2">
+                {[["Insuffisant (0–40 %)", C.insuffisant], ["En développement (40–60 %)", C.dev], ["Satisfaisant (60–80 %)", C.satisfaisant], ["Excellent (80–100 %)", C.excellent]].map(([t, c]) => (
+                  <span key={t} className="text-xs font-semibold text-white px-3 py-1.5 rounded-full" style={{ background: c }}>{t}</span>
+                ))}
+              </div>
+              <p className="text-xs text-stone-500 mt-3">
+                Pondérations : {referentiel.map((d) => `${d.nom} ${d.poids} %`).join(" · ")}.
+              </p>
+            </section>
+          </>)}
+
+          {/* =========== FORMATIONS =========== */}
+          {page === "formations" && (<>
+            <div className="flex flex-wrap items-center gap-3">
+              <input value={recherche} onChange={(e) => setRecherche(e.target.value)} placeholder="🔍  Rechercher entreprise, formation, filière…"
+                className="flex-1 min-w-[240px] bg-white border border-stone-200 rounded-full px-5 py-2.5 text-sm outline-none focus:border-stone-400" />
+              <button onClick={exportExcel} className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50">⬇ Exporter Excel</button>
+              <button onClick={() => { setFormations(FORMATIONS_DEMO); setSuivis(SUIVIS_DEMO); notif("Données démo restaurées"); }}
+                className="text-sm text-stone-600 hover:text-stone-900">↺ Données démo</button>
+            </div>
+            <button onClick={() => { setEditionId(null); setNouvelle({ titre: "", entreprise: "", filiere: FILIERES[0], region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" }); setFormOuvert(!formOuvert); }}
+              className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm" style={{ background: C.vertFonce }}>
+              + Nouvelle formation
+            </button>
+
+            {formOuvert && (
+              <div className="bg-white rounded-2xl border border-stone-200 p-5 grid md:grid-cols-2 gap-4">
+                <div className="md:col-span-2 font-bold text-stone-800">{editionId ? "✎ Modifier la formation" : "Nouvelle formation"}</div>
+                <label className="text-sm md:col-span-2">Intitulé de la formation
+                  <input value={nouvelle.titre} onChange={(e) => setNouvelle({ ...nouvelle, titre: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" placeholder="Ex. Bonnes pratiques de décorticage du cajou" />
+                </label>
+                <label className="text-sm">IAA bénéficiaire
+                  <input value={nouvelle.entreprise} onChange={(e) => setNouvelle({ ...nouvelle, entreprise: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" />
+                </label>
+                <label className="text-sm">Filière
+                  <select value={nouvelle.filiere} onChange={(e) => setNouvelle({ ...nouvelle, filiere: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
+                    {FILIERES.map((f) => <option key={f}>{f}</option>)}
+                  </select>
+                </label>
+                <label className="text-sm">Région
+                  <input value={nouvelle.region} onChange={(e) => setNouvelle({ ...nouvelle, region: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" placeholder="Ex. Bouaké" />
+                </label>
+                <label className="text-sm">Nombre d'apprenants
+                  <input type="number" value={nouvelle.apprenants} onChange={(e) => setNouvelle({ ...nouvelle, apprenants: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" />
+                </label>
+                <label className="text-sm">Budget (FCFA)
+                  <input type="number" value={nouvelle.budget} onChange={(e) => setNouvelle({ ...nouvelle, budget: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" />
+                </label>
+                <label className="text-sm">Statut
+                  <select value={nouvelle.statut} onChange={(e) => setNouvelle({ ...nouvelle, statut: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
+                    {["Planifiée", "En cours", "Terminée"].map((s) => <option key={s}>{s}</option>)}
+                  </select>
+                </label>
+                <div className="md:col-span-2 flex gap-3">
+                  <button onClick={ajouterFormation} className="text-white font-semibold px-5 py-2 rounded-xl text-sm" style={{ background: C.vertFonce }}>{editionId ? "Enregistrer les modifications" : "Créer la formation"}</button>
+                  <button onClick={() => setFormOuvert(false)} className="text-sm text-stone-500">Annuler</button>
+                </div>
+              </div>
+            )}
+
+            <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden">
+              <div className="grid grid-cols-12 px-5 py-3 text-sm font-semibold text-stone-600 border-b border-stone-100">
+                <div className="col-span-6">Formation</div><div className="col-span-2">Filière</div><div className="col-span-2">Score MIP</div><div className="col-span-2 text-right">Actions</div>
+              </div>
+              {formations.filter((f) => (f.titre + f.entreprise + f.filiere).toLowerCase().includes(recherche.toLowerCase())).map((f) => (
+                <div key={f.id} className="grid grid-cols-12 items-center px-5 py-4 border-b border-stone-50 hover:bg-stone-50">
+                  <div className="col-span-6 pr-3">
+                    <div className="font-semibold">{f.titre}</div>
+                    <div className="text-sm text-stone-500">{f.entreprise} · {f.region}</div>
+                  </div>
+                  <div className="col-span-2 text-sm">{f.filiere}</div>
+                  <div className="col-span-2"><Badge score={scoreGlobal(referentiel, f.notes)} /></div>
+                  <div className="col-span-2 flex justify-end items-center gap-3">
+                    <button onClick={() => { setEvalId(f.id); setPage("evaluation"); }} className="text-sm font-medium hover:underline" style={{ color: C.vert }}>Évaluer</button>
+                    {lead && <button title="Modifier la formation" onClick={() => editerFormation(f)} className="text-stone-500 hover:text-stone-800">✎</button>}
+                    {admin && <button onClick={() => { if (window.confirm(`Supprimer « ${f.titre} » et ses suivis ?`)) { setFormations((fs) => fs.filter((x) => x.id !== f.id)); setSuivis((ss) => ss.filter((x) => x.formationId !== f.id)); } }} className="text-red-500 hover:text-red-700">🗑</button>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>)}
+
+          {/* =========== ÉVALUATION MIP =========== */}
+          {page === "evaluation" && (!fEval ? (
+            <div className="bg-white rounded-2xl border border-stone-200 p-8 text-center">
+              <p className="text-stone-600 mb-4">Sélectionnez la formation à évaluer :</p>
+              <div className="flex flex-col gap-2 max-w-xl mx-auto">
+                {formations.map((f) => (
+                  <button key={f.id} onClick={() => setEvalId(f.id)} className="flex items-center justify-between gap-3 border border-stone-200 rounded-xl px-4 py-3 hover:bg-stone-50 text-left">
+                    <span className="font-medium">{f.titre}</span><Badge score={scoreGlobal(referentiel, f.notes)} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (<>
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <button onClick={() => setEvalId(null)} className="text-sm text-stone-600 hover:text-stone-900">← Retour</button>
+              <div className="flex gap-3">
+                <button onClick={() => fichePDF(fEval)} className="bg-white border border-stone-200 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-50">⬇ Fiche PDF</button>
+                <button onClick={() => notif("Évaluation enregistrée")} className="text-white px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: C.vertFonce }}>💾 Enregistrer</button>
+              </div>
+            </div>
+
+            <section className="rounded-2xl p-6 text-white flex flex-wrap items-start justify-between gap-4" style={{ background: "linear-gradient(120deg,#0e3c60,#2280bf)" }}>
+              <div>
+                <div className="text-xs uppercase tracking-wider text-sky-200">{fEval.entreprise}</div>
+                <h2 className="text-2xl font-bold mt-1">{fEval.titre}</h2>
+                <div className="text-sm text-sky-100 mt-1">{fEval.filiere} · {fEval.region} · {fEval.apprenants} apprenants</div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs uppercase tracking-wider text-sky-200">Score global MIP-PPA</div>
+                <div className="text-5xl font-bold">{fmtPct(scoreGlobal(referentiel, fEval.notes))}</div>
+                <div className="mt-1"><Badge score={scoreGlobal(referentiel, fEval.notes)} /></div>
+              </div>
+            </section>
+
+            <section className="grid md:grid-cols-2 gap-4">
+              {referentiel.map((d) => {
+                const s = scoreDimension(referentiel, d.id, fEval.notes);
+                return (
+                  <div key={d.id} className="bg-white rounded-2xl border border-stone-200 p-5">
+                    <div className="flex justify-between text-xs uppercase tracking-wide text-stone-500 font-semibold"><span>{d.nom}</span><span>{d.poids}%</span></div>
+                    <div className="text-3xl font-bold mt-1">{fmtPct(s)}</div>
+                    <div className="h-2 bg-stone-200 rounded-full mt-3 overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${s ?? 0}%`, background: C.vert }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </section>
+
+            {referentiel.map((d) => {
+              const s = scoreDimension(referentiel, d.id, fEval.notes);
+              return (
+                <section key={d.id} className="bg-white rounded-2xl border border-stone-200 p-5">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div>
+                      <h3 className="font-bold">{d.nom} <span className="text-stone-400 font-normal">· {d.poids}%</span></h3>
+                      <p className="text-sm text-stone-500">{d.desc}</p>
+                    </div>
+                    <Badge score={s} />
+                  </div>
+                  <div className="space-y-4 mt-4">
+                    {d.indicateurs.map((ind) => (
+                      <div key={ind.id} className="border border-stone-200 rounded-xl p-4">
+                        <div className="flex justify-between items-start gap-3">
+                          <div>
+                            <div className="text-xs text-stone-500 font-mono">{ind.id} · {ind.phase}</div>
+                            <div className="font-semibold mt-0.5">{ind.label}</div>
+                          </div>
+                          <span className="text-sm text-stone-500 shrink-0">{noteLabel(fEval.notes[ind.id])}</span>
+                        </div>
+                        <div className="grid grid-cols-5 gap-2 mt-3">
+                          {[0, 1, 2, 3, 4].map((n) => {
+                            const sel = fEval.notes[ind.id] === n;
+                            return (
+                              <button key={n} onClick={() => noter(fEval.id, ind.id, n)}
+                                className="py-2.5 rounded-xl border text-sm font-semibold transition"
+                                style={sel ? { background: C.vertFonce, color: "#fff", borderColor: C.vertFonce } : { background: "#fafaf8", borderColor: "#e7e5e4" }}>
+                                {n}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+          </>))}
+
+          {/* =========== SUIVI POST-FORMATION =========== */}
+          {page === "suivi" && (() => {
+            const enrichis = suivis.map((s) => ({ ...s, f: formations.find((f) => f.id === s.formationId) })).filter((s) => s.f);
+            const retard = enrichis.filter((s) => s.statut === "programmé" && joursRestants(s.echeance) < 0);
+            const sous14 = enrichis.filter((s) => s.statut === "programmé" && joursRestants(s.echeance) >= 0 && joursRestants(s.echeance) <= 14);
+            const programmes = enrichis.filter((s) => s.statut === "programmé" && joursRestants(s.echeance) > 14);
+            const effectues = enrichis.filter((s) => s.statut === "effectué");
+            const Pile = ({ titre, icone, liste, teinte }) => (
+              <section className="bg-white rounded-2xl border border-stone-200 p-5">
+                <h3 className="font-bold flex items-center gap-2">{icone} {titre} <span className="text-xs bg-stone-100 px-2 py-0.5 rounded-full">{liste.length}</span></h3>
+                {!liste.length ? <p className="text-sm text-stone-400 mt-2">Aucun élément.</p> : liste.map((s) => (
+                  <div key={s.id} className="border-t border-stone-100 py-3.5 flex flex-wrap items-center justify-between gap-3 first:border-t-0 mt-1">
+                    <div>
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full mr-2" style={{ background: teinte, color: "#1c1917" }}>{s.jalon}</span>
+                      <span className="font-semibold">{s.f.titre}</span>
+                      <div className="text-sm text-stone-500 mt-0.5">{s.f.entreprise} · {s.f.filiere} · échéance {s.echeance}{s.statut === "programmé" ? ` · ${joursRestants(s.echeance) < 0 ? Math.abs(joursRestants(s.echeance)) + " j de retard" : "dans " + joursRestants(s.echeance) + " j"}` : ""}</div>
+                      {s.note && <div className="text-xs text-stone-500 italic mt-1">📝 {s.note}</div>}
+                      {(s.docs || []).length > 0 && <div className="text-xs text-sky-700 mt-1">📎 {s.docs.length} document{s.docs.length > 1 ? "s" : ""} de suivi rattaché{s.docs.length > 1 ? "s" : ""}</div>}
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => setSuiviEdit({ id: s.id, jalon: s.jalon, titreF: s.f.titre + " — " + s.f.entreprise, echeance: s.echeance, note: s.note, docs: s.docs || [] })}
+                        className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50">✎ Notes & date</button>
+                      {s.statut === "programmé"
+                        ? <button onClick={() => { setSuivis((ss) => ss.map((x) => x.id === s.id ? { ...x, statut: "effectué" } : x)); notif("Suivi marqué effectué"); }} className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50">✓ Marquer effectué</button>
+                        : <button onClick={() => setSuivis((ss) => ss.map((x) => x.id === s.id ? { ...x, statut: "programmé" } : x))} className="text-sm text-stone-500 hover:text-stone-800">↺ Ré-ouvrir</button>}
+                    </div>
+                  </div>
+                ))}
+              </section>
+            );
+            return (<>
+              <section className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatCard icone="🗓" titre="Suivis planifiés" valeur={enrichis.length} />
+                <StatCard icone="⚠" titre="En retard" valeur={retard.length} sous="À traiter en priorité" teinte="#fde8e8" fg={C.insuffisant} />
+                <StatCard icone="🕐" titre="À faire sous 14 j" valeur={sous14.length} teinte="#fdf0da" fg="#b07515" />
+                <StatCard icone="✅" titre="Taux de réalisation" valeur={`${enrichis.length ? Math.round((effectues.length / enrichis.length) * 100) : 0} %`} sous={`${effectues.length} sur ${enrichis.length} effectués`} teinte="#e3f4e8" fg={C.excellent} />
+              </section>
+              {retard.length > 0 && <Pile titre="En retard" icone="🔴" liste={retard} teinte="#fecaca" />}
+              <Pile titre="À faire sous 14 jours" icone="🕐" liste={sous14} teinte="#dcebf7" />
+              <Pile titre="Programmés" icone="📅" liste={programmes} teinte="#f0efe9" />
+              <Pile titre="Effectués" icone="✅" liste={effectues} teinte="#cfe6f6" />
+            </>);
+          })()}
+
+          {/* =========== RÉFÉRENTIEL DES INDICATEURS =========== */}
+          {page === "indicateurs" && (<>
+            <section className="bg-white rounded-2xl border border-stone-200 p-5">
+              <h3 className="font-bold">Lecture du score global</h3>
+              <p className="text-sm text-stone-500">Quatre niveaux d'interprétation. Pondération totale actuelle : <b style={{ color: poidsTotal === 100 ? C.excellent : C.insuffisant }}>{poidsTotal} %</b>{poidsTotal !== 100 && " — ajustez pour revenir à 100 %"}</p>
+              {admin && (
+                <div className="flex flex-wrap gap-3 mt-3">
+                  <button onClick={() => setReferentiel((r) => [...r, { id: "D" + (r.length + 1), nom: "Nouvelle dimension", poids: 0, desc: "Description à compléter.", indicateurs: [] }])}
+                    className="text-white text-sm font-semibold px-4 py-2 rounded-xl" style={{ background: C.vertFonce }}>+ Nouvelle dimension</button>
+                  <button onClick={() => { setReferentiel(REFERENTIEL_DEFAUT); notif("Référentiel par défaut restauré"); }}
+                    className="bg-white border border-stone-200 text-sm px-4 py-2 rounded-xl hover:bg-stone-50">↺ Restaurer le référentiel par défaut</button>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2 mt-4">
+                {[["Insuffisant (0–40 %)", C.insuffisant], ["En développement (40–60 %)", C.dev], ["Satisfaisant (60–80 %)", C.satisfaisant], ["Excellent (80–100 %)", C.excellent]].map(([t, c]) => (
+                  <span key={t} className="text-xs font-semibold text-white px-3 py-1.5 rounded-full" style={{ background: c }}>{t}</span>
+                ))}
+              </div>
+            </section>
+
+            {referentiel.map((d) => (
+              <section key={d.id} className="bg-white rounded-2xl border border-stone-200 p-5">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div>
+                    <h3 className="font-bold"><span className="text-xs font-mono text-stone-400 mr-2">{d.id}</span>{d.nom}</h3>
+                    <p className="text-sm text-stone-500">{d.desc}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {admin ? (
+                      <input type="number" value={d.poids}
+                        onChange={(e) => setReferentiel((r) => r.map((x) => x.id === d.id ? { ...x, poids: Number(e.target.value) } : x))}
+                        className="w-16 text-sm border border-stone-200 rounded-lg px-2 py-1 text-right bg-stone-50" />
+                    ) : <span className="text-sm bg-stone-100 px-3 py-1 rounded-full">{d.poids} %</span>}
+                    <span className="text-sm text-stone-400">%</span>
+                    {admin && <button onClick={() => setReferentiel((r) => r.filter((x) => x.id !== d.id))} className="text-red-500 hover:text-red-700 ml-1">🗑</button>}
+                  </div>
+                </div>
+                <div className="space-y-2.5 mt-4">
+                  {d.indicateurs.map((ind) => (
+                    <div key={ind.id} className="border border-stone-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-xs font-mono text-stone-400">{ind.id}</div>
+                        {admin ? (
+                          <input value={ind.label}
+                            onChange={(e) => setReferentiel((r) => r.map((x) => x.id === d.id ? { ...x, indicateurs: x.indicateurs.map((i) => i.id === ind.id ? { ...i, label: e.target.value } : i) } : x))}
+                            className="w-full font-medium bg-transparent outline-none border-b border-transparent focus:border-stone-300 mt-0.5" />
+                        ) : <div className="font-medium mt-0.5">{ind.label}</div>}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] uppercase tracking-wide text-stone-400">{ind.phase}</span>
+                        {admin && <button onClick={() => setReferentiel((r) => r.map((x) => x.id === d.id ? { ...x, indicateurs: x.indicateurs.filter((i) => i.id !== ind.id) } : x))} className="text-red-400 hover:text-red-600">🗑</button>}
+                      </div>
+                    </div>
+                  ))}
+                  {admin && (
+                    <button onClick={() => setReferentiel((r) => r.map((x) => x.id === d.id ? { ...x, indicateurs: [...x.indicateurs, { id: d.id + (x.indicateurs.length + 1), phase: "À définir", label: "Nouvel indicateur — à définir" }] } : x))}
+                      className="w-full border border-dashed border-stone-300 rounded-xl py-2.5 text-sm text-stone-500 hover:bg-stone-50">+ Ajouter un indicateur</button>
+                  )}
+                </div>
+              </section>
+            ))}
+          </>)}
+
+          {/* =========== ALERTES =========== */}
+          {page === "alertes" && (
+            stats.alertes === 0 ? (
+              <section className="bg-white rounded-2xl border border-stone-200 p-14 text-center">
+                <div className="text-3xl">🌿</div>
+                <p className="text-stone-500 mt-3">Aucune alerte active. Tout est sous contrôle.</p>
+              </section>
+            ) : (<>
+              {stats.alertesScore.map((f) => (
+                <section key={f.id} className="bg-white rounded-2xl border-l-4 border border-stone-200 p-5" style={{ borderLeftColor: C.insuffisant }}>
+                  <div className="flex justify-between items-center gap-3 flex-wrap">
+                    <div>
+                      <div className="font-bold">Score critique — {f.titre}</div>
+                      <div className="text-sm text-stone-500">{f.entreprise} · score global inférieur à 40 %</div>
+                    </div>
+                    <button onClick={() => { setEvalId(f.id); setPage("evaluation"); }} className="text-sm font-medium hover:underline" style={{ color: C.vert }}>Ouvrir l'évaluation →</button>
+                  </div>
+                </section>
+              ))}
+              {stats.enRetard.map((s) => {
+                const f = formations.find((x) => x.id === s.formationId);
+                return (
+                  <section key={s.id} className="bg-white rounded-2xl border-l-4 border border-stone-200 p-5" style={{ borderLeftColor: C.dev }}>
+                    <div className="font-bold">Suivi {s.jalon} en retard — {f?.titre}</div>
+                    <div className="text-sm text-stone-500">{f?.entreprise} · échéance dépassée : {s.echeance}</div>
+                  </section>
+                );
+              })}
+            </>)
+          )}
+
+          {/* =========== EXPORTS =========== */}
+          {page === "exports" && (<>
+            <section className="bg-white rounded-2xl border border-stone-200 p-6">
+              <h3 className="font-bold">Export consolidé</h3>
+              <p className="text-sm text-stone-500 mb-4">Toutes les formations et indicateurs en une feuille Excel.</p>
+              <button onClick={exportExcel} className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm" style={{ background: C.vertFonce }}>
+                ⬇ Télécharger l'Excel ({formations.length} formations)
+              </button>
+            </section>
+            <section className="bg-white rounded-2xl border border-stone-200 p-6">
+              <h3 className="font-bold">Fiches d'évaluation PDF</h3>
+              <p className="text-sm text-stone-500">Une fiche officielle par formation.</p>
+              <div className="divide-y divide-stone-100 mt-2">
+                {formations.map((f) => (
+                  <div key={f.id} className="flex items-center justify-between gap-3 py-3.5">
+                    <div>
+                      <div className="font-semibold">{f.titre}</div>
+                      <div className="text-sm text-stone-500">{f.entreprise} · {f.filiere}</div>
+                    </div>
+                    <button onClick={() => fichePDF(f)} className="bg-white border border-stone-200 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-50 shrink-0">🗎 Fiche PDF</button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </>)}
+
+          {/* =========== GUIDE =========== */}
+          {page === "guide" && (<>
+            <section className="rounded-2xl p-7 text-white" style={{ background: "linear-gradient(120deg,#0e3c60,#1d6fa8)" }}>
+              <span className="text-xs font-semibold px-3 py-1 rounded-full text-stone-900" style={{ background: C.gold }}>Documentation officielle</span>
+              <h2 className="text-3xl font-bold mt-3">Bienvenue sur MIP-PPA</h2>
+              <p className="mt-2 text-sky-100">Ce guide est conçu pour <b>tout public</b> : agents du FDFP, référents en entreprise, formateurs. Aucune connaissance technique n'est requise (prise en main ≈ 10 minutes).</p>
+            </section>
+            {[
+              ["1. Démarrer", "Créez votre compte (nom, organisation, email, mot de passe), attendez l'activation par l'administrateur lead qui vous attribue un rôle, puis connectez-vous. Le tout premier compte créé devient automatiquement Administrateur lead."],
+              ["2. Comptes & rôles", "Cinq niveaux d'accès : Administrateur lead (tous les droits, distribue les accès) ; Administrateur FDFP (pilotage global, validation, configuration) ; Agent FDFP (évaluation MIP-PPA, suivis, exports) ; Référent entreprise (auto-évaluation, consultation de ses formations) ; Formateur (indicateurs pédagogiques et suivi à 3 mois). Les rôles sont protégés côté serveur : aucun utilisateur ne peut s'auto-attribuer un accès."],
+              ["3. Gérer les formations PPA", "Créez une formation (intitulé, IAA bénéficiaire, filière, région, apprenants, budget FCFA), suivez son statut (Planifiée / En cours / Terminée), puis cliquez dessus pour ouvrir sa fiche d'évaluation."],
+              ["4. Évaluer (modèle MIP-PPA)", "Le modèle mesure la valeur réelle d'une formation à travers 5 dimensions et 23 indicateurs notés de 0 à 4. Les indicateurs non encore mesurables peuvent rester vides ; le score se calcule automatiquement et l'enregistrement est instantané."],
+              ["5. Suivi à 3, 6 et 12 mois", "Chaque formation déclenche automatiquement 3 points de suivi : à 3 mois (transfert des acquis au poste), 6 mois (effets organisationnels mesurables) et 12 mois (pérennité et retour sur investissement). Les jalons sont regroupés en 4 piles : En retard, À faire sous 14 j, Programmés, Effectués. Ces suivis alimentent directement les dimensions Impact organisationnel et Durabilité des compétences."],
+              ["6. Tableaux de bord & référentiel", "Le tableau de bord offre la vision consolidée (formations, apprenants, score moyen, radar des 5 dimensions, comparaison par filière). L'administrateur lead peut ajouter, modifier ou supprimer dimensions et indicateurs ; la somme des pondérations doit rester à 100 %. Un bouton permet de restaurer le référentiel MIP-PPA d'origine."],
+              ["7. Alertes", "Deux événements remontent automatiquement : formations dont le score global est inférieur à 40 %, et suivis post-formation en retard sur leur échéance."],
+              ["8. Exports PDF & Excel", "PDF : fiche d'évaluation individuelle par formation (comités de pilotage, transmission aux entreprises). Excel : synthèse globale du portefeuille pour le reporting institutionnel."],
+            ].map(([t, txt]) => (
+              <section key={t} className="bg-white rounded-2xl border border-stone-200 p-6">
+                <h3 className="font-bold mb-2">{t}</h3>
+                <p className="text-sm text-stone-600 leading-relaxed">{txt}</p>
+              </section>
+            ))}
+          </>)}
+
+          {/* =========== UTILISATEURS & RÔLES =========== */}
+          {page === "users" && (admin ? (<>
+            <section className="bg-white rounded-2xl border border-stone-200 p-6">
+              <h3 className="font-bold mb-1">Comptes ({comptes.length})</h3>
+              <p className="text-sm text-stone-500 mb-4">Sélectionnez un rôle pour chaque utilisateur. Les comptes « En attente » n'ont aucun accès tant qu'aucun rôle ne leur est attribué. Seul l'administrateur lead peut modifier les rôles.</p>
+              <div className="divide-y divide-stone-100">
+                {comptes.map((u) => (
+                  <div key={u.id} className="py-4 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full text-white flex items-center justify-center text-sm font-semibold" style={{ background: u.role === "En attente d'activation" ? "#a8a29e" : C.vert }}>
+                        {u.nom.split(" ").map((m) => m[0]).slice(0, 2).join("").toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="font-semibold">{u.nom} {session?.id === u.id && <span className="text-xs font-normal text-stone-400">(vous)</span>}</div>
+                        <div className="text-sm text-stone-500">{u.email} · {u.org}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${u.role === "En attente d'activation" ? "bg-stone-100 text-stone-500" : "bg-sky-100 text-sky-800"}`}>{u.role}</span>
+                      <select value={u.role} disabled={roleActif !== "Administrateur lead" || session?.id === u.id}
+                        onChange={(e) => { setComptes((cs) => cs.map((x) => x.id === u.id ? { ...x, role: e.target.value } : x)); notif("Rôle mis à jour"); }}
+                        className="text-sm border border-stone-200 rounded-lg px-3 py-2 bg-stone-50">
+                        <option value="En attente d'activation">Choisir…</option>
+                        {ROLES.filter((r) => r !== "En attente d'activation").map((r) => <option key={r}>{r}</option>)}
+                      </select>
+                      {roleActif === "Administrateur lead" && session?.id !== u.id && (
+                        <button onClick={() => { if (window.confirm(`Supprimer le compte de ${u.nom} ?`)) { setComptes((cs) => cs.filter((x) => x.id !== u.id)); notif("Compte supprimé"); } }}
+                          className="text-red-500 hover:text-red-700">🗑</button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+            <section className="bg-white rounded-2xl border border-stone-200 p-6">
+              <h3 className="font-bold mb-1">➕ Inviter un nouvel utilisateur</h3>
+              <p className="text-sm text-stone-600">Communiquez l'URL de la plateforme et le lien <b>« Créer un compte »</b> à vos collaborateurs (FDFP, entreprises, formateurs). Dès leur inscription, ils apparaissent ici en statut « En attente » : il vous suffit alors de leur attribuer le bon rôle.</p>
+            </section>
+          </>) : (
+            <section className="bg-white rounded-2xl border border-stone-200 p-10 text-center text-stone-500">
+              Accès réservé aux administrateurs. Votre rôle actuel : {roleActif}.
+            </section>
+          ))}
+
+        </main>
+        <footer className="text-center text-[11px] text-stone-400 pb-5">
+          Prototype MIP-PPA — PFE ESA / INP-HB × FDFP · EHOUNI Luc-Emmanuel Behira Levy · Données de démonstration
+        </footer>
+      </div>
+
+      {/* ---------- FENÊTRE : NOTES, DATE & DOCUMENTS DE SUIVI ---------- */}
+      {suiviEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(10,25,38,.55)" }}
+          onClick={(e) => e.target === e.currentTarget && setSuiviEdit(null)}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-7 page-anim max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-xl font-bold">Suivi {suiviEdit.jalon}</h3>
+                <p className="text-sm text-stone-500 mt-0.5">{suiviEdit.titreF}</p>
+              </div>
+              <button onClick={() => setSuiviEdit(null)} className="text-stone-400 hover:text-stone-700 text-xl leading-none">✕</button>
+            </div>
+            <label className="block text-sm font-semibold text-stone-800 mt-5">Date d'échéance
+              <input type="date" value={suiviEdit.echeance}
+                onChange={(e) => setSuiviEdit({ ...suiviEdit, echeance: e.target.value })}
+                className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
+            </label>
+            <label className="block text-sm font-semibold text-stone-800 mt-4">Observations terrain
+              <textarea rows={4} value={suiviEdit.note} placeholder="Transferts observés, freins, plan d'action…"
+                onChange={(e) => setSuiviEdit({ ...suiviEdit, note: e.target.value })}
+                className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600 resize-y" />
+            </label>
+            <div className="mt-4">
+              <div className="text-sm font-semibold text-stone-800">Documents de suivi <span className="font-normal text-stone-400">(rattachés à la fiche PDF — 2 Mo max par fichier)</span></div>
+              <label className="mt-2 flex items-center justify-center gap-2 border-2 border-dashed border-stone-300 rounded-xl py-4 text-sm text-stone-500 cursor-pointer hover:bg-stone-50">
+                📎 Choisir des fichiers (photos, rapports, grilles…)
+                <input type="file" multiple className="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                  onChange={(e) => {
+                    Array.from(e.target.files || []).forEach((fich) => {
+                      if (fich.size > 2 * 1024 * 1024) { notif(`« ${fich.name} » dépasse 2 Mo — ignoré`); return; }
+                      const lecteur = new FileReader();
+                      lecteur.onload = () => setSuiviEdit((se) => se && ({ ...se, docs: [...se.docs, { nom: fich.name, type: fich.type, taille: fich.size, date: new Date().toISOString().slice(0, 10), data: lecteur.result }] }));
+                      lecteur.readAsDataURL(fich);
+                    });
+                    e.target.value = "";
+                  }} />
+              </label>
+              {suiviEdit.docs.length > 0 && (
+                <div className="mt-2 divide-y divide-stone-100 border border-stone-200 rounded-xl">
+                  {suiviEdit.docs.map((d, i) => (
+                    <div key={i} className="flex items-center justify-between gap-3 px-3.5 py-2.5 text-sm">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {d.type.startsWith("image/")
+                          ? <img src={d.data} alt="" className="w-9 h-9 object-cover rounded-lg border border-stone-200 shrink-0" />
+                          : <span className="w-9 h-9 rounded-lg bg-stone-100 flex items-center justify-center shrink-0">🗎</span>}
+                        <div className="min-w-0">
+                          <div className="truncate font-medium">{d.nom}</div>
+                          <div className="text-xs text-stone-400">{(d.taille / 1024).toFixed(0)} Ko · ajouté le {d.date}</div>
+                        </div>
+                      </div>
+                      <button onClick={() => setSuiviEdit((se) => ({ ...se, docs: se.docs.filter((_, j) => j !== i) }))} className="text-red-400 hover:text-red-600 shrink-0">🗑</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button onClick={() => setSuiviEdit(null)} className="border border-stone-300 px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50">Annuler</button>
+              <button onClick={() => {
+                setSuivis((ss) => ss.map((x) => x.id === suiviEdit.id ? { ...x, echeance: suiviEdit.echeance, note: suiviEdit.note, docs: suiviEdit.docs } : x));
+                setSuiviEdit(null); notif("Suivi enregistré");
+              }} className="text-white px-6 py-2.5 rounded-xl text-sm font-semibold" style={{ background: C.vertFonce }}>Enregistrer</button>
+            </div>
+          </div>
+        </div>
+      )}
+      <Toast msg={toast} />
+    </div>
+  );
+}
