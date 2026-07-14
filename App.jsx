@@ -137,6 +137,61 @@ const PERMS = {
 };
 const AUJOURDHUI = new Date("2026-07-13");
 
+
+// ----------------- ICÔNES VECTORIELLES (traits, style lucide) ----
+const IC = {
+  grid: <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></>,
+  cap: <><path d="M21.42 10.92a1 1 0 0 0-.02-1.84L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.83l8.57 3.91a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></>,
+  clipboard: <><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></>,
+  calendrier: <><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></>,
+  graphique: <><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></>,
+  cloche: <><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></>,
+  telecharger: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></>,
+  livre: <><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></>,
+  utilisateurs: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>,
+  bouclier: <><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></>,
+  crayon: <><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></>,
+  poubelle: <><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></>,
+  fermer: <><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>,
+  plus: <><path d="M5 12h14"/><path d="M12 5v14"/></>,
+  fichier: <><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/></>,
+  trombone: <><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></>,
+  oeil: <><path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/></>,
+  oeilBarre: <><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.53 13.53 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><path d="m2 2 20 20"/></>,
+  deconnexion: <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></>,
+  coche: <><path d="M20 6 9 17l-5-5"/></>,
+  rotation: <><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></>,
+  alerte: <><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></>,
+  cible: <><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></>,
+  horloge: <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>,
+  cocheCercle: <><path d="M21.8 10A10 10 0 1 1 17 3.34"/><path d="m9 11 3 3L22 4"/></>,
+  usine: <><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></>,
+  disquette: <><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></>,
+  tendance: <><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></>,
+  note: <><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 12h4"/><path d="M10 16h4"/></>,
+};
+function Icone({ n, t = 18, className = "" }) {
+  return (
+    <svg viewBox="0 0 24 24" width={t} height={t} fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={"inline-block shrink-0 " + className}>
+      {IC[n]}
+    </svg>
+  );
+}
+
+// Descriptions affichées au survol des rubriques (info-bulles)
+const DESCR_NAV = {
+  dashboard: "Vision consolidée du portefeuille : scores, radar, secteurs",
+  formations: "Portefeuille des formations financées par le FDFP",
+  evaluation: "Noter une formation sur les 5 dimensions et 23 indicateurs",
+  suivi: "Jalons M+3 / M+6 / M+12 : notes, documents, échéances",
+  indicateurs: "Référentiel MIP-PPA : dimensions, pondérations, indicateurs",
+  alertes: "Formations sous-performantes et suivis en retard",
+  exports: "Fiches PDF officielles et tableau Excel consolidé",
+  guide: "Documentation complète de la plateforme",
+  users: "Activer les comptes et attribuer les rôles",
+};
+
 // ----------------- COULEURS -------------------------------------
 const C = {
   sidebar: "#0d2233", sidebarActive: "#1d3d57", gold: "#f2a33c",
@@ -217,7 +272,7 @@ function Toast({ msg }) {
   if (!msg) return null;
   return (
     <div className="toast-anim fixed bottom-5 right-5 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg z-50" style={{ background: C.vertFonce }}>
-      ✓ {msg}
+      <Icone n="coche" t={14} /> {msg}
     </div>
   );
 }
@@ -273,7 +328,7 @@ function EcranConnexion({ comptes, setComptes, onConnexion }) {
         </div>
       </div>
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-7 page-anim">
-        <div className="flex items-center gap-2 font-bold text-stone-900">🛡 Espace sécurisé</div>
+        <div className="flex items-center gap-2 font-bold text-stone-900"><Icone n="bouclier" t={18} /> Espace sécurisé</div>
         <p className="text-sm text-stone-500 mt-1">Connectez-vous ou créez un compte. Un administrateur lead activera votre accès.</p>
         <div className="grid grid-cols-2 bg-stone-100 rounded-full p-1 mt-5 text-sm font-semibold">
           {[["connexion", "Connexion"], ["creation", "Créer un compte"]].map(([id, lbl]) => (
@@ -295,7 +350,7 @@ function EcranConnexion({ comptes, setComptes, onConnexion }) {
             <button type="button" onClick={() => setVoirMdp(!voirMdp)} tabIndex={-1}
               title={voirMdp ? "Masquer le mot de passe" : "Afficher le mot de passe"}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 text-lg">
-              {voirMdp ? "🙈" : "👁"}
+              {voirMdp ? <Icone n="oeilBarre" t={19} /> : <Icone n="oeil" t={19} />}
             </button>
           </div>
         </label>
@@ -334,6 +389,8 @@ export default function MipPpaApp() {
   const [formOuvert, setFormOuvert] = useState(false);
   const [editionId, setEditionId] = useState(null);
   const [suiviEdit, setSuiviEdit] = useState(null); // fenêtre Notes & date & documents
+  const [dimEdit, setDimEdit] = useState(null);     // fenêtre Modifier la dimension
+  const [indEdit, setIndEdit] = useState(null);     // fenêtre Modifier l'indicateur
   const lead = roleActif === "Administrateur lead";
   const P = PERMS[roleActif] || PERMS["En attente d'activation"];
   const monCompte = comptes.find((c) => c.id === session?.id);
@@ -539,12 +596,12 @@ export default function MipPpaApp() {
 
   const NAV = [
     { section: "Pilotage", items: [
-      ["dashboard", "▦", "Tableau de bord"], ["formations", "🎓", "Formations PPA"],
-      ["evaluation", "☑", "Évaluation MIP"], ["suivi", "🗓", "Suivi post-formation"],
-      ["indicateurs", "📊", "Indicateurs"], ["alertes", "🔔", "Alertes"], ["exports", "⬇", "Exports"],
+      ["dashboard", "grid", "Tableau de bord"], ["formations", "cap", "Formations PPA"],
+      ["evaluation", "clipboard", "Évaluation MIP"], ["suivi", "calendrier", "Suivi post-formation"],
+      ["indicateurs", "graphique", "Indicateurs"], ["alertes", "cloche", "Alertes"], ["exports", "telecharger", "Exports"],
     ].filter(([id]) => P.pages.includes(id)) },
-    { section: "Aide", items: [["guide", "📖", "Guide d'utilisation"]] },
-    ...(P.users ? [{ section: "Administration", items: [["users", "👥", "Utilisateurs & rôles"]] }] : []),
+    { section: "Aide", items: [["guide", "livre", "Guide d'utilisation"]] },
+    ...(P.users ? [{ section: "Administration", items: [["users", "utilisateurs", "Utilisateurs & rôles"]] }] : []),
   ];
   const titres = {
     dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des formations PPA dans les IAA"],
@@ -599,19 +656,19 @@ export default function MipPpaApp() {
             <div key={g.section}>
               <div className="text-[11px] uppercase tracking-wider text-stone-500 px-3 mb-1.5">{g.section}</div>
               {g.items.map(([id, ic, lbl]) => (
-                <button key={id} onClick={() => setPage(id)}
+                <button key={id} onClick={() => setPage(id)} title={DESCR_NAV[id] || lbl}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left transition"
                   style={page === id ? { background: C.sidebarActive, color: "#fff", fontWeight: 600 } : {}}>
-                  <span className="w-5 text-center">{ic}</span>{lbl}
+                  <Icone n={ic} t={17} />{lbl}
                 </button>
               ))}
             </div>
           ))}
         </nav>
         <div className="px-5 py-4 border-t" style={{ borderColor: "#1c4a66" }}>
-          <div className="flex items-center gap-2 text-sm" style={{ color: C.gold }}>🛡 {roleActif}</div>
+          <div className="flex items-center gap-2 text-sm" style={{ color: C.gold }}><Icone n="bouclier" t={16} /> {roleActif}</div>
           <button onClick={() => { setSession(null); setPage("dashboard"); }}
-            className="mt-2 text-xs text-stone-400 hover:text-white underline underline-offset-2">Se déconnecter</button>
+            className="mt-2 text-xs text-stone-400 hover:text-white flex items-center gap-1.5" title="Fermer votre session"><Icone n="deconnexion" t={13} /> Se déconnecter</button>
         </div>
       </aside>
 
@@ -623,7 +680,7 @@ export default function MipPpaApp() {
             <div className="text-xs text-stone-500 truncate">{titres[page][1]}</div>
           </div>
           <div className="flex items-center gap-5 shrink-0">
-            <button onClick={() => setPage("guide")} className="text-sm text-stone-600 hover:text-stone-900 flex items-center gap-1.5">📖 Guide</button>
+            <button onClick={() => setPage("guide")} className="text-sm text-stone-600 hover:text-stone-900 flex items-center gap-1.5" title="Ouvrir le guide d'utilisation"><Icone n="livre" t={16} /> Guide</button>
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-full text-white flex items-center justify-center text-sm font-semibold" style={{ background: C.vert }}>{(session?.nom || "?").split(" ").map((m) => m[0]).slice(0, 2).join("").toUpperCase()}</div>
               <div className="hidden md:block">
@@ -652,10 +709,10 @@ export default function MipPpaApp() {
             </section>
 
             <section className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard icone="🎓" titre="Formations suivies" valeur={stats.nb} />
-              <StatCard icone="🏭" titre="Apprenants concernés" valeur={stats.apprenants} teinte="#fdf0da" fg="#b07515" />
-              <StatCard icone="◎" titre="Score moyen MIP" valeur={fmtPct(stats.moy)} sous="Moyenne pondérée du portefeuille" teinte="#dcebf7" fg={C.vert} />
-              <StatCard icone="⚠" titre="Alertes actives" valeur={stats.alertes} sous={stats.alertes ? "À traiter en priorité" : "Rien à signaler"} teinte="#fde8e8" fg={C.insuffisant} />
+              <StatCard icone={<Icone n="cap" t={20} />} titre="Formations suivies" valeur={stats.nb} />
+              <StatCard icone={<Icone n="usine" t={20} />} titre="Apprenants concernés" valeur={stats.apprenants} teinte="#fdf0da" fg="#b07515" />
+              <StatCard icone={<Icone n="cible" t={20} />} titre="Score moyen MIP" valeur={fmtPct(stats.moy)} sous="Moyenne pondérée du portefeuille" teinte="#dcebf7" fg={C.vert} />
+              <StatCard icone={<Icone n="alerte" t={20} />} titre="Alertes actives" valeur={stats.alertes} sous={stats.alertes ? "À traiter en priorité" : "Rien à signaler"} teinte="#fde8e8" fg={C.insuffisant} />
             </section>
 
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
@@ -706,7 +763,7 @@ export default function MipPpaApp() {
             </section>
 
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
-              <h3 className="font-bold flex items-center gap-2">📈 Niveaux de performance</h3>
+              <h3 className="font-bold flex items-center gap-2"><Icone n="tendance" t={18} /> Niveaux de performance</h3>
               <p className="text-sm text-stone-500 mb-3">Lecture du score global MIP-PPA.</p>
               <div className="flex flex-wrap gap-2">
                 {[["Insuffisant (0–40 %)", C.insuffisant], ["En développement (40–60 %)", C.dev], ["Satisfaisant (60–80 %)", C.satisfaisant], ["Excellent (80–100 %)", C.excellent]].map(([t, c]) => (
@@ -722,11 +779,11 @@ export default function MipPpaApp() {
           {/* =========== FORMATIONS =========== */}
           {page === "formations" && (<>
             <div className="flex flex-wrap items-center gap-3">
-              <input value={recherche} onChange={(e) => setRecherche(e.target.value)} placeholder="🔍  Rechercher entreprise, formation, secteur…"
+              <input value={recherche} onChange={(e) => setRecherche(e.target.value)} placeholder="Rechercher entreprise, formation, secteur…"
                 className="flex-1 min-w-[240px] bg-white border border-stone-200 rounded-full px-5 py-2.5 text-sm outline-none focus:border-stone-400" />
-              {P.exports && <button onClick={exportExcel} className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50">⬇ Exporter Excel</button>}
+              {P.exports && <button onClick={exportExcel} className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50" title="Télécharger le tableau Excel consolidé"><Icone n="telecharger" t={15} /> Exporter Excel</button>}
               <button onClick={() => { setFormations(FORMATIONS_DEMO); setSuivis(SUIVIS_DEMO); notif("Données démo restaurées"); }}
-                className="text-sm text-stone-600 hover:text-stone-900">↺ Données démo</button>
+                className="text-sm text-stone-600 hover:text-stone-900" title="Restaurer les 3 formations de démonstration"><Icone n="rotation" t={14} /> Données démo</button>
             </div>
             {P.creerFormation && <button onClick={() => { setEditionId(null); setNouvelle({ titre: "", entreprise: "", filiere: secteurs[0] || "Autre IAA", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" }); setFormOuvert(!formOuvert); }}
               className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm" style={{ background: C.vertFonce }}>
@@ -735,7 +792,7 @@ export default function MipPpaApp() {
 
             {formOuvert && (
               <div className="bg-white rounded-2xl border border-stone-200 p-5 grid md:grid-cols-2 gap-4">
-                <div className="md:col-span-2 font-bold text-stone-800">{editionId ? "✎ Modifier la formation" : "Nouvelle formation"}</div>
+                <div className="md:col-span-2 font-bold text-stone-800">{editionId ? "Modifier la formation" : "Nouvelle formation"}</div>
                 <label className="text-sm md:col-span-2">Intitulé de la formation
                   <input value={nouvelle.titre} onChange={(e) => setNouvelle({ ...nouvelle, titre: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" placeholder="Ex. Bonnes pratiques de décorticage du cajou" />
                 </label>
@@ -782,8 +839,8 @@ export default function MipPpaApp() {
                   <div className="col-span-2"><Badge score={scoreGlobal(referentiel, f.notes)} /></div>
                   <div className="col-span-2 flex justify-end items-center gap-3">
                     <button onClick={() => { setEvalId(f.id); setPage("evaluation"); }} className="text-sm font-medium hover:underline" style={{ color: C.vert }}>Évaluer</button>
-                    {P.editerFormation && <button title="Modifier la formation" onClick={() => editerFormation(f)} className="text-stone-500 hover:text-stone-800">✎</button>}
-                    {P.supprimerFormation && <button onClick={() => { if (window.confirm(`Supprimer « ${f.titre} » et ses suivis ?`)) { setFormations((fs) => fs.filter((x) => x.id !== f.id)); setSuivis((ss) => ss.filter((x) => x.formationId !== f.id)); } }} className="text-red-500 hover:text-red-700">🗑</button>}
+                    {P.editerFormation && <button title="Modifier la formation" onClick={() => editerFormation(f)} className="text-stone-500 hover:text-stone-800"><Icone n="crayon" t={16} /></button>}
+                    {P.supprimerFormation && <button onClick={() => { if (window.confirm(`Supprimer « ${f.titre} » et ses suivis ?`)) { setFormations((fs) => fs.filter((x) => x.id !== f.id)); setSuivis((ss) => ss.filter((x) => x.formationId !== f.id)); } }} className="text-red-500 hover:text-red-700" ><Icone n="poubelle" t={16} /></button>}
                   </div>
                 </div>
               ))}
@@ -806,8 +863,8 @@ export default function MipPpaApp() {
             <div className="flex items-center justify-between flex-wrap gap-3">
               <button onClick={() => setEvalId(null)} className="text-sm text-stone-600 hover:text-stone-900">← Retour</button>
               <div className="flex gap-3">
-                {P.exports && <button onClick={() => fichePDF(fEval)} className="bg-white border border-stone-200 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-50">⬇ Fiche PDF</button>}
-                <button onClick={() => notif("Évaluation enregistrée")} className="text-white px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: C.vertFonce }}>💾 Enregistrer</button>
+                {P.exports && <button onClick={() => fichePDF(fEval)} className="bg-white border border-stone-200 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-50" title="Générer la fiche d'évaluation officielle en PDF"><Icone n="telecharger" t={15} /> Fiche PDF</button>}
+                <button onClick={() => notif("Évaluation enregistrée")} className="text-white px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: C.vertFonce }} title="Enregistrer l'évaluation"><Icone n="disquette" t={15} /> Enregistrer</button>
               </div>
             </div>
 
@@ -898,15 +955,15 @@ export default function MipPpaApp() {
                       <span className="text-xs font-semibold px-2 py-0.5 rounded-full mr-2" style={{ background: teinte, color: "#1c1917" }}>{s.jalon}</span>
                       <span className="font-semibold">{s.f.titre}</span>
                       <div className="text-sm text-stone-500 mt-0.5">{s.f.entreprise} · {s.f.filiere} · échéance {s.echeance}{s.statut === "programmé" ? ` · ${joursRestants(s.echeance) < 0 ? Math.abs(joursRestants(s.echeance)) + " j de retard" : "dans " + joursRestants(s.echeance) + " j"}` : ""}</div>
-                      {s.note && <div className="text-xs text-stone-500 italic mt-1">📝 {s.note}</div>}
-                      {(s.docs || []).length > 0 && <div className="text-xs text-sky-700 mt-1">📎 {s.docs.length} document{s.docs.length > 1 ? "s" : ""} de suivi rattaché{s.docs.length > 1 ? "s" : ""}</div>}
+                      {s.note && <div className="text-xs text-stone-500 italic mt-1"><Icone n="note" t={13} /> {s.note}</div>}
+                      {(s.docs || []).length > 0 && <div className="text-xs text-sky-700 mt-1"><Icone n="trombone" t={13} /> {s.docs.length} document{s.docs.length > 1 ? "s" : ""} de suivi rattaché{s.docs.length > 1 ? "s" : ""}</div>}
                     </div>
                     <div className="flex gap-2">
                       <button onClick={() => setSuiviEdit({ id: s.id, jalon: s.jalon, titreF: s.f.titre + " — " + s.f.entreprise, echeance: s.echeance, note: s.note, docs: s.docs || [] })}
-                        className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50">✎ Notes & date</button>
+                        className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50" title="Modifier la date, les observations et les documents"><Icone n="crayon" t={14} /> Notes & date</button>
                       {P.suiviValider && (s.statut === "programmé"
-                        ? <button onClick={() => { setSuivis((ss) => ss.map((x) => x.id === s.id ? { ...x, statut: "effectué" } : x)); notif("Suivi marqué effectué"); }} className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50">✓ Marquer effectué</button>
-                        : <button onClick={() => setSuivis((ss) => ss.map((x) => x.id === s.id ? { ...x, statut: "programmé" } : x))} className="text-sm text-stone-500 hover:text-stone-800">↺ Ré-ouvrir</button>)}
+                        ? <button onClick={() => { setSuivis((ss) => ss.map((x) => x.id === s.id ? { ...x, statut: "effectué" } : x)); notif("Suivi marqué effectué"); }} className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50" title="Valider la réalisation de ce suivi"><Icone n="coche" t={14} /> Marquer effectué</button>
+                        : <button onClick={() => setSuivis((ss) => ss.map((x) => x.id === s.id ? { ...x, statut: "programmé" } : x))} className="text-sm text-stone-500 hover:text-stone-800" title="Repasser ce suivi en programmé"><Icone n="rotation" t={14} /> Ré-ouvrir</button>)}
                     </div>
                   </div>
                 ))}
@@ -914,15 +971,15 @@ export default function MipPpaApp() {
             );
             return (<>
               <section className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard icone="🗓" titre="Suivis planifiés" valeur={enrichis.length} />
-                <StatCard icone="⚠" titre="En retard" valeur={retard.length} sous="À traiter en priorité" teinte="#fde8e8" fg={C.insuffisant} />
-                <StatCard icone="🕐" titre="À faire sous 14 j" valeur={sous14.length} teinte="#fdf0da" fg="#b07515" />
-                <StatCard icone="✅" titre="Taux de réalisation" valeur={`${enrichis.length ? Math.round((effectues.length / enrichis.length) * 100) : 0} %`} sous={`${effectues.length} sur ${enrichis.length} effectués`} teinte="#e3f4e8" fg={C.excellent} />
+                <StatCard icone={<Icone n="calendrier" t={20} />} titre="Suivis planifiés" valeur={enrichis.length} />
+                <StatCard icone={<Icone n="alerte" t={20} />} titre="En retard" valeur={retard.length} sous="À traiter en priorité" teinte="#fde8e8" fg={C.insuffisant} />
+                <StatCard icone={<Icone n="horloge" t={20} />} titre="À faire sous 14 j" valeur={sous14.length} teinte="#fdf0da" fg="#b07515" />
+                <StatCard icone={<Icone n="cocheCercle" t={20} />} titre="Taux de réalisation" valeur={`${enrichis.length ? Math.round((effectues.length / enrichis.length) * 100) : 0} %`} sous={`${effectues.length} sur ${enrichis.length} effectués`} teinte="#e3f4e8" fg={C.excellent} />
               </section>
-              {retard.length > 0 && <Pile titre="En retard" icone="🔴" liste={retard} teinte="#fecaca" />}
-              <Pile titre="À faire sous 14 jours" icone="🕐" liste={sous14} teinte="#dcebf7" />
-              <Pile titre="Programmés" icone="📅" liste={programmes} teinte="#f0efe9" />
-              <Pile titre="Effectués" icone="✅" liste={effectues} teinte="#cfe6f6" />
+              {retard.length > 0 && <Pile titre="En retard" icone={<Icone n="alerte" t={17} className="text-red-600" />} liste={retard} teinte="#fecaca" />}
+              <Pile titre="À faire sous 14 jours" icone={<Icone n="horloge" t={17} className="text-amber-600" />} liste={sous14} teinte="#dcebf7" />
+              <Pile titre="Programmés" icone={<Icone n="calendrier" t={17} className="text-stone-500" />} liste={programmes} teinte="#f0efe9" />
+              <Pile titre="Effectués" icone={<Icone n="cocheCercle" t={17} className="text-emerald-600" />} liste={effectues} teinte="#cfe6f6" />
             </>);
           })()}
 
@@ -936,7 +993,7 @@ export default function MipPpaApp() {
                   <button onClick={() => setReferentiel((r) => [...r, { id: "D" + (r.length + 1), nom: "Nouvelle dimension", poids: 0, desc: "Description à compléter.", indicateurs: [] }])}
                     className="text-white text-sm font-semibold px-4 py-2 rounded-xl" style={{ background: C.vertFonce }}>+ Nouvelle dimension</button>
                   <button onClick={() => { setReferentiel(REFERENTIEL_DEFAUT); notif("Référentiel par défaut restauré"); }}
-                    className="bg-white border border-stone-200 text-sm px-4 py-2 rounded-xl hover:bg-stone-50">↺ Restaurer le référentiel par défaut</button>
+                    className="bg-white border border-stone-200 text-sm px-4 py-2 rounded-xl hover:bg-stone-50" title="Revenir aux 5 dimensions et 23 indicateurs d'origine"><Icone n="rotation" t={14} /> Restaurer le référentiel par défaut</button>
                 </div>
               )}
               <div className="flex flex-wrap gap-2 mt-4">
@@ -956,7 +1013,7 @@ export default function MipPpaApp() {
                       <input value={s} onChange={(e) => setSecteurs((ss) => ss.map((x, j) => j === i ? e.target.value : x))}
                         className="bg-transparent outline-none" style={{ width: Math.max(6, s.length) + "ch" }} />
                       <button onClick={() => { if (window.confirm(`Supprimer le secteur « ${s} » ? (les formations existantes gardent leur libellé)`)) setSecteurs((ss) => ss.filter((_, j) => j !== i)); }}
-                        className="text-stone-400 hover:text-red-600 w-5 h-5 rounded-full flex items-center justify-center">✕</button>
+                        className="text-stone-400 hover:text-red-600 w-5 h-5 rounded-full flex items-center justify-center" title="Supprimer ce secteur"><Icone n="fermer" t={12} /></button>
                     </span>
                   ))}
                   <button onClick={() => setSecteurs((ss) => [...ss, "Nouveau secteur"])}
@@ -973,29 +1030,25 @@ export default function MipPpaApp() {
                     <p className="text-sm text-stone-500">{d.desc}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {admin ? (
-                      <input type="number" value={d.poids}
-                        onChange={(e) => setReferentiel((r) => r.map((x) => x.id === d.id ? { ...x, poids: Number(e.target.value) } : x))}
-                        className="w-16 text-sm border border-stone-200 rounded-lg px-2 py-1 text-right bg-stone-50" />
-                    ) : <span className="text-sm bg-stone-100 px-3 py-1 rounded-full">{d.poids} %</span>}
-                    <span className="text-sm text-stone-400">%</span>
-                    {admin && <button onClick={() => setReferentiel((r) => r.filter((x) => x.id !== d.id))} className="text-red-500 hover:text-red-700 ml-1">🗑</button>}
+                    <span className="text-sm bg-stone-100 px-3 py-1 rounded-full">{d.poids} %</span>
+                    {admin && <button title="Modifier cette dimension (code, nom, pondération, description)"
+                      onClick={() => setDimEdit({ ancienId: d.id, id: d.id, nom: d.nom, poids: d.poids, desc: d.desc })}
+                      className="text-stone-500 hover:text-stone-800"><Icone n="crayon" t={16} /></button>}
+                    {admin && <button title="Supprimer cette dimension et ses indicateurs" onClick={() => { if (window.confirm(`Supprimer la dimension « ${d.nom} » et ses indicateurs ?`)) setReferentiel((r) => r.filter((x) => x.id !== d.id)); }} className="text-red-500 hover:text-red-700"><Icone n="poubelle" t={16} /></button>}
                   </div>
                 </div>
                 <div className="space-y-2.5 mt-4">
                   {d.indicateurs.map((ind) => (
                     <div key={ind.id} className="border border-stone-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-                      <div>
-                        <div className="text-xs font-mono text-stone-400">{ind.id}</div>
-                        {admin ? (
-                          <input value={ind.label}
-                            onChange={(e) => setReferentiel((r) => r.map((x) => x.id === d.id ? { ...x, indicateurs: x.indicateurs.map((i) => i.id === ind.id ? { ...i, label: e.target.value } : i) } : x))}
-                            className="w-full font-medium bg-transparent outline-none border-b border-transparent focus:border-stone-300 mt-0.5" />
-                        ) : <div className="font-medium mt-0.5">{ind.label}</div>}
+                      <div className="min-w-0">
+                        <div className="text-xs font-mono text-stone-400">{ind.id} <span className="uppercase tracking-wide ml-2">{ind.phase}</span></div>
+                        <div className="font-medium mt-0.5 leading-snug whitespace-normal break-words">{ind.label}</div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[10px] uppercase tracking-wide text-stone-400">{ind.phase}</span>
-                        {admin && <button onClick={() => setReferentiel((r) => r.map((x) => x.id === d.id ? { ...x, indicateurs: x.indicateurs.filter((i) => i.id !== ind.id) } : x))} className="text-red-400 hover:text-red-600">🗑</button>}
+                        {admin && <button title="Modifier cet indicateur (code, intitulé, phase)"
+                          onClick={() => setIndEdit({ dimId: d.id, ancienId: ind.id, id: ind.id, label: ind.label, phase: ind.phase })}
+                          className="text-stone-500 hover:text-stone-800"><Icone n="crayon" t={15} /></button>}
+                        {admin && <button title="Supprimer cet indicateur" onClick={() => setReferentiel((r) => r.map((x) => x.id === d.id ? { ...x, indicateurs: x.indicateurs.filter((i) => i.id !== ind.id) } : x))} className="text-red-400 hover:text-red-600"><Icone n="poubelle" t={15} /></button>}
                       </div>
                     </div>
                   ))}
@@ -1012,7 +1065,7 @@ export default function MipPpaApp() {
           {page === "alertes" && (
             stats.alertes === 0 ? (
               <section className="bg-white rounded-2xl border border-stone-200 p-14 text-center">
-                <div className="text-3xl">🌿</div>
+                <div className="flex justify-center text-emerald-600"><Icone n="cocheCercle" t={34} /></div>
                 <p className="text-stone-500 mt-3">Aucune alerte active. Tout est sous contrôle.</p>
               </section>
             ) : (<>
@@ -1044,8 +1097,8 @@ export default function MipPpaApp() {
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <h3 className="font-bold">Export consolidé</h3>
               <p className="text-sm text-stone-500 mb-4">Toutes les formations et indicateurs en une feuille Excel.</p>
-              <button onClick={exportExcel} className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm" style={{ background: C.vertFonce }}>
-                ⬇ Télécharger l'Excel ({formationsVisibles.length} formations)
+              <button onClick={exportExcel} className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm" style={{ background: C.vertFonce }} title="Toutes les formations et indicateurs en une feuille">
+                <Icone n="telecharger" t={15} /> Télécharger l'Excel ({formationsVisibles.length} formations)
               </button>
             </section>
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
@@ -1058,7 +1111,7 @@ export default function MipPpaApp() {
                       <div className="font-semibold">{f.titre}</div>
                       <div className="text-sm text-stone-500">{f.entreprise} · {f.filiere}</div>
                     </div>
-                    <button onClick={() => fichePDF(f)} className="bg-white border border-stone-200 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-50 shrink-0">🗎 Fiche PDF</button>
+                    <button onClick={() => fichePDF(f)} className="bg-white border border-stone-200 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-50 shrink-0" title="Générer la fiche PDF de cette formation"><Icone n="fichier" t={15} /> Fiche PDF</button>
                   </div>
                 ))}
               </div>
@@ -1116,7 +1169,7 @@ export default function MipPpaApp() {
                       </select>
                       {roleActif === "Administrateur lead" && session?.id !== u.id && (
                         <button onClick={() => { if (window.confirm(`Supprimer le compte de ${u.nom} ?`)) { setComptes((cs) => cs.filter((x) => x.id !== u.id)); notif("Compte supprimé"); } }}
-                          className="text-red-500 hover:text-red-700">🗑</button>
+                          className="text-red-500 hover:text-red-700" ><Icone n="poubelle" t={16} /></button>
                       )}
                     </div>
                   </div>
@@ -1124,7 +1177,7 @@ export default function MipPpaApp() {
               </div>
             </section>
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
-              <h3 className="font-bold mb-1">➕ Inviter un nouvel utilisateur</h3>
+              <h3 className="font-bold mb-1"><Icone n="plus" t={16} /> Inviter un nouvel utilisateur</h3>
               <p className="text-sm text-stone-600">Communiquez l'URL de la plateforme et le lien <b>« Créer un compte »</b> à vos collaborateurs (FDFP, entreprises, formateurs). Dès leur inscription, ils apparaissent ici en statut « En attente » : il vous suffit alors de leur attribuer le bon rôle.</p>
             </section>
           </>) : (
@@ -1139,6 +1192,85 @@ export default function MipPpaApp() {
         </footer>
       </div>
 
+      {/* ---------- FENÊTRE : MODIFIER LA DIMENSION ---------- */}
+      {dimEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(10,25,38,.55)" }}
+          onClick={(e) => e.target === e.currentTarget && setDimEdit(null)}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-7 page-anim">
+            <div className="flex items-start justify-between">
+              <h3 className="text-xl font-bold">Modifier la dimension</h3>
+              <button onClick={() => setDimEdit(null)} className="text-stone-400 hover:text-stone-700" title="Fermer"><Icone n="fermer" t={18} /></button>
+            </div>
+            <div className="grid grid-cols-2 gap-4 mt-5">
+              <label className="text-sm font-semibold text-stone-800">Code court
+                <input value={dimEdit.id} onChange={(e) => setDimEdit({ ...dimEdit, id: e.target.value.toUpperCase().slice(0, 4) })}
+                  className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
+              </label>
+              <label className="text-sm font-semibold text-stone-800">Pondération (%)
+                <input type="number" value={dimEdit.poids} onChange={(e) => setDimEdit({ ...dimEdit, poids: Number(e.target.value) })}
+                  className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
+              </label>
+            </div>
+            <label className="block text-sm font-semibold text-stone-800 mt-4">Nom
+              <input value={dimEdit.nom} onChange={(e) => setDimEdit({ ...dimEdit, nom: e.target.value })}
+                className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
+            </label>
+            <label className="block text-sm font-semibold text-stone-800 mt-4">Description
+              <textarea rows={3} value={dimEdit.desc} onChange={(e) => setDimEdit({ ...dimEdit, desc: e.target.value })}
+                className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600 resize-y" />
+            </label>
+            <div className="flex justify-end gap-3 mt-6">
+              <button onClick={() => setDimEdit(null)} className="border border-stone-300 px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50">Annuler</button>
+              <button onClick={() => {
+                if (!dimEdit.id.trim() || !dimEdit.nom.trim()) { notif("Le code et le nom sont obligatoires"); return; }
+                if (dimEdit.id !== dimEdit.ancienId && referentiel.some((x) => x.id === dimEdit.id)) { notif("Ce code est déjà utilisé par une autre dimension"); return; }
+                setReferentiel((r) => r.map((x) => x.id === dimEdit.ancienId ? { ...x, id: dimEdit.id, nom: dimEdit.nom, poids: dimEdit.poids, desc: dimEdit.desc } : x));
+                setDimEdit(null); notif("Dimension mise à jour");
+              }} className="text-white px-6 py-2.5 rounded-xl text-sm font-semibold" style={{ background: C.vertFonce }}>Enregistrer</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---------- FENÊTRE : MODIFIER L'INDICATEUR ---------- */}
+      {indEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(10,25,38,.55)" }}
+          onClick={(e) => e.target === e.currentTarget && setIndEdit(null)}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-7 page-anim">
+            <div className="flex items-start justify-between">
+              <h3 className="text-xl font-bold">Modifier l'indicateur</h3>
+              <button onClick={() => setIndEdit(null)} className="text-stone-400 hover:text-stone-700" title="Fermer"><Icone n="fermer" t={18} /></button>
+            </div>
+            <div className="grid grid-cols-2 gap-4 mt-5">
+              <label className="text-sm font-semibold text-stone-800">Code
+                <input value={indEdit.id} onChange={(e) => setIndEdit({ ...indEdit, id: e.target.value.toUpperCase().slice(0, 5) })}
+                  className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
+              </label>
+              <label className="text-sm font-semibold text-stone-800">Phase de mesure
+                <select value={indEdit.phase} onChange={(e) => setIndEdit({ ...indEdit, phase: e.target.value })}
+                  className="mt-1.5 w-full border border-stone-300 rounded-xl px-3 py-2.5 font-normal bg-white outline-none focus:border-sky-600">
+                  {["À la conception", "En fin de formation", "Suivi post-formation (3 / 6 / 12 mois)"].map((p) => <option key={p}>{p}</option>)}
+                </select>
+              </label>
+            </div>
+            <label className="block text-sm font-semibold text-stone-800 mt-4">Intitulé complet
+              <textarea rows={3} value={indEdit.label} onChange={(e) => setIndEdit({ ...indEdit, label: e.target.value })}
+                className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600 resize-y" />
+            </label>
+            <div className="flex justify-end gap-3 mt-6">
+              <button onClick={() => setIndEdit(null)} className="border border-stone-300 px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50">Annuler</button>
+              <button onClick={() => {
+                if (!indEdit.id.trim() || !indEdit.label.trim()) { notif("Le code et l'intitulé sont obligatoires"); return; }
+                setReferentiel((r) => r.map((x) => x.id !== indEdit.dimId ? x : { ...x, indicateurs: x.indicateurs.map((i) => i.id === indEdit.ancienId ? { id: indEdit.id, label: indEdit.label, phase: indEdit.phase } : i) }));
+                // conserver les notes déjà saisies si le code change
+                if (indEdit.id !== indEdit.ancienId) setFormations((fs) => fs.map((f) => { const n = { ...f.notes }; if (n[indEdit.ancienId] !== undefined) { n[indEdit.id] = n[indEdit.ancienId]; delete n[indEdit.ancienId]; } return { ...f, notes: n }; }));
+                setIndEdit(null); notif("Indicateur mis à jour");
+              }} className="text-white px-6 py-2.5 rounded-xl text-sm font-semibold" style={{ background: C.vertFonce }}>Enregistrer</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ---------- FENÊTRE : NOTES, DATE & DOCUMENTS DE SUIVI ---------- */}
       {suiviEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(10,25,38,.55)" }}
@@ -1149,7 +1281,7 @@ export default function MipPpaApp() {
                 <h3 className="text-xl font-bold">Suivi {suiviEdit.jalon}</h3>
                 <p className="text-sm text-stone-500 mt-0.5">{suiviEdit.titreF}</p>
               </div>
-              <button onClick={() => setSuiviEdit(null)} className="text-stone-400 hover:text-stone-700 text-xl leading-none">✕</button>
+              <button onClick={() => setSuiviEdit(null)} className="text-stone-400 hover:text-stone-700" title="Fermer"><Icone n="fermer" t={18} /></button>
             </div>
             <label className="block text-sm font-semibold text-stone-800 mt-5">Date d'échéance
               <input type="date" value={suiviEdit.echeance}
@@ -1164,7 +1296,7 @@ export default function MipPpaApp() {
             <div className="mt-4">
               <div className="text-sm font-semibold text-stone-800">Documents de suivi <span className="font-normal text-stone-400">(rattachés à la fiche PDF — 2 Mo max par fichier)</span></div>
               <label className="mt-2 flex items-center justify-center gap-2 border-2 border-dashed border-stone-300 rounded-xl py-4 text-sm text-stone-500 cursor-pointer hover:bg-stone-50">
-                📎 Choisir des fichiers (photos, rapports, grilles…)
+                <Icone n="trombone" t={16} /> Choisir des fichiers (photos, rapports, grilles…)
                 <input type="file" multiple className="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
                   onChange={(e) => {
                     Array.from(e.target.files || []).forEach((fich) => {
@@ -1183,13 +1315,13 @@ export default function MipPpaApp() {
                       <div className="flex items-center gap-2 min-w-0">
                         {d.type.startsWith("image/")
                           ? <img src={d.data} alt="" className="w-9 h-9 object-cover rounded-lg border border-stone-200 shrink-0" />
-                          : <span className="w-9 h-9 rounded-lg bg-stone-100 flex items-center justify-center shrink-0">🗎</span>}
+                          : <span className="w-9 h-9 rounded-lg bg-stone-100 flex items-center justify-center shrink-0"><Icone n="fichier" t={17} className="text-stone-500" /></span>}
                         <div className="min-w-0">
                           <div className="truncate font-medium">{d.nom}</div>
                           <div className="text-xs text-stone-400">{(d.taille / 1024).toFixed(0)} Ko · ajouté le {d.date}</div>
                         </div>
                       </div>
-                      <button onClick={() => setSuiviEdit((se) => ({ ...se, docs: se.docs.filter((_, j) => j !== i) }))} className="text-red-400 hover:text-red-600 shrink-0">🗑</button>
+                      <button onClick={() => setSuiviEdit((se) => ({ ...se, docs: se.docs.filter((_, j) => j !== i) }))} className="text-red-400 hover:text-red-600 shrink-0" ><Icone n="poubelle" t={16} /></button>
                     </div>
                   ))}
                 </div>
