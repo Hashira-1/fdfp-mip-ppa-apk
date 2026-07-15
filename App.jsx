@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { jsPDF } from "jspdf";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://reoxoigrfeaadfpwvjxo.supabase.co/sb_publishable_ffjmtgfzAZ9eS_1w8FAChw_1fUOipUC";
 import {
   ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   Radar, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
