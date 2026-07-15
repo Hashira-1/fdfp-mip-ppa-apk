@@ -7,7 +7,7 @@ import {
 } from "recharts";
 
 /* ================================================================
-   FDFP · MIP-PPA — Suivi des formations PPA dans les IAA
+   FDFP · MIP-PPA — Suivi des formations PPA dans l'agro-industrie
    Reconstruction fidèle de l'application (modèle : 5 dimensions,
    23 indicateurs, notes 0–4, suivi post-formation à 3/6/12 mois)
    ================================================================ */
@@ -16,10 +16,10 @@ import {
 const REFERENTIEL_DEFAUT = [
   {
     id: "P", nom: "Pertinence", poids: 20,
-    desc: "Alignement de la formation aux besoins métiers et aux normes IAA.",
+    desc: "Alignement de la formation aux besoins métiers et aux normes de l'agro-industrie.",
     indicateurs: [
       { id: "P1", phase: "À la conception", label: "Alignement des objectifs pédagogiques avec les besoins en compétences" },
-      { id: "P2", phase: "À la conception", label: "Adéquation du contenu avec les référentiels métiers du secteur agro-alimentaire" },
+      { id: "P2", phase: "À la conception", label: "Adéquation du contenu avec les référentiels métiers du secteur agro-industriel" },
       { id: "P3", phase: "À la conception", label: "Pertinence du profil des formateurs par rapport aux contenus dispensés" },
       { id: "P4", phase: "À la conception", label: "Conformité avec les normes HACCP et réglementations alimentaires applicables" },
     ],
@@ -104,9 +104,17 @@ const SUIVIS_DEMO = [
 ];
 
 // ----------------- CONNEXION À SUPABASE --------------------------
-// Les deux clés (URL du projet + clé « anon public ») sont saisies une seule
-// fois sur l'écran de configuration, puis conservées dans le navigateur.
+// ⬇⬇ COLLEZ ICI LES DEUX CLÉS DE VOTRE PROJET (Settings → API) ⬇⬇
+// La clé « anon public » est conçue pour être publique : la sécurité est
+// assurée par les règles installées dans la base (supabase-installation.sql).
+const SUPABASE_URL_INTEGREE = "";   // ex. "https://xxxxxxxx.supabase.co"
+const SUPABASE_CLE_INTEGREE = "";   // ex. "eyJhbGciOiJIUzI1NiIs..."
+// ⬆⬆ Une fois remplies, l'écran de configuration disparaît pour TOUS les
+// appareils. (Laissées vides, l'app se rabat sur la saisie locale des clés.)
+
 function creerClientSupabase() {
+  if (SUPABASE_URL_INTEGREE.startsWith("https://") && SUPABASE_CLE_INTEGREE.length > 20)
+    return createClient(SUPABASE_URL_INTEGREE, SUPABASE_CLE_INTEGREE);
   try {
     const c = JSON.parse(window.localStorage.getItem("mip-ppa-sb") || "null");
     if (c && c.url && c.url.startsWith("https://") && c.cle) return createClient(c.url, c.cle);
@@ -124,7 +132,7 @@ function ecrireStock(cle, val) {
 }
 
 const ROLES = ["Administrateur lead", "Administrateur FDFP", "Agent FDFP", "Référent entreprise", "Formateur", "En attente d'activation"];
-const SECTEURS_DEFAUT = ["Cacao-Café", "Fruits & Légumes", "Lait & Dérivés", "Anacarde", "Céréales", "Autre IAA"];
+const SECTEURS_DEFAUT = ["Cacao-Café", "Fruits & Légumes", "Lait & Dérivés", "Anacarde", "Céréales", "Autre agro-industrie"];
 
 // ----------------- MATRICE DES PERMISSIONS PAR RÔLE -------------
 const PERMS = {
@@ -433,6 +441,8 @@ export default function MipPpaApp() {
   const setFormations = (fn) => setFormationsBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-formations", n); return n; });
   const setSuivis = (fn) => setSuivisBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-suivis", n); return n; });
   const [secteurs, setSecteursBrut] = useState(() => lireStock("mip-ppa-secteurs", SECTEURS_DEFAUT));
+  const [phases, setPhasesBrut] = useState(() => lireStock("mip-ppa-phases", ["À la conception", "En fin de formation", "Suivi post-formation (3 / 6 / 12 mois)"]));
+  const setPhases = (fn) => setPhasesBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-phases", n); return n; });
   const setSecteurs = (fn) => setSecteursBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-secteurs", n); return n; });
   const [comptes, setComptes] = useState([]);          // liste chargée depuis Supabase (page Utilisateurs)
   const [session, setSession] = useState(null);         // { id, email, nom, org, role }
@@ -471,12 +481,13 @@ export default function MipPpaApp() {
   const [suiviEdit, setSuiviEdit] = useState(null); // fenêtre Notes & date & documents
   const [dimEdit, setDimEdit] = useState(null);     // fenêtre Modifier la dimension
   const [indEdit, setIndEdit] = useState(null);     // fenêtre Modifier l'indicateur
+  const [docVu, setDocVu] = useState(null);          // visionneuse de document
   const lead = roleActif === "Administrateur lead";
   const P = PERMS[roleActif] || PERMS["En attente d'activation"];
   const monCompte = session;
   useEffect(() => { if (session && !P.pages.includes(page)) setPage(P.pages[0]); }, [roleActif, session]); // redirection selon le rôle
   useEffect(() => { if (page === "users" && P.users && sb) chargerComptes(); }, [page, roleActif]);
-  const [nouvelle, setNouvelle] = useState({ titre: "", entreprise: "", filiere: secteurs[0] || "Autre IAA", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
+  const [nouvelle, setNouvelle] = useState({ titre: "", entreprise: "", filiere: secteurs[0] || "Autre agro-industrie", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
   const [toast, setToast] = useState("");
   const notif = (m) => { setToast(m); setTimeout(() => setToast(""), 2500); };
 
@@ -528,7 +539,7 @@ export default function MipPpaApp() {
     if (editionId) {
       setFormations((fs) => fs.map((f) => f.id === editionId ? { ...f, ...nouvelle } : f));
       setEditionId(null); setFormOuvert(false);
-      setNouvelle({ titre: "", entreprise: "", filiere: secteurs[0] || "Autre IAA", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
+      setNouvelle({ titre: "", entreprise: "", filiere: secteurs[0] || "Autre agro-industrie", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
       notif("Formation mise à jour"); return;
     }
     const id = "f" + Date.now();
@@ -538,7 +549,7 @@ export default function MipPpaApp() {
       setSuivis((ss) => [...ss, { id: "s" + Date.now() + i, formationId: id, jalon: j, echeance: d.toISOString().slice(0, 10), statut: "programmé", note: "", docs: [] }]);
     });
     setFormOuvert(false);
-    setNouvelle({ titre: "", entreprise: "", filiere: secteurs[0] || "Autre IAA", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
+    setNouvelle({ titre: "", entreprise: "", filiere: secteurs[0] || "Autre agro-industrie", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
     notif("Formation créée — 3 suivis (M+3/M+6/M+12) planifiés");
   };
   const editerFormation = (f) => {
@@ -558,6 +569,10 @@ export default function MipPpaApp() {
     telecharger("MIP-PPA_export_consolide.csv", [entetes.join(";"), ...lignes].join("\n"));
     notif("Export Excel (CSV) téléchargé");
   };
+  const nettoyerPdf = (t) => String(t == null ? "" : t)
+    .replace(/\u2019/g, "'").replace(/[\u2013\u2014]/g, "-")
+    .replace(/[\u201C\u201D]/g, '"').replace(/\u2026/g, "...")
+    .replace(/\u00A0/g, " ").replace(/\u0153/g, "oe").replace(/\u0152/g, "OE");
   const fichePDF = (f) => {
     const g = scoreGlobal(referentiel, f.notes);
     const doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -571,33 +586,33 @@ export default function MipPpaApp() {
     doc.setFillColor(13, 34, 51); doc.rect(0, 0, W, 30, "F");
     try { doc.addImage(LOGO_FDFP, "JPEG", M, 5.5, 42, 19); } catch (e) {}
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(14);
-    doc.text("FICHE D'ÉVALUATION MIP-PPA", W - M, 13, { align: "right" });
+    doc.text(nettoyerPdf("FICHE D'EVALUATION MIP-PPA"), W - M, 13, { align: "right" });
     doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-    doc.text("Projet Apprentissage — Industries agro-alimentaires", W - M, 19, { align: "right" });
+    doc.text(nettoyerPdf("Projet Apprentissage - Agro-industrie"), W - M, 19, { align: "right" });
     doc.setDrawColor(...orange); doc.setLineWidth(1.6); doc.line(0, 30, W, 30);
     y = 40;
 
     // ------ Identification de la formation ------
     doc.setTextColor(20, 20, 20); doc.setFont("helvetica", "bold"); doc.setFontSize(13);
-    doc.text(doc.splitTextToSize(f.titre, W - 2 * M), M, y); y += 7 * doc.splitTextToSize(f.titre, W - 2 * M).length;
+    doc.text(doc.splitTextToSize(nettoyerPdf(f.titre), W - 2 * M), M, y); y += 7 * doc.splitTextToSize(nettoyerPdf(f.titre), W - 2 * M).length;
     doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(...gris);
-    doc.text(`${f.entreprise}  ·  ${f.filiere}  ·  ${f.region}`, M, y); y += 5.5;
-    doc.text(`${f.apprenants} apprenants  ·  Budget : ${Number(f.budget).toLocaleString("fr-FR")} FCFA  ·  Statut : ${f.statut}`, M, y); y += 9;
+    doc.text(nettoyerPdf(`${f.entreprise}  -  ${f.filiere}  -  ${f.region}`), M, y); y += 5.5;
+    doc.text(nettoyerPdf(`${f.apprenants} apprenants  -  Budget : ${Number(f.budget).toLocaleString("fr-FR")} FCFA  -  Statut : ${f.statut}`), M, y); y += 9;
 
     // ------ Score global ------
     doc.setFillColor(...hexRgb(nv.bg === "#e7e5e4" ? "#a8a29e" : nv.bg)); doc.roundedRect(M, y, W - 2 * M, 16, 2.5, 2.5, "F");
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(12);
-    doc.text(`SCORE GLOBAL MIP-PPA : ${fmtPct(g)} — ${nv.txt}`, W / 2, y + 10, { align: "center" });
+    doc.text(nettoyerPdf(`SCORE GLOBAL MIP-PPA : ${fmtPct(g)} - ${nv.txt}`), W / 2, y + 10, { align: "center" });
     y += 24;
 
     // ------ Tableau des dimensions ------
     doc.setTextColor(...bleu); doc.setFontSize(11.5);
-    doc.text("Synthèse par dimension", M, y); y += 6;
+    doc.text(nettoyerPdf("Synthese par dimension"), M, y); y += 6;
     doc.setFontSize(9.5);
     referentiel.forEach((d) => {
       const s = scoreDimension(referentiel, d.id, f.notes);
       doc.setTextColor(30, 30, 30); doc.setFont("helvetica", "bold");
-      doc.text(`${d.nom} (${d.poids} %)`, M, y);
+      doc.text(nettoyerPdf(`${d.nom} (${d.poids} %)`), M, y);
       doc.setFont("helvetica", "normal");
       doc.text(fmtPct(s), W - M - 24, y, { align: "right" });
       // barre de progression
@@ -614,8 +629,8 @@ export default function MipPpaApp() {
         doc.setPage(p);
         doc.setDrawColor(...orange); doc.setLineWidth(0.6); doc.line(M, 285, W - M, 285);
         doc.setFontSize(7.5); doc.setTextColor(...gris); doc.setFont("helvetica", "normal");
-        doc.text("FDFP — Fonds de Développement de la Formation Professionnelle · Modèle MIP-PPA · PFE ESA / INP-HB", M, 290);
-        doc.text(`Page ${p} / ${pages} · Édité le ${new Date().toLocaleDateString("fr-FR")}`, W - M, 290, { align: "right" });
+        doc.text(nettoyerPdf("FDFP - Fonds de Developpement de la Formation Professionnelle - Modele MIP-PPA - PFE ESA/INP-HB"), M, 290);
+        doc.text(nettoyerPdf(`Page ${p} / ${pages} - Edite le ${new Date().toLocaleDateString("fr-FR")}`), W - M, 290, { align: "right" });
       }
     };
     const sautSiBesoin = (h) => { if (y + h > 278) { doc.addPage(); y = 20; } };
@@ -624,17 +639,17 @@ export default function MipPpaApp() {
       sautSiBesoin(14);
       doc.setFillColor(232, 240, 247); doc.rect(M, y - 4.5, W - 2 * M, 7.5, "F");
       doc.setTextColor(...bleu); doc.setFont("helvetica", "bold"); doc.setFontSize(10);
-      doc.text(`${d.nom} — ${fmtPct(scoreDimension(referentiel, d.id, f.notes))}`, M + 2, y); y += 8;
+      doc.text(nettoyerPdf(`${d.nom} - ${fmtPct(scoreDimension(referentiel, d.id, f.notes))}`), M + 2, y); y += 8;
       doc.setFontSize(8.8);
       d.indicateurs.forEach((ind) => {
-        const lignes = doc.splitTextToSize(`${ind.id} · ${ind.label}`, W - 2 * M - 30);
+        const lignes = doc.splitTextToSize(nettoyerPdf(`${ind.id} · ${ind.label}`), W - 2 * M - 30);
         sautSiBesoin(lignes.length * 4 + 3);
         doc.setTextColor(45, 45, 45); doc.setFont("helvetica", "normal");
         doc.text(lignes, M + 2, y);
         const n = f.notes[ind.id];
         doc.setFont("helvetica", "bold");
         doc.setTextColor(...(n >= 3 ? [22, 122, 61] : n === 2 ? [200, 130, 20] : n !== undefined && n !== null ? [190, 40, 40] : gris));
-        doc.text(`${n ?? "—"} / 4  ·  ${noteLabel(n)}`, W - M - 2, y, { align: "right" });
+        doc.text(nettoyerPdf(`${n ?? "-"} / 4  -  ${noteLabel(n)}`), W - M - 2, y, { align: "right" });
         y += lignes.length * 4 + 2.5;
       });
       y += 3;
@@ -646,20 +661,20 @@ export default function MipPpaApp() {
       sautSiBesoin(16);
       doc.setFillColor(232, 240, 247); doc.rect(M, y - 4.5, W - 2 * M, 7.5, "F");
       doc.setTextColor(...bleu); doc.setFont("helvetica", "bold"); doc.setFontSize(10);
-      doc.text("Documents de suivi rattachés", M + 2, y); y += 8;
+      doc.text(nettoyerPdf("Documents de suivi rattaches"), M + 2, y); y += 8;
       doc.setFontSize(8.8);
       suivisF.forEach((s) => {
         (s.docs || []).forEach((d) => {
           sautSiBesoin(8);
           doc.setTextColor(45, 45, 45); doc.setFont("helvetica", "normal");
-          doc.text(`${s.jalon} · ${d.nom} (${(d.taille / 1024).toFixed(0)} Ko, ajouté le ${d.date})`, M + 2, y); y += 5;
+          doc.text(nettoyerPdf(`${s.jalon} - ${d.nom} (${(d.taille / 1024).toFixed(0)} Ko, ajoute le ${d.date})`), M + 2, y); y += 5;
           if (d.type && d.type.startsWith("image/")) {
             sautSiBesoin(40);
             try { doc.addImage(d.data, undefined, M + 2, y, 52, 36); y += 40; } catch (e) {}
           }
         });
         if (s.note) {
-          const ln = doc.splitTextToSize(`Observations ${s.jalon} : ${s.note}`, W - 2 * M - 4);
+          const ln = doc.splitTextToSize(nettoyerPdf(`Observations ${s.jalon} : ${s.note}`), W - 2 * M - 4);
           sautSiBesoin(ln.length * 4 + 3);
           doc.setTextColor(...gris); doc.setFont("helvetica", "italic");
           doc.text(ln, M + 2, y); y += ln.length * 4 + 2;
@@ -677,8 +692,8 @@ export default function MipPpaApp() {
 
   const NAV = [
     { section: "Pilotage", items: [
-      ["dashboard", "grid", "Tableau de bord"], ["formations", "cap", "Formations PPA"],
-      ["evaluation", "clipboard", "Évaluation MIP"], ["suivi", "calendrier", "Suivi post-formation"],
+      ["dashboard", "grid", "Tableau de bord"], ["formations", "cap", "Projets"],
+      ["evaluation", "clipboard", "Évaluation"], ["suivi", "calendrier", "Suivi post-formation"],
       ["indicateurs", "graphique", "Indicateurs"], ["alertes", "cloche", "Alertes"], ["exports", "telecharger", "Exports"],
     ].filter(([id]) => P.pages.includes(id)) },
     { section: "Aide", items: [["guide", "livre", "Guide d'utilisation"]] },
@@ -686,8 +701,8 @@ export default function MipPpaApp() {
   ];
   const titres = {
     dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des formations PPA dans les IAA"],
-    formations: ["Formations PPA", "Portefeuille des formations financées par le FDFP"],
-    evaluation: ["Évaluation MIP-PPA", fEval ? fEval.titre : "Sélectionnez une formation à évaluer"],
+    formations: ["Projets", "Portefeuille des projets de formation financés par le FDFP"],
+    evaluation: ["Évaluation", fEval ? fEval.titre : "Sélectionnez une formation à évaluer"],
     suivi: ["Suivi post-formation", "Évaluations à 3, 6 et 12 mois — impact et durabilité"],
     indicateurs: ["Référentiel des indicateurs", "Modèle MIP-PPA — dimensions, pondérations, indicateurs"],
     alertes: ["Alertes & risques", "Formations sous-performantes et suivis en retard"],
@@ -720,6 +735,10 @@ export default function MipPpaApp() {
         .carte-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(13,34,51,.10); }
         button { transition: background-color .15s ease, color .15s ease, border-color .15s ease, transform .12s ease, opacity .15s ease; }
         button:active { transform: scale(.97); }
+        .nav-item { color: #cbd5d8; transition: background-color .18s ease, color .18s ease, padding-left .18s ease; }
+        .nav-item:hover { background: rgba(255,255,255,.08); color: #fff; padding-left: 1rem; }
+        .nav-actif { background: #1c4a66; color: #fff; font-weight: 600; }
+        .nav-actif:hover { background: #1c4a66; }
         * { scrollbar-width: thin; }
         html { scroll-behavior: smooth; }
       `}</style>
@@ -740,8 +759,7 @@ export default function MipPpaApp() {
               <div className="text-[11px] uppercase tracking-wider text-stone-500 px-3 mb-1.5">{g.section}</div>
               {g.items.map(([id, ic, lbl]) => (
                 <button key={id} onClick={() => setPage(id)} title={DESCR_NAV[id] || lbl}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left transition"
-                  style={page === id ? { background: C.sidebarActive, color: "#fff", fontWeight: 600 } : {}}>
+                  className={"nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left " + (page === id ? "nav-actif" : "")}>
                   <Icone n={ic} t={17} />{lbl}
                 </button>
               ))}
@@ -783,7 +801,7 @@ export default function MipPpaApp() {
               <h2 className="text-4xl font-bold mt-4 leading-tight">Mesurer la vraie valeur<br />des formations PPA</h2>
               <p className="mt-3 text-sky-100 max-w-2xl">
                 Le modèle MIP-PPA évalue chaque formation sur {referentiel.length} dimensions et {referentiel.reduce((a, d) => a + d.indicateurs.length, 0)} indicateurs,
-                de la conception jusqu'à 12 mois après — pour des décisions éclairées au service des industries agro-alimentaires ivoiriennes.
+                de la conception jusqu'à 12 mois après — pour des décisions éclairées au service de l'agro-industrie ivoirienne.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <button onClick={() => setPage("formations")} className="bg-white text-stone-900 font-semibold px-5 py-2.5 rounded-xl hover:bg-stone-100">Évaluer une formation →</button>
@@ -868,7 +886,7 @@ export default function MipPpaApp() {
               <button onClick={() => { setFormations(FORMATIONS_DEMO); setSuivis(SUIVIS_DEMO); notif("Données démo restaurées"); }}
                 className="text-sm text-stone-600 hover:text-stone-900" title="Restaurer les 3 formations de démonstration"><Icone n="rotation" t={14} /> Données démo</button>
             </div>
-            {P.creerFormation && <button onClick={() => { setEditionId(null); setNouvelle({ titre: "", entreprise: "", filiere: secteurs[0] || "Autre IAA", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" }); setFormOuvert(!formOuvert); }}
+            {P.creerFormation && <button onClick={() => { setEditionId(null); setNouvelle({ titre: "", entreprise: "", filiere: secteurs[0] || "Autre agro-industrie", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" }); setFormOuvert(!formOuvert); }}
               className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm" style={{ background: C.vertFonce }}>
               + Nouvelle formation
             </button>}
@@ -1088,7 +1106,7 @@ export default function MipPpaApp() {
 
             {P.secteurs && (
               <section className="bg-white rounded-2xl border border-stone-200 p-5">
-                <h3 className="font-bold">Secteurs IAA</h3>
+                <h3 className="font-bold">Secteurs</h3>
                 <p className="text-sm text-stone-500 mb-3">Liste des secteurs proposés à la création d'une formation — gérée par l'administrateur lead.</p>
                 <div className="flex flex-wrap gap-2">
                   {secteurs.map((s, i) => (
@@ -1100,6 +1118,20 @@ export default function MipPpaApp() {
                     </span>
                   ))}
                   <button onClick={() => setSecteurs((ss) => [...ss, "Nouveau secteur"])}
+                    className="text-sm border border-dashed border-stone-300 rounded-full px-3 py-1 text-stone-500 hover:bg-stone-50">+ Ajouter</button>
+                </div>
+                <h3 className="font-bold mt-6">Phases de mesure</h3>
+                <p className="text-sm text-stone-500 mb-3">Moments où chaque indicateur est renseigné (proposés dans la fenêtre d'un indicateur).</p>
+                <div className="flex flex-wrap gap-2">
+                  {phases.map((s, i) => (
+                    <span key={i} className="flex items-center gap-1.5 bg-stone-100 rounded-full pl-3 pr-1.5 py-1 text-sm">
+                      <input value={s} onChange={(e) => setPhases((ss) => ss.map((x, j) => j === i ? e.target.value : x))}
+                        className="bg-transparent outline-none" style={{ width: Math.max(10, s.length) + "ch" }} />
+                      <button onClick={() => setPhases((ss) => ss.filter((_, j) => j !== i))}
+                        className="text-stone-400 hover:text-red-600 w-5 h-5 rounded-full flex items-center justify-center" title="Supprimer cette phase"><Icone n="fermer" t={12} /></button>
+                    </span>
+                  ))}
+                  <button onClick={() => setPhases((ss) => [...ss, "Nouvelle phase"])}
                     className="text-sm border border-dashed border-stone-300 rounded-full px-3 py-1 text-stone-500 hover:bg-stone-50">+ Ajouter</button>
                 </div>
               </section>
@@ -1279,6 +1311,41 @@ export default function MipPpaApp() {
         </footer>
       </div>
 
+      {/* ---------- VISIONNEUSE DE DOCUMENT ---------- */}
+      {docVu && (
+        <div className="fixed inset-0 z-[60] flex flex-col" style={{ background: "rgba(8,20,30,.92)" }}
+          onClick={(e) => e.target === e.currentTarget && setDocVu(null)}>
+          <div className="flex items-center justify-between px-5 py-3 text-white shrink-0">
+            <div className="min-w-0">
+              <div className="font-semibold truncate">{docVu.nom}</div>
+              <div className="text-xs text-stone-300">{(docVu.taille / 1024).toFixed(0)} Ko · ajouté le {docVu.date}</div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <a href={docVu.data} download={docVu.nom} className="text-sm bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg flex items-center gap-1.5"><Icone n="telecharger" t={15} /> Télécharger</a>
+              <button onClick={() => setDocVu(null)} className="text-sm bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg flex items-center gap-1.5"><Icone n="fermer" t={15} /> Fermer</button>
+            </div>
+          </div>
+          <div className="flex-1 min-h-0 px-4 pb-4" onClick={(e) => e.target === e.currentTarget && setDocVu(null)}>
+            {docVu.type.startsWith("image/") ? (
+              <div className="w-full h-full flex items-center justify-center overflow-auto">
+                <img src={docVu.data} alt={docVu.nom} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" />
+              </div>
+            ) : docVu.type === "application/pdf" ? (
+              <iframe src={docVu.data} title={docVu.nom} className="w-full h-full rounded-lg bg-white" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <div className="bg-white rounded-2xl p-8 text-center max-w-md">
+                  <div className="flex justify-center text-stone-400"><Icone n="fichier" t={44} /></div>
+                  <div className="font-semibold mt-3">{docVu.nom}</div>
+                  <p className="text-sm text-stone-500 mt-2">Ce type de fichier (Word, Excel…) ne peut pas être prévisualisé directement dans le navigateur. Téléchargez-le pour l'ouvrir avec le logiciel adapté.</p>
+                  <a href={docVu.data} download={docVu.nom} className="inline-flex items-center gap-1.5 mt-4 text-white px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: C.vertFonce }}><Icone n="telecharger" t={15} /> Télécharger le document</a>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ---------- FENÊTRE : MODIFIER LA DIMENSION ---------- */}
       {dimEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(10,25,38,.55)" }}
@@ -1336,7 +1403,7 @@ export default function MipPpaApp() {
               <label className="text-sm font-semibold text-stone-800">Phase de mesure
                 <select value={indEdit.phase} onChange={(e) => setIndEdit({ ...indEdit, phase: e.target.value })}
                   className="mt-1.5 w-full border border-stone-300 rounded-xl px-3 py-2.5 font-normal bg-white outline-none focus:border-sky-600">
-                  {["À la conception", "En fin de formation", "Suivi post-formation (3 / 6 / 12 mois)"].map((p) => <option key={p}>{p}</option>)}
+                  {phases.map((p) => <option key={p}>{p}</option>)}
                 </select>
               </label>
             </div>
@@ -1399,15 +1466,15 @@ export default function MipPpaApp() {
                 <div className="mt-2 divide-y divide-stone-100 border border-stone-200 rounded-xl">
                   {suiviEdit.docs.map((d, i) => (
                     <div key={i} className="flex items-center justify-between gap-3 px-3.5 py-2.5 text-sm">
-                      <div className="flex items-center gap-2 min-w-0">
+                      <button onClick={() => setDocVu(d)} className="flex items-center gap-2 min-w-0 text-left hover:opacity-80" title="Ouvrir le document en grand">
                         {d.type.startsWith("image/")
                           ? <img src={d.data} alt="" className="w-9 h-9 object-cover rounded-lg border border-stone-200 shrink-0" />
                           : <span className="w-9 h-9 rounded-lg bg-stone-100 flex items-center justify-center shrink-0"><Icone n="fichier" t={17} className="text-stone-500" /></span>}
                         <div className="min-w-0">
-                          <div className="truncate font-medium">{d.nom}</div>
+                          <div className="truncate font-medium underline decoration-dotted underline-offset-2">{d.nom}</div>
                           <div className="text-xs text-stone-400">{(d.taille / 1024).toFixed(0)} Ko · ajouté le {d.date}</div>
                         </div>
-                      </div>
+                      </button>
                       <button onClick={() => setSuiviEdit((se) => ({ ...se, docs: se.docs.filter((_, j) => j !== i) }))} className="text-red-400 hover:text-red-600 shrink-0" ><Icone n="poubelle" t={16} /></button>
                     </div>
                   ))}
