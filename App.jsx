@@ -7,7 +7,7 @@ import {
 } from "recharts";
 
 /* ================================================================
-   FDFP · MIP-PPA — Suivi des formations PPA dans l'agro-industrie
+   FDFP · MIP-PPA — Suivi des Projets Apprentissage dans l'agro-industrie
    Reconstruction fidèle de l'application (modèle : 5 dimensions,
    23 indicateurs, notes 0–4, suivi post-formation à 3/6/12 mois)
    ================================================================ */
@@ -499,7 +499,7 @@ export default function MipPpaApp() {
     const corps = [
       "Bonjour,",
       "",
-      "Vous etes invite(e) a rejoindre la plateforme FDFP MIP-PPA (suivi des formations PPA dans l'agro-industrie).",
+      "Vous etes invite(e) a rejoindre la plateforme FDFP MIP-PPA (suivi des Projets Apprentissage dans l'agro-industrie).",
       "",
       "1. Rendez-vous sur : " + urlApp,
       "2. Cliquez sur \"Creer un compte\" et renseignez vos informations (nom, organisation, email, mot de passe).",
@@ -747,7 +747,8 @@ export default function MipPpaApp() {
             doc.setFont("helvetica", "normal"); doc.setTextColor(...gris); doc.setFontSize(7.5);
             const estPdf = (d.type || "").includes("pdf") || /\.pdf$/i.test(d.nom);
             const typeLisible = estPdf ? "Document PDF (joint en annexe de cette fiche)"
-              : (d.type || "").includes("word") || d.nom.match(/\.docx?$/i) ? "Document Word (a consulter dans la plateforme)"
+              : (d.type || "").includes("word") || d.nom.match(/\.docx$/i) ? "Document Word (texte integre en annexe de cette fiche)"
+              : d.nom.match(/\.doc$/i) ? "Document Word ancien format (a consulter dans la plateforme)"
               : (d.type || "").includes("sheet") || d.nom.match(/\.xlsx?$/i) ? "Classeur Excel (a consulter dans la plateforme)" : "Document (a consulter dans la plateforme)";
             doc.text(nettoyerPdf(`${typeLisible} - ${(d.taille / 1024).toFixed(0)} Ko - ajoute le ${d.date}`), M + 6, y + 6.5);
             doc.setFontSize(8.8);
@@ -761,6 +762,35 @@ export default function MipPpaApp() {
           doc.text(ln, M + 2, y); y += ln.length * 4 + 2;
         }
       });
+    }
+
+    // ------ Annexe : contenu texte des documents Word (.docx) ------
+    const suivisFx = suivis.filter((s) => s.formationId === f.id && (s.docs || []).length > 0);
+    const docsWord = [];
+    suivisFx.forEach((s) => (s.docs || []).forEach((d) => {
+      const estDocx = (d.type || "").includes("officedocument.wordprocessingml") || /\.docx$/i.test(d.nom);
+      if (estDocx && d.data) docsWord.push({ jalon: s.jalon, d });
+    }));
+    for (const { jalon, d } of docsWord) {
+      try {
+        const mod = await import("https://cdn.jsdelivr.net/npm/mammoth@1.8.0/+esm");
+        const mammoth = mod.default || mod;
+        const bin = atob(d.data.split(",")[1]);
+        const buf = new ArrayBuffer(bin.length); const u8 = new Uint8Array(buf);
+        for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+        const res = await mammoth.extractRawText({ arrayBuffer: buf });
+        const texte = ((res && res.value) || "").trim();
+        doc.addPage(); y = 20;
+        doc.setFillColor(232, 240, 247); doc.rect(M, y - 5, W - 2 * M, 8, "F");
+        doc.setTextColor(...bleu); doc.setFont("helvetica", "bold"); doc.setFontSize(10.5);
+        doc.text(nettoyerPdf(`Annexe ${jalon} - ${d.nom} (contenu du document Word)`), M + 2, y); y += 9;
+        doc.setTextColor(45, 45, 45); doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+        const lignesTxt = doc.splitTextToSize(nettoyerPdf(texte || "(document vide ou non lisible)"), W - 2 * M);
+        for (const lt of lignesTxt) {
+          if (y > 280) { doc.addPage(); y = 20; }
+          doc.text(lt, M, y); y += 4.4;
+        }
+      } catch (e) { /* extraction indisponible (hors ligne) : l'encart descriptif reste */ }
     }
 
     pied();
@@ -817,7 +847,7 @@ export default function MipPpaApp() {
     ...(P.users ? [{ section: "Administration", items: [["users", "utilisateurs", "Utilisateurs & rôles"]] }] : []),
   ];
   const titres = {
-    dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des formations PPA dans l'agro-industrie"],
+    dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des Projets Apprentissage dans l'agro-industrie"],
     formations: ["Projets", "Portefeuille des projets de formation financés par le FDFP"],
     evaluation: ["Évaluation", fEval ? fEval.titre : "Sélectionnez une formation à évaluer"],
     suivi: ["Suivi post-formation", "Évaluations à 3, 6 et 12 mois — impact et durabilité"],
@@ -870,7 +900,7 @@ export default function MipPpaApp() {
             <div className="text-xs text-stone-400">Suivi des formations agro-industrielles</div>
           </div>
         </div>
-        <nav className="flex-1 px-3 space-y-5 overflow-y-auto pb-4">
+        <nav className="flex-1 px-3 space-y-5 pb-4">
           {NAV.map((g) => (
             <div key={g.section}>
               <div className="text-[11px] uppercase tracking-wider text-stone-500 px-3 mb-1.5">{g.section}</div>
@@ -916,7 +946,7 @@ export default function MipPpaApp() {
           {page === "dashboard" && (<>
             <section className="rounded-3xl p-8 text-white" style={{ background: "linear-gradient(120deg,#0e3c60 0%,#1d6fa8 100%)" }}>
               <span className="text-xs font-semibold px-3 py-1 rounded-full text-stone-900" style={{ background: C.gold }}>FDFP · Côte d'Ivoire</span>
-              <h2 className="text-4xl font-bold mt-4 leading-tight">Mesurer la vraie valeur<br />des formations PPA</h2>
+              <h2 className="text-4xl font-bold mt-4 leading-tight">Mesurer la vraie valeur<br />des Projets Apprentissage</h2>
               <p className="mt-3 text-sky-100 max-w-2xl">
                 Le modèle MIP-PPA évalue chaque formation sur {referentiel.length} dimensions et {referentiel.reduce((a, d) => a + d.indicateurs.length, 0)} indicateurs,
                 de la conception jusqu'à 12 mois après — pour des décisions éclairées au service de l'agro-industrie ivoirienne.
@@ -1366,7 +1396,14 @@ export default function MipPpaApp() {
               <h2 className="text-3xl font-bold mt-3">Bienvenue sur MIP-PPA</h2>
               <p className="mt-2 text-sky-100">Ce guide est conçu pour <b>tout public</b> : agents du FDFP, référents en entreprise, formateurs. Aucune connaissance technique n'est requise (prise en main ≈ 10 minutes).</p>
             </section>
-            {[
+            {(P.lectureSeule ? [
+              ["1. Votre accès en consultation", "Votre profil (" + roleActif + ") vous donne un accès en lecture seule aux projets dont votre organisation est promoteur ou opérateur. Vous consultez les évaluations, les suivis et les documents, sans pouvoir les modifier — la saisie est assurée par les équipes du FDFP."],
+              ["2. Tableau de bord", "Vue d'ensemble de vos projets : nombre d'apprenants, score moyen MIP, radar des 5 dimensions, comparaison par secteur. Les chiffres sont recalculés en continu à partir des évaluations saisies par le FDFP."],
+              ["3. Lire une évaluation", "Ouvrez un projet depuis la page Projets pour consulter sa fiche : score global (0-100 %), niveau (Insuffisant / En développement / Satisfaisant / Excellent), détail des 5 dimensions et des 23 indicateurs notés de 0 à 4."],
+              ["4. Suivi post-formation", "Chaque projet comporte 3 jalons (M+3, M+6, M+12) : vous suivez leur état (programmé, effectué, en retard), lisez les observations de terrain et consultez les documents joints en cliquant dessus (visionneuse plein écran)."],
+              ["5. Exports", "Le bouton Fiche PDF génère la fiche officielle d'évaluation d'un projet (avec les images et PDF joints en annexe) ; l'export Excel produit la synthèse de vos projets. Ces documents sont partageables en interne."],
+              ["6. Besoin d'une correction ?", "Si une information vous semble inexacte (score, échéance, document), contactez votre interlocuteur FDFP ou l'administrateur de la plateforme : lui seul peut modifier les données."],
+            ] : [
               ["1. Démarrer", "Créez votre compte (nom, organisation, email, mot de passe), attendez l'activation par l'administrateur lead qui vous attribue un rôle, puis connectez-vous. Le tout premier compte créé devient automatiquement Administrateur lead."],
               ["2. Comptes & rôles", "Cinq niveaux d'accès : Administrateur lead (tous les droits, distribue les accès) ; Administrateur FDFP (pilotage global, validation, configuration) ; Agent FDFP (évaluation MIP-PPA, suivis, exports) ; Promoteur (consultation en lecture seule de l'ensemble du portefeuille) ; Opérateur (saisie des indicateurs pédagogiques et suivi des apprenants). Les rôles sont protégés côté serveur : aucun utilisateur ne peut s'auto-attribuer un accès."],
               ["3. Gérer les projets", "Créez une formation (intitulé, entreprise bénéficiaire, secteur, région, apprenants, budget FCFA), suivez son statut (Planifiée / En cours / Terminée), puis cliquez dessus pour ouvrir sa fiche d'évaluation."],
@@ -1375,7 +1412,7 @@ export default function MipPpaApp() {
               ["6. Tableaux de bord & référentiel", "Le tableau de bord offre la vision consolidée (formations, apprenants, score moyen, radar des 5 dimensions, comparaison par secteur). L'administrateur lead peut ajouter, modifier ou supprimer dimensions et indicateurs ; la somme des pondérations doit rester à 100 %. Un bouton permet de restaurer le référentiel MIP-PPA d'origine."],
               ["7. Alertes", "Deux événements remontent automatiquement : formations dont le score global est inférieur à 40 %, et suivis post-formation en retard sur leur échéance."],
               ["8. Exports PDF & Excel", "PDF : fiche d'évaluation individuelle par formation (comités de pilotage, transmission aux entreprises). Excel : synthèse globale du portefeuille pour le reporting institutionnel."],
-            ].map(([t, txt]) => (
+            ]).map(([t, txt]) => (
               <section key={t} className="bg-white rounded-2xl border border-stone-200 p-6">
                 <h3 className="font-bold mb-2">{t}</h3>
                 <p className="text-sm text-stone-600 leading-relaxed">{txt}</p>
