@@ -107,8 +107,8 @@ const SUIVIS_DEMO = [
 // ⬇⬇ COLLEZ ICI LES DEUX CLÉS DE VOTRE PROJET (Settings → API) ⬇⬇
 // La clé « anon public » est conçue pour être publique : la sécurité est
 // assurée par les règles installées dans la base (supabase-installation.sql).
-const SUPABASE_URL_INTEGREE = "";   // ex. "https://xxxxxxxx.supabase.co"
-const SUPABASE_CLE_INTEGREE = "";   // ex. "eyJhbGciOiJIUzI1NiIs..."
+const SUPABASE_URL_INTEGREE = "https://reoxoigrfeaadfpwvjxo.supabase.co";
+const SUPABASE_CLE_INTEGREE = "sb_publishable_ffjmtgfzAZ9eS_1w8FAChw_1fUOipUC";
 // ⬆⬆ Une fois remplies, l'écran de configuration disparaît pour TOUS les
 // appareils. (Laissées vides, l'app se rabat sur la saisie locale des clés.)
 
@@ -296,7 +296,7 @@ function CadreAccueil({ enfants }) {
         <LogoFDFP h={34} />
         <div>
           <div className="text-white font-bold text-lg leading-tight">FDFP · MIP-PPA</div>
-          <div className="text-sky-200 text-sm">Suivi des formations IAA</div>
+          <div className="text-sky-200 text-sm">Suivi des formations agro-industrielles</div>
         </div>
       </div>
       {enfants}
@@ -665,12 +665,41 @@ export default function MipPpaApp() {
       doc.setFontSize(8.8);
       suivisF.forEach((s) => {
         (s.docs || []).forEach((d) => {
-          sautSiBesoin(8);
-          doc.setTextColor(45, 45, 45); doc.setFont("helvetica", "normal");
-          doc.text(nettoyerPdf(`${s.jalon} - ${d.nom} (${(d.taille / 1024).toFixed(0)} Ko, ajoute le ${d.date})`), M + 2, y); y += 5;
-          if (d.type && d.type.startsWith("image/")) {
-            sautSiBesoin(40);
-            try { doc.addImage(d.data, undefined, M + 2, y, 52, 36); y += 40; } catch (e) {}
+          const estImage = d.type && d.type.startsWith("image/");
+          if (estImage) {
+            // L'image est incorporee en pleine page (largeur max, ratio conserve)
+            sautSiBesoin(14);
+            doc.setTextColor(45, 45, 45); doc.setFont("helvetica", "bold");
+            doc.text(nettoyerPdf(`${s.jalon} - ${d.nom}`), M + 2, y); y += 5;
+            doc.setFont("helvetica", "normal"); doc.setTextColor(...gris); doc.setFontSize(7.5);
+            doc.text(nettoyerPdf(`${(d.taille / 1024).toFixed(0)} Ko - ajoute le ${d.date}`), M + 2, y); y += 4;
+            doc.setFontSize(8.8);
+            try {
+              const props = doc.getImageProperties(d.data);
+              const largeurMax = W - 2 * M - 4;
+              const hauteur = Math.min(150, largeurMax * props.height / props.width);
+              const largeur = hauteur * props.width / props.height;
+              sautSiBesoin(hauteur + 4);
+              doc.addImage(d.data, props.fileType || "JPEG", M + 2, y, largeur, hauteur);
+              doc.setDrawColor(220, 220, 220); doc.rect(M + 2, y, largeur, hauteur);
+              y += hauteur + 6;
+            } catch (e) {
+              doc.setTextColor(190, 40, 40); doc.text(nettoyerPdf("[image illisible]"), M + 2, y); y += 6;
+            }
+          } else {
+            // PDF / Word / Excel : non incorporables dans un PDF -> fiche descriptive claire
+            sautSiBesoin(16);
+            doc.setDrawColor(210, 210, 210); doc.setFillColor(248, 248, 246);
+            doc.roundedRect(M + 2, y - 3, W - 2 * M - 4, 13, 2, 2, "FD");
+            doc.setTextColor(45, 45, 45); doc.setFont("helvetica", "bold");
+            doc.text(nettoyerPdf(`${s.jalon} - ${d.nom}`), M + 6, y + 2);
+            doc.setFont("helvetica", "normal"); doc.setTextColor(...gris); doc.setFontSize(7.5);
+            const typeLisible = (d.type || "").includes("pdf") ? "Document PDF"
+              : (d.type || "").includes("word") || d.nom.match(/\.docx?$/i) ? "Document Word"
+              : (d.type || "").includes("sheet") || d.nom.match(/\.xlsx?$/i) ? "Classeur Excel" : "Document";
+            doc.text(nettoyerPdf(`${typeLisible} - ${(d.taille / 1024).toFixed(0)} Ko - ajoute le ${d.date} - joint dans la plateforme`), M + 6, y + 6.5);
+            doc.setFontSize(8.8);
+            y += 15;
           }
         });
         if (s.note) {
@@ -700,7 +729,7 @@ export default function MipPpaApp() {
     ...(P.users ? [{ section: "Administration", items: [["users", "utilisateurs", "Utilisateurs & rôles"]] }] : []),
   ];
   const titres = {
-    dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des formations PPA dans les IAA"],
+    dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des formations PPA dans l'agro-industrie"],
     formations: ["Projets", "Portefeuille des projets de formation financés par le FDFP"],
     evaluation: ["Évaluation", fEval ? fEval.titre : "Sélectionnez une formation à évaluer"],
     suivi: ["Suivi post-formation", "Évaluations à 3, 6 et 12 mois — impact et durabilité"],
@@ -750,7 +779,7 @@ export default function MipPpaApp() {
           </div>
           <div>
             <div className="text-white font-bold leading-tight">MIP-PPA</div>
-            <div className="text-xs text-stone-400">Suivi des formations IAA</div>
+            <div className="text-xs text-stone-400">Suivi des formations agro-industrielles</div>
           </div>
         </div>
         <nav className="flex-1 px-3 space-y-5 overflow-y-auto pb-4">
@@ -897,7 +926,7 @@ export default function MipPpaApp() {
                 <label className="text-sm md:col-span-2">Intitulé de la formation
                   <input value={nouvelle.titre} onChange={(e) => setNouvelle({ ...nouvelle, titre: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" placeholder="Ex. Bonnes pratiques de décorticage du cajou" />
                 </label>
-                <label className="text-sm">IAA bénéficiaire
+                <label className="text-sm">Entreprise bénéficiaire
                   <input value={nouvelle.entreprise} onChange={(e) => setNouvelle({ ...nouvelle, entreprise: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" />
                 </label>
                 <label className="text-sm">Secteur
@@ -1243,7 +1272,7 @@ export default function MipPpaApp() {
             {[
               ["1. Démarrer", "Créez votre compte (nom, organisation, email, mot de passe), attendez l'activation par l'administrateur lead qui vous attribue un rôle, puis connectez-vous. Le tout premier compte créé devient automatiquement Administrateur lead."],
               ["2. Comptes & rôles", "Cinq niveaux d'accès : Administrateur lead (tous les droits, distribue les accès) ; Administrateur FDFP (pilotage global, validation, configuration) ; Agent FDFP (évaluation MIP-PPA, suivis, exports) ; Référent entreprise (auto-évaluation, consultation de ses formations) ; Formateur (indicateurs pédagogiques et suivi à 3 mois). Les rôles sont protégés côté serveur : aucun utilisateur ne peut s'auto-attribuer un accès."],
-              ["3. Gérer les formations PPA", "Créez une formation (intitulé, IAA bénéficiaire, secteur IAA (liste gérée par l'administrateur lead), région, apprenants, budget FCFA), suivez son statut (Planifiée / En cours / Terminée), puis cliquez dessus pour ouvrir sa fiche d'évaluation."],
+              ["3. Gérer les projets", "Créez une formation (intitulé, entreprise bénéficiaire, secteur, région, apprenants, budget FCFA), suivez son statut (Planifiée / En cours / Terminée), puis cliquez dessus pour ouvrir sa fiche d'évaluation."],
               ["4. Évaluer (modèle MIP-PPA)", "Le modèle mesure la valeur réelle d'une formation à travers 5 dimensions et 23 indicateurs notés de 0 à 4. Les indicateurs non encore mesurables peuvent rester vides ; le score se calcule automatiquement et l'enregistrement est instantané."],
               ["5. Suivi à 3, 6 et 12 mois", "Chaque formation déclenche automatiquement 3 points de suivi : à 3 mois (transfert des acquis au poste), 6 mois (effets organisationnels mesurables) et 12 mois (pérennité et retour sur investissement). Les jalons sont regroupés en 4 piles : En retard, À faire sous 14 j, Programmés, Effectués. Ces suivis alimentent directement les dimensions Impact organisationnel et Durabilité des compétences."],
               ["6. Tableaux de bord & référentiel", "Le tableau de bord offre la vision consolidée (formations, apprenants, score moyen, radar des 5 dimensions, comparaison par secteur). L'administrateur lead peut ajouter, modifier ou supprimer dimensions et indicateurs ; la somme des pondérations doit rester à 100 %. Un bouton permet de restaurer le référentiel MIP-PPA d'origine."],
