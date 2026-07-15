@@ -191,10 +191,10 @@ function Icone({ n, t = 18, className = "" }) {
 const DESCR_NAV = {
   dashboard: "Vision consolidée du portefeuille : scores, radar, secteurs",
   formations: "Portefeuille des formations financées par le FDFP",
-  evaluation: "Noter une formation sur les 5 dimensions et 23 indicateurs",
+  evaluation: "Noter un projet sur les 5 dimensions et 23 indicateurs",
   suivi: "Jalons M+3 / M+6 / M+12 : notes, documents, échéances",
   indicateurs: "Référentiel MIP-PPA : dimensions, pondérations, indicateurs",
-  alertes: "Formations sous-performantes et suivis en retard",
+  alertes: "Projets de formation de type apprentissage sous-performantes et suivis en retard",
   exports: "Fiches PDF officielles et tableau Excel consolidé",
   guide: "Documentation complète de la plateforme",
   users: "Activer les comptes et attribuer les rôles",
@@ -434,16 +434,43 @@ function EcranConnexion() {
 // ================= APPLICATION ===================================
 export default function MipPpaApp() {
   const [page, setPage] = useState("dashboard");
-  const [referentiel, setReferentielBrut] = useState(() => lireStock("mip-ppa-referentiel", REFERENTIEL_DEFAUT));
-  const [formations, setFormationsBrut] = useState(() => lireStock("mip-ppa-formations", FORMATIONS_DEMO));
-  const [suivis, setSuivisBrut] = useState(() => lireStock("mip-ppa-suivis", SUIVIS_DEMO));
-  const setReferentiel = (fn) => setReferentielBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-referentiel", n); return n; });
-  const setFormations = (fn) => setFormationsBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-formations", n); return n; });
-  const setSuivis = (fn) => setSuivisBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-suivis", n); return n; });
-  const [secteurs, setSecteursBrut] = useState(() => lireStock("mip-ppa-secteurs", SECTEURS_DEFAUT));
-  const [phases, setPhasesBrut] = useState(() => lireStock("mip-ppa-phases", ["À la conception", "En fin de formation", "Suivi post-formation (3 / 6 / 12 mois)"]));
-  const setPhases = (fn) => setPhasesBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-phases", n); return n; });
-  const setSecteurs = (fn) => setSecteursBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-secteurs", n); return n; });
+  // Donnees metier centralisees dans Supabase (phase 2)
+  const [referentiel, setReferentielBrut] = useState(REFERENTIEL_DEFAUT);
+  const [formations, setFormationsBrut] = useState([]);
+  const [suivis, setSuivisBrut] = useState([]);
+  const [secteurs, setSecteursBrut] = useState(SECTEURS_DEFAUT);
+  const [phases, setPhasesBrut] = useState(["À la conception", "En fin de formation", "Suivi post-formation (3 / 6 / 12 mois)"]);
+  const [chargementData, setChargementData] = useState(true);
+
+  // --- Ecriture Supabase : projets (upsert individuel) ---
+  const projetVersRow = (f) => ({ id: f.id, titre: f.titre || "", promoteur: f.entreprise || f.promoteur || "", operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", secteur: f.filiere || f.secteur || "", region: f.region || "", apprenants: Number(f.apprenants) || 0, budget: Number(f.budget) || 0, statut: f.statut || "Planifiée", notes: f.notes || {}, maj_le: new Date().toISOString() });
+  const rowVersProjet = (r) => ({ id: r.id, titre: r.titre, entreprise: r.promoteur, operateur: r.operateur, beneficiaire: r.beneficiaire, filiere: r.secteur, region: r.region, apprenants: r.apprenants, budget: r.budget, statut: r.statut, notes: r.notes || {} });
+  const suiviVersRow = (s) => ({ id: s.id, projet_id: s.formationId, jalon: s.jalon, echeance: s.echeance || null, statut: s.statut || "programmé", note: s.note || "", docs: s.docs || [], maj_le: new Date().toISOString() });
+  const rowVersSuivi = (r) => ({ id: r.id, formationId: r.projet_id, jalon: r.jalon, echeance: r.echeance, statut: r.statut, note: r.note || "", docs: r.docs || [] });
+
+  // Les setters gardent la meme signature qu'avant, mais propagent vers Supabase
+  const setFormations = (fn) => setFormationsBrut((v) => {
+    const n = typeof fn === "function" ? fn(v) : fn;
+    if (sb) {
+      const avantIds = new Set(v.map((x) => x.id)), apresIds = new Set(n.map((x) => x.id));
+      n.forEach((f) => { const a = v.find((x) => x.id === f.id); if (!a || JSON.stringify(a) !== JSON.stringify(f)) sb.from("projets").upsert(projetVersRow(f)).then(({ error }) => error && console.warn(error.message)); });
+      v.forEach((f) => { if (!apresIds.has(f.id)) sb.from("projets").delete().eq("id", f.id).then(() => {}); });
+    }
+    return n;
+  });
+  const setSuivis = (fn) => setSuivisBrut((v) => {
+    const n = typeof fn === "function" ? fn(v) : fn;
+    if (sb) {
+      const apresIds = new Set(n.map((x) => x.id));
+      n.forEach((s) => { const a = v.find((x) => x.id === s.id); if (!a || JSON.stringify(a) !== JSON.stringify(s)) sb.from("suivis").upsert(suiviVersRow(s)).then(({ error }) => error && console.warn(error.message)); });
+      v.forEach((s) => { if (!apresIds.has(s.id)) sb.from("suivis").delete().eq("id", s.id).then(() => {}); });
+    }
+    return n;
+  });
+  const sauverConfig = (champ, valeur) => { if (sb) sb.from("configuration").update({ [champ]: valeur, maj_le: new Date().toISOString() }).eq("id", 1).then(({ error }) => error && console.warn(error.message)); };
+  const setReferentiel = (fn) => setReferentielBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; sauverConfig("referentiel", n); return n; });
+  const setSecteurs = (fn) => setSecteursBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; sauverConfig("secteurs", n); return n; });
+  const setPhases = (fn) => setPhasesBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; sauverConfig("phases", n); return n; });
   const [comptes, setComptes] = useState([]);          // liste chargée depuis Supabase (page Utilisateurs)
   const [session, setSession] = useState(null);         // { id, email, nom, org, role }
   const [chargementAuth, setChargementAuth] = useState(true);
@@ -487,6 +514,69 @@ export default function MipPpaApp() {
   const monCompte = session;
   useEffect(() => { if (session && !P.pages.includes(page)) setPage(P.pages[0]); }, [roleActif, session]); // redirection selon le rôle
   useEffect(() => { if (page === "users" && P.users && sb) chargerComptes(); }, [page, roleActif]);
+
+  // --- Chargement initial des donnees metier depuis Supabase + temps reel ---
+  const chargerDonnees = async () => {
+    if (!sb) { setChargementData(false); return; }
+    try {
+      // Configuration partagee (referentiel / secteurs / phases)
+      const { data: cfg } = await sb.from("configuration").select("*").eq("id", 1).maybeSingle();
+      if (cfg) {
+        if (Array.isArray(cfg.referentiel) && cfg.referentiel.length) setReferentielBrut(cfg.referentiel);
+        else sauverConfig("referentiel", REFERENTIEL_DEFAUT); // 1re initialisation
+        if (Array.isArray(cfg.secteurs) && cfg.secteurs.length) setSecteursBrut(cfg.secteurs);
+        else sauverConfig("secteurs", SECTEURS_DEFAUT);
+        if (Array.isArray(cfg.phases) && cfg.phases.length) setPhasesBrut(cfg.phases);
+        else sauverConfig("phases", ["À la conception", "En fin de formation", "Suivi post-formation (3 / 6 / 12 mois)"]);
+      }
+      // Projets + suivis
+      const { data: projs } = await sb.from("projets").select("*").order("cree_le");
+      const { data: suivs } = await sb.from("suivis").select("*");
+      let listeProjets = (projs || []).map(rowVersProjet);
+      let listeSuivis = (suivs || []).map(rowVersSuivi);
+      // Amorçage : si la base est vide ET qu'on est admin, injecter les donnees de demo
+      if (!listeProjets.length && est_admin_amorcage()) {
+        for (const f of FORMATIONS_DEMO) { await sb.from("projets").upsert(projetVersRow(f)); }
+        for (const s of SUIVIS_DEMO) { await sb.from("suivis").upsert(suiviVersRow(s)); }
+        listeProjets = FORMATIONS_DEMO.map((f) => ({ ...f }));
+        listeSuivis = SUIVIS_DEMO.map((s) => ({ ...s }));
+      }
+      setFormationsBrut(listeProjets);
+      setSuivisBrut(listeSuivis);
+    } catch (e) { console.warn("Chargement donnees:", e.message); }
+    setChargementData(false);
+  };
+  const est_admin_amorcage = () => ["Administrateur lead", "Administrateur FDFP"].includes(roleActif);
+
+  useEffect(() => {
+    if (!session || roleActif === "En attente d'activation") return;
+    chargerDonnees();
+    if (!sb) return;
+    // Temps reel : quand un autre utilisateur modifie, on recharge
+    const canal = sb.channel("mip-ppa-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "projets" }, () => rechargerLeger())
+      .on("postgres_changes", { event: "*", schema: "public", table: "suivis" }, () => rechargerLeger())
+      .on("postgres_changes", { event: "*", schema: "public", table: "configuration" }, () => rechargerLeger())
+      .subscribe();
+    return () => { sb.removeChannel(canal); };
+  }, [session, roleActif]);
+
+  // Rechargement silencieux (declenche par le temps reel des autres utilisateurs)
+  let rechargeEnCours = false;
+  const rechargerLeger = async () => {
+    if (!sb || rechargeEnCours) return; rechargeEnCours = true;
+    setTimeout(async () => {
+      try {
+        const { data: cfg } = await sb.from("configuration").select("*").eq("id", 1).maybeSingle();
+        if (cfg) { if (Array.isArray(cfg.referentiel) && cfg.referentiel.length) setReferentielBrut(cfg.referentiel); if (Array.isArray(cfg.secteurs)) setSecteursBrut(cfg.secteurs); if (Array.isArray(cfg.phases)) setPhasesBrut(cfg.phases); }
+        const { data: projs } = await sb.from("projets").select("*").order("cree_le");
+        const { data: suivs } = await sb.from("suivis").select("*");
+        setFormationsBrut((projs || []).map(rowVersProjet));
+        setSuivisBrut((suivs || []).map(rowVersSuivi));
+      } catch (e) {}
+      rechargeEnCours = false;
+    }, 400);
+  };
   const [nouvelle, setNouvelle] = useState({ titre: "", entreprise: "", operateur: "", beneficiaire: "", filiere: secteurs[0] || "Autre agro-industrie", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
   const [toast, setToast] = useState("");
   const notif = (m) => { setToast(m); setTimeout(() => setToast(""), 2500); };
@@ -868,6 +958,9 @@ export default function MipPpaApp() {
     return <EcranAttente session={session}
       surActualiser={() => sb.auth.getUser().then(({ data }) => data.user && chargerProfil(data.user))}
       surDeconnexion={() => { sb.auth.signOut(); setSession(null); }} />;
+  }
+  if (chargementData) {
+    return <CadreAccueil enfants={<div className="text-sky-100 text-sm page-anim">Chargement des données de la plateforme…</div>} />;
   }
 
   // =================== RENDU =====================================
