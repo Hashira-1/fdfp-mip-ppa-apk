@@ -73,19 +73,19 @@ const REFERENTIEL_DEFAUT = [
 const FORMATIONS_DEMO = [
   {
     id: "f1", titre: "Maîtrise HACCP en ligne de conditionnement cacao",
-    entreprise: "CocoaPro Côte d'Ivoire", filiere: "Cacao-Café", region: "Abidjan",
+    entreprise: "CocoaPro Côte d'Ivoire", operateur: "Cabinet AgroForm CI", beneficiaire: "Coopérative CAYAT", filiere: "Cacao-Café", region: "Abidjan",
     apprenants: 18, budget: 12500000, statut: "Terminée",
     notes: { P1: 4, P2: 3, P3: 4, P4: 4, EP1: 3, EP2: 3, EP3: 4, EP4: 4, EP5: 3, EP6: 4, EE1: 3, EE2: 3, EE3: 4, EE4: 3, IO1: 3, IO2: 3, IO3: 4, IO4: 3, IO5: 3, DC1: 3, DC2: 2, DC3: 3, DC4: 3 },
   },
   {
     id: "f2", titre: "Conduite de séchoir industriel — fruits tropicaux",
-    entreprise: "Tropic'Or SARL", filiere: "Fruits & Légumes", region: "Yamoussoukro",
+    entreprise: "Tropic'Or SARL", operateur: "Institut IFCA", beneficiaire: "Tropic'Or SARL", filiere: "Fruits & Légumes", region: "Yamoussoukro",
     apprenants: 9, budget: 6800000, statut: "Terminée",
     notes: { P1: 3, P2: 2, P3: 3, P4: 2, EP1: 2, EP2: 2, EP3: 3, EP4: 4, EP5: 2, EP6: 2, EE1: 2, EE2: 3, EE3: 2, EE4: 2, IO1: 2, IO2: 2, IO3: 3, IO4: 2, IO5: 2, DC1: 3, DC2: 2, DC3: 2, DC4: 2 },
   },
   {
     id: "f3", titre: "Sécurité alimentaire & traçabilité ISO 22000",
-    entreprise: "LaitiAfrique", filiere: "Lait & Dérivés", region: "San-Pédro",
+    entreprise: "LaitiAfrique", operateur: "Cabinet AgroForm CI", beneficiaire: "LaitiAfrique", filiere: "Lait & Dérivés", region: "San-Pédro",
     apprenants: 24, budget: 15200000, statut: "Terminée",
     notes: { P1: 4, P2: 4, P3: 4, P4: 4, EP1: 4, EP2: 3, EP3: 4, EP4: 4, EP5: 4, EP6: 4, EE1: 3, EE2: 3, EE3: 4, EE4: 3, IO1: 4, IO2: 3, IO3: 4, IO4: 4, IO5: 3, DC1: 3, DC2: 3, DC3: 4, DC4: 3 },
   },
@@ -131,7 +131,7 @@ function ecrireStock(cle, val) {
   try { window.localStorage.setItem(cle, JSON.stringify(val)); } catch (e) {}
 }
 
-const ROLES = ["Administrateur lead", "Administrateur FDFP", "Agent FDFP", "Référent entreprise", "Formateur", "En attente d'activation"];
+const ROLES = ["Administrateur lead", "Administrateur FDFP", "Agent FDFP", "Promoteur", "Opérateur", "En attente d'activation"];
 const SECTEURS_DEFAUT = ["Cacao-Café", "Fruits & Légumes", "Lait & Dérivés", "Anacarde", "Céréales", "Autre agro-industrie"];
 
 // ----------------- MATRICE DES PERMISSIONS PAR RÔLE -------------
@@ -139,8 +139,8 @@ const PERMS = {
   "Administrateur lead":     { pages: ["dashboard", "formations", "evaluation", "suivi", "indicateurs", "alertes", "exports", "guide", "users"], evalDims: "toutes", creerFormation: true,  editerFormation: true,  supprimerFormation: true,  referentiel: true,  secteurs: true,  users: true,  exports: true,  suivisJalons: "tous", suiviValider: true,  portee: "tous" },
   "Administrateur FDFP":     { pages: ["dashboard", "formations", "evaluation", "suivi", "indicateurs", "alertes", "exports", "guide"],          evalDims: "toutes", creerFormation: true,  editerFormation: true,  supprimerFormation: false, referentiel: true,  secteurs: false, users: false, exports: true,  suivisJalons: "tous", suiviValider: true,  portee: "tous" },
   "Agent FDFP":              { pages: ["dashboard", "formations", "evaluation", "suivi", "indicateurs", "alertes", "exports", "guide"],          evalDims: "toutes", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, exports: true,  suivisJalons: "tous", suiviValider: true,  portee: "tous" },
-  "Référent entreprise":     { pages: ["dashboard", "formations", "evaluation", "suivi", "exports", "guide"],                                    evalDims: "toutes", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, exports: true,  suivisJalons: "tous", suiviValider: false, portee: "entreprise" },
-  "Formateur":               { pages: ["formations", "evaluation", "suivi", "indicateurs", "guide"],                                             evalDims: "EP",     creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, exports: false, suivisJalons: "M+3",  suiviValider: true,  portee: "tous" },
+  "Promoteur":               { pages: ["dashboard", "formations", "evaluation", "suivi", "exports", "guide"],                          evalDims: "aucune", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, exports: true,  suivisJalons: "tous", suiviValider: false, portee: "entreprise", lectureSeule: true },
+  "Opérateur":               { pages: ["dashboard", "formations", "evaluation", "suivi", "guide"],                                     evalDims: "aucune", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, exports: false, suivisJalons: "tous", suiviValider: false, portee: "entreprise", lectureSeule: true },
   "En attente d'activation": { pages: ["guide"], evalDims: null, creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, exports: false, suivisJalons: "aucun", suiviValider: false, portee: "aucune" },
 };
 const AUJOURDHUI = new Date("2026-07-13");
@@ -487,16 +487,44 @@ export default function MipPpaApp() {
   const monCompte = session;
   useEffect(() => { if (session && !P.pages.includes(page)) setPage(P.pages[0]); }, [roleActif, session]); // redirection selon le rôle
   useEffect(() => { if (page === "users" && P.users && sb) chargerComptes(); }, [page, roleActif]);
-  const [nouvelle, setNouvelle] = useState({ titre: "", entreprise: "", filiere: secteurs[0] || "Autre agro-industrie", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
+  const [nouvelle, setNouvelle] = useState({ titre: "", entreprise: "", operateur: "", beneficiaire: "", filiere: secteurs[0] || "Autre agro-industrie", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
   const [toast, setToast] = useState("");
   const notif = (m) => { setToast(m); setTimeout(() => setToast(""), 2500); };
+  const [emailInvite, setEmailInvite] = useState("");
+  const [roleInvite, setRoleInvite] = useState("Agent FDFP");
+  const urlApp = (typeof window !== "undefined" && window.location && window.location.origin) ? window.location.origin : "https://fdfp-mip-ppa-apk.vercel.app";
+  const envoyerInvitation = () => {
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailInvite.trim())) { notif("Saisissez un email valide"); return; }
+    const sujet = "Invitation - Plateforme FDFP MIP-PPA";
+    const corps = [
+      "Bonjour,",
+      "",
+      "Vous etes invite(e) a rejoindre la plateforme FDFP MIP-PPA (suivi des formations PPA dans l'agro-industrie).",
+      "",
+      "1. Rendez-vous sur : " + urlApp,
+      "2. Cliquez sur \"Creer un compte\" et renseignez vos informations (nom, organisation, email, mot de passe).",
+      "3. Confirmez votre email via le lien qui vous sera envoye.",
+      "4. Un administrateur activera votre acces (role prevu : " + roleInvite + ").",
+      "",
+      "A bientot sur la plateforme.",
+      "L'equipe FDFP",
+    ].join("\n");
+    const lien = "mailto:" + encodeURIComponent(emailInvite.trim())
+      + "?subject=" + encodeURIComponent(sujet)
+      + "&body=" + encodeURIComponent(corps);
+    window.location.href = lien;
+    notif("Ouverture de votre messagerie…");
+  };
 
   const admin = P.referentiel;
 
   // ---------- Portée des données selon le rôle ----------
   const formationsVisibles = useMemo(() =>
     P.portee === "entreprise"
-      ? formations.filter((f) => f.entreprise.trim().toLowerCase() === (monCompte?.org || "").trim().toLowerCase())
+      ? formations.filter((f) => {
+          const moi = (monCompte?.org || "").trim().toLowerCase();
+          return moi && ((f.entreprise || "").trim().toLowerCase() === moi || (f.operateur || "").trim().toLowerCase() === moi);
+        })
       : P.portee === "tous" ? formations : [],
     [formations, P, monCompte]);
 
@@ -535,11 +563,11 @@ export default function MipPpaApp() {
     setFormations((fs) => fs.map((f) => f.id === fid ? { ...f, notes: { ...f.notes, [indId]: f.notes[indId] === note ? undefined : note } } : f));
   };
   const ajouterFormation = () => {
-    if (!nouvelle.titre.trim() || !nouvelle.entreprise.trim()) { notif("Renseignez au minimum l'intitulé et l'entreprise"); return; }
+    if (!nouvelle.titre.trim() || !nouvelle.entreprise.trim()) { notif("Renseignez au minimum l'intitulé et le promoteur"); return; }
     if (editionId) {
       setFormations((fs) => fs.map((f) => f.id === editionId ? { ...f, ...nouvelle } : f));
       setEditionId(null); setFormOuvert(false);
-      setNouvelle({ titre: "", entreprise: "", filiere: secteurs[0] || "Autre agro-industrie", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
+      setNouvelle({ titre: "", entreprise: "", operateur: "", beneficiaire: "", filiere: secteurs[0] || "Autre agro-industrie", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
       notif("Formation mise à jour"); return;
     }
     const id = "f" + Date.now();
@@ -549,11 +577,11 @@ export default function MipPpaApp() {
       setSuivis((ss) => [...ss, { id: "s" + Date.now() + i, formationId: id, jalon: j, echeance: d.toISOString().slice(0, 10), statut: "programmé", note: "", docs: [] }]);
     });
     setFormOuvert(false);
-    setNouvelle({ titre: "", entreprise: "", filiere: secteurs[0] || "Autre agro-industrie", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
+    setNouvelle({ titre: "", entreprise: "", operateur: "", beneficiaire: "", filiere: secteurs[0] || "Autre agro-industrie", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
     notif("Formation créée — 3 suivis (M+3/M+6/M+12) planifiés");
   };
   const editerFormation = (f) => {
-    setNouvelle({ titre: f.titre, entreprise: f.entreprise, filiere: f.filiere, region: f.region, apprenants: f.apprenants, budget: f.budget, statut: f.statut });
+    setNouvelle({ titre: f.titre, entreprise: f.entreprise, operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", filiere: f.filiere, region: f.region, apprenants: f.apprenants, budget: f.budget, statut: f.statut });
     setEditionId(f.id); setFormOuvert(true); setPage("formations");
   };
 
@@ -569,11 +597,33 @@ export default function MipPpaApp() {
     telecharger("MIP-PPA_export_consolide.csv", [entetes.join(";"), ...lignes].join("\n"));
     notif("Export Excel (CSV) téléchargé");
   };
-  const nettoyerPdf = (t) => String(t == null ? "" : t)
-    .replace(/\u2019/g, "'").replace(/[\u2013\u2014]/g, "-")
-    .replace(/[\u201C\u201D]/g, '"').replace(/\u2026/g, "...")
-    .replace(/\u00A0/g, " ").replace(/\u0153/g, "oe").replace(/\u0152/g, "OE");
-  const fichePDF = (f) => {
+  const nettoyerPdf = (t) => {
+    let s = String(t == null ? "" : t);
+    // Ponctuation typographique -> ASCII
+    s = s.replace(/\u2019/g, "'").replace(/\u2018/g, "'")
+         .replace(/[\u2013\u2014]/g, "-").replace(/[\u201C\u201D]/g, '"')
+         .replace(/\u2026/g, "...").replace(/\u00A0/g, " ")
+         .replace(/[\u00B7\u2022]/g, "-"); // point median / puce -> tiret
+    // Accents et ligatures -> lettres de base (la police standard des PDF gere mal l'UTF-8)
+    const map = {
+      "à":"a","â":"a","ä":"a","á":"a","ã":"a","å":"a",
+      "è":"e","é":"e","ê":"e","ë":"e",
+      "ì":"i","î":"i","ï":"i","í":"i",
+      "ò":"o","ô":"o","ö":"o","ó":"o","õ":"o",
+      "ù":"u","û":"u","ü":"u","ú":"u",
+      "ç":"c","ñ":"n","ÿ":"y",
+      "À":"A","Â":"A","Ä":"A","Á":"A",
+      "È":"E","É":"E","Ê":"E","Ë":"E",
+      "Ì":"I","Î":"I","Ï":"I",
+      "Ò":"O","Ô":"O","Ö":"O",
+      "Ù":"U","Û":"U","Ü":"U",
+      "Ç":"C","Ñ":"N",
+      "œ":"oe","Œ":"OE","æ":"ae","Æ":"AE"
+    };
+    s = s.replace(/[^\x00-\x7F]/g, (c) => map[c] || "");
+    return s;
+  };
+  const fichePDF = async (f) => {
     const g = scoreGlobal(referentiel, f.notes);
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const W = 210, M = 16;
@@ -596,7 +646,8 @@ export default function MipPpaApp() {
     doc.setTextColor(20, 20, 20); doc.setFont("helvetica", "bold"); doc.setFontSize(13);
     doc.text(doc.splitTextToSize(nettoyerPdf(f.titre), W - 2 * M), M, y); y += 7 * doc.splitTextToSize(nettoyerPdf(f.titre), W - 2 * M).length;
     doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(...gris);
-    doc.text(nettoyerPdf(`${f.entreprise}  -  ${f.filiere}  -  ${f.region}`), M, y); y += 5.5;
+    doc.text(nettoyerPdf(`Promoteur : ${f.entreprise}  -  ${f.filiere}  -  ${f.region}`), M, y); y += 5.5;
+    if (f.operateur || f.beneficiaire) { doc.text(nettoyerPdf(`${f.operateur ? "Operateur : " + f.operateur : ""}${f.operateur && f.beneficiaire ? "  -  " : ""}${f.beneficiaire ? "Beneficiaire : " + f.beneficiaire : ""}`), M, y); y += 5.5; }
     doc.text(nettoyerPdf(`${f.apprenants} apprenants  -  Budget : ${Number(f.budget).toLocaleString("fr-FR")} FCFA  -  Statut : ${f.statut}`), M, y); y += 9;
 
     // ------ Score global ------
@@ -687,17 +738,18 @@ export default function MipPpaApp() {
               doc.setTextColor(190, 40, 40); doc.text(nettoyerPdf("[image illisible]"), M + 2, y); y += 6;
             }
           } else {
-            // PDF / Word / Excel : non incorporables dans un PDF -> fiche descriptive claire
+            // Encart descriptif (pour tous les non-images) — les PDF seront en plus annexes a la fin
             sautSiBesoin(16);
             doc.setDrawColor(210, 210, 210); doc.setFillColor(248, 248, 246);
             doc.roundedRect(M + 2, y - 3, W - 2 * M - 4, 13, 2, 2, "FD");
             doc.setTextColor(45, 45, 45); doc.setFont("helvetica", "bold");
             doc.text(nettoyerPdf(`${s.jalon} - ${d.nom}`), M + 6, y + 2);
             doc.setFont("helvetica", "normal"); doc.setTextColor(...gris); doc.setFontSize(7.5);
-            const typeLisible = (d.type || "").includes("pdf") ? "Document PDF"
-              : (d.type || "").includes("word") || d.nom.match(/\.docx?$/i) ? "Document Word"
-              : (d.type || "").includes("sheet") || d.nom.match(/\.xlsx?$/i) ? "Classeur Excel" : "Document";
-            doc.text(nettoyerPdf(`${typeLisible} - ${(d.taille / 1024).toFixed(0)} Ko - ajoute le ${d.date} - joint dans la plateforme`), M + 6, y + 6.5);
+            const estPdf = (d.type || "").includes("pdf") || /\.pdf$/i.test(d.nom);
+            const typeLisible = estPdf ? "Document PDF (joint en annexe de cette fiche)"
+              : (d.type || "").includes("word") || d.nom.match(/\.docx?$/i) ? "Document Word (a consulter dans la plateforme)"
+              : (d.type || "").includes("sheet") || d.nom.match(/\.xlsx?$/i) ? "Classeur Excel (a consulter dans la plateforme)" : "Document (a consulter dans la plateforme)";
+            doc.text(nettoyerPdf(`${typeLisible} - ${(d.taille / 1024).toFixed(0)} Ko - ajoute le ${d.date}`), M + 6, y + 6.5);
             doc.setFontSize(8.8);
             y += 15;
           }
@@ -711,6 +763,42 @@ export default function MipPpaApp() {
       });
     }
 
+    pied();
+    // ------ Annexe : fusion des PDF joints, page a page ------
+    const pdfsJoints = [];
+    suivisF.forEach((s) => (s.docs || []).forEach((d) => {
+      if (((d.type || "").includes("pdf") || /\.pdf$/i.test(d.nom)) && d.data) pdfsJoints.push({ jalon: s.jalon, d });
+    }));
+    if (pdfsJoints.length) {
+      try {
+        const { PDFDocument } = await import("https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/+esm");
+        // On recupere le PDF genere par jsPDF, puis on y ajoute les pages des PDF joints
+        const base = await PDFDocument.load(doc.output("arraybuffer"));
+        for (const { jalon, d } of pdfsJoints) {
+          try {
+            const octets = Uint8Array.from(atob(d.data.split(",")[1]), (c) => c.charCodeAt(0));
+            const ext = await PDFDocument.load(octets);
+            // page de garde de l'annexe
+            const garde = base.addPage();
+            const { width, height } = garde.getSize();
+            garde.drawText(nettoyerPdf(`Annexe - ${jalon} - ${d.nom}`), { x: 40, y: height - 60, size: 13 });
+            garde.drawText(nettoyerPdf("Document joint dans la plateforme MIP-PPA"), { x: 40, y: height - 80, size: 9 });
+            const pages = await base.copyPages(ext, ext.getPageIndices());
+            pages.forEach((p) => base.addPage(p));
+          } catch (e) { /* PDF joint illisible : on ignore, l'encart descriptif reste */ }
+        }
+        const octetsFinal = await base.save();
+        const blob = new Blob([octetsFinal], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a"); a.href = url;
+        a.download = `Fiche_MIP-PPA_${f.entreprise.replace(/\s+/g, "_")}.pdf`; a.click();
+        URL.revokeObjectURL(url);
+        notif("Fiche PDF (avec annexes) téléchargée");
+        return;
+      } catch (e) {
+        // pdf-lib indisponible (hors ligne) : on retombe sur le PDF simple
+      }
+    }
     pied();
     doc.save(`Fiche_MIP-PPA_${f.entreprise.replace(/\s+/g, "_")}.pdf`);
     notif("Fiche PDF téléchargée");
@@ -822,6 +910,7 @@ export default function MipPpaApp() {
         </header>
 
         <main key={page + (evalId || "")} className="page-anim flex-1 p-6 space-y-5 max-w-5xl w-full mx-auto">
+          {P.lectureSeule && <div className="rounded-xl px-4 py-2.5 text-sm flex items-center gap-2" style={{ background: "#e0f0fb", color: "#0d3b57" }}><Icone n="oeil" t={16} /> Mode consultation — votre profil ({roleActif}) donne un accès en lecture seule.</div>}
 
           {/* =========== TABLEAU DE BORD =========== */}
           {page === "dashboard" && (<>
@@ -915,19 +1004,25 @@ export default function MipPpaApp() {
               <button onClick={() => { setFormations(FORMATIONS_DEMO); setSuivis(SUIVIS_DEMO); notif("Données démo restaurées"); }}
                 className="text-sm text-stone-600 hover:text-stone-900" title="Restaurer les 3 formations de démonstration"><Icone n="rotation" t={14} /> Données démo</button>
             </div>
-            {P.creerFormation && <button onClick={() => { setEditionId(null); setNouvelle({ titre: "", entreprise: "", filiere: secteurs[0] || "Autre agro-industrie", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" }); setFormOuvert(!formOuvert); }}
+            {P.creerFormation && <button onClick={() => { setEditionId(null); setNouvelle({ titre: "", entreprise: "", operateur: "", beneficiaire: "", filiere: secteurs[0] || "Autre agro-industrie", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" }); setFormOuvert(!formOuvert); }}
               className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm" style={{ background: C.vertFonce }}>
-              + Nouvelle formation
+              + Nouveau projet
             </button>}
 
             {formOuvert && (
               <div className="bg-white rounded-2xl border border-stone-200 p-5 grid md:grid-cols-2 gap-4">
-                <div className="md:col-span-2 font-bold text-stone-800">{editionId ? "Modifier la formation" : "Nouvelle formation"}</div>
-                <label className="text-sm md:col-span-2">Intitulé de la formation
+                <div className="md:col-span-2 font-bold text-stone-800">{editionId ? "Modifier le projet" : "Nouveau projet"}</div>
+                <label className="text-sm md:col-span-2">Intitulé du projet
                   <input value={nouvelle.titre} onChange={(e) => setNouvelle({ ...nouvelle, titre: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" placeholder="Ex. Bonnes pratiques de décorticage du cajou" />
                 </label>
-                <label className="text-sm">Entreprise bénéficiaire
-                  <input value={nouvelle.entreprise} onChange={(e) => setNouvelle({ ...nouvelle, entreprise: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" />
+                <label className="text-sm">Promoteur <span className="text-stone-400">(donne l'accès)</span>
+                  <input value={nouvelle.entreprise} onChange={(e) => setNouvelle({ ...nouvelle, entreprise: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" placeholder="Ex. CocoaPro Côte d'Ivoire" />
+                </label>
+                <label className="text-sm">Opérateur <span className="text-stone-400">(donne l'accès)</span>
+                  <input value={nouvelle.operateur} onChange={(e) => setNouvelle({ ...nouvelle, operateur: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" placeholder="Ex. Cabinet de formation" />
+                </label>
+                <label className="text-sm md:col-span-2">Entreprise bénéficiaire <span className="text-stone-400">(informatif)</span>
+                  <input value={nouvelle.beneficiaire} onChange={(e) => setNouvelle({ ...nouvelle, beneficiaire: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" placeholder="Ex. Coopérative bénéficiaire de la formation" />
                 </label>
                 <label className="text-sm">Secteur
                   <select value={nouvelle.filiere} onChange={(e) => setNouvelle({ ...nouvelle, filiere: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
@@ -963,7 +1058,8 @@ export default function MipPpaApp() {
                 <div key={f.id} className="grid grid-cols-12 items-center px-5 py-4 border-b border-stone-50 hover:bg-stone-50">
                   <div className="col-span-6 pr-3">
                     <div className="font-semibold">{f.titre}</div>
-                    <div className="text-sm text-stone-500">{f.entreprise} · {f.region}</div>
+                    <div className="text-sm text-stone-500">Promoteur : {f.entreprise}{f.operateur ? ` · Opérateur : ${f.operateur}` : ""} · {f.region}</div>
+                    {f.beneficiaire && <div className="text-xs text-stone-400">Bénéficiaire : {f.beneficiaire}</div>}
                   </div>
                   <div className="col-span-2 text-sm">{f.filiere}</div>
                   <div className="col-span-2"><Badge score={scoreGlobal(referentiel, f.notes)} /></div>
@@ -994,15 +1090,16 @@ export default function MipPpaApp() {
               <button onClick={() => setEvalId(null)} className="text-sm text-stone-600 hover:text-stone-900">← Retour</button>
               <div className="flex gap-3">
                 {P.exports && <button onClick={() => fichePDF(fEval)} className="bg-white border border-stone-200 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-50" title="Générer la fiche d'évaluation officielle en PDF"><Icone n="telecharger" t={15} /> Fiche PDF</button>}
-                <button onClick={() => notif("Évaluation enregistrée")} className="text-white px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: C.vertFonce }} title="Enregistrer l'évaluation"><Icone n="disquette" t={15} /> Enregistrer</button>
+                {!P.lectureSeule && <button onClick={() => notif("Évaluation enregistrée")} className="text-white px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: C.vertFonce }} title="Enregistrer l'évaluation"><Icone n="disquette" t={15} /> Enregistrer</button>}
               </div>
             </div>
 
             <section className="rounded-2xl p-6 text-white flex flex-wrap items-start justify-between gap-4" style={{ background: "linear-gradient(120deg,#0e3c60,#2280bf)" }}>
               <div>
-                <div className="text-xs uppercase tracking-wider text-sky-200">{fEval.entreprise}</div>
+                <div className="text-xs uppercase tracking-wider text-sky-200">Promoteur : {fEval.entreprise}</div>
                 <h2 className="text-2xl font-bold mt-1">{fEval.titre}</h2>
                 <div className="text-sm text-sky-100 mt-1">{fEval.filiere} · {fEval.region} · {fEval.apprenants} apprenants</div>
+                {(fEval.operateur || fEval.beneficiaire) && <div className="text-xs text-sky-200 mt-1">{[fEval.operateur ? `Opérateur : ${fEval.operateur}` : "", fEval.beneficiaire ? `Bénéficiaire : ${fEval.beneficiaire}` : ""].filter(Boolean).join(" · ")}</div>}
               </div>
               <div className="text-right">
                 <div className="text-xs uppercase tracking-wider text-sky-200">Score global MIP-PPA</div>
@@ -1028,7 +1125,7 @@ export default function MipPpaApp() {
 
             {referentiel.map((d) => {
               const s = scoreDimension(referentiel, d.id, fEval.notes);
-              const notable = P.evalDims === "toutes" || d.id === P.evalDims;
+              const notable = !P.lectureSeule && (P.evalDims === "toutes" || d.id === P.evalDims);
               return (
                 <section key={d.id} className="bg-white rounded-2xl border border-stone-200 p-5" style={notable ? {} : { opacity: 0.55 }}>
                   <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -1089,8 +1186,8 @@ export default function MipPpaApp() {
                       {(s.docs || []).length > 0 && <div className="text-xs text-sky-700 mt-1"><Icone n="trombone" t={13} /> {s.docs.length} document{s.docs.length > 1 ? "s" : ""} de suivi rattaché{s.docs.length > 1 ? "s" : ""}</div>}
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => setSuiviEdit({ id: s.id, jalon: s.jalon, titreF: s.f.titre + " — " + s.f.entreprise, echeance: s.echeance, note: s.note, docs: s.docs || [] })}
-                        className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50" title="Modifier la date, les observations et les documents"><Icone n="crayon" t={14} /> Notes & date</button>
+                      {!P.lectureSeule && <button onClick={() => setSuiviEdit({ id: s.id, jalon: s.jalon, titreF: s.f.titre + " — " + s.f.entreprise, echeance: s.echeance, note: s.note, docs: s.docs || [] })}
+                        className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50" title="Modifier la date, les observations et les documents"><Icone n="crayon" t={14} /> Notes & date</button>}
                       {P.suiviValider && (s.statut === "programmé"
                         ? <button onClick={() => { setSuivis((ss) => ss.map((x) => x.id === s.id ? { ...x, statut: "effectué" } : x)); notif("Suivi marqué effectué"); }} className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50" title="Valider la réalisation de ce suivi"><Icone n="coche" t={14} /> Marquer effectué</button>
                         : <button onClick={() => setSuivis((ss) => ss.map((x) => x.id === s.id ? { ...x, statut: "programmé" } : x))} className="text-sm text-stone-500 hover:text-stone-800" title="Repasser ce suivi en programmé"><Icone n="rotation" t={14} /> Ré-ouvrir</button>)}
@@ -1271,7 +1368,7 @@ export default function MipPpaApp() {
             </section>
             {[
               ["1. Démarrer", "Créez votre compte (nom, organisation, email, mot de passe), attendez l'activation par l'administrateur lead qui vous attribue un rôle, puis connectez-vous. Le tout premier compte créé devient automatiquement Administrateur lead."],
-              ["2. Comptes & rôles", "Cinq niveaux d'accès : Administrateur lead (tous les droits, distribue les accès) ; Administrateur FDFP (pilotage global, validation, configuration) ; Agent FDFP (évaluation MIP-PPA, suivis, exports) ; Référent entreprise (auto-évaluation, consultation de ses formations) ; Formateur (indicateurs pédagogiques et suivi à 3 mois). Les rôles sont protégés côté serveur : aucun utilisateur ne peut s'auto-attribuer un accès."],
+              ["2. Comptes & rôles", "Cinq niveaux d'accès : Administrateur lead (tous les droits, distribue les accès) ; Administrateur FDFP (pilotage global, validation, configuration) ; Agent FDFP (évaluation MIP-PPA, suivis, exports) ; Promoteur (consultation en lecture seule de l'ensemble du portefeuille) ; Opérateur (saisie des indicateurs pédagogiques et suivi des apprenants). Les rôles sont protégés côté serveur : aucun utilisateur ne peut s'auto-attribuer un accès."],
               ["3. Gérer les projets", "Créez une formation (intitulé, entreprise bénéficiaire, secteur, région, apprenants, budget FCFA), suivez son statut (Planifiée / En cours / Terminée), puis cliquez dessus pour ouvrir sa fiche d'évaluation."],
               ["4. Évaluer (modèle MIP-PPA)", "Le modèle mesure la valeur réelle d'une formation à travers 5 dimensions et 23 indicateurs notés de 0 à 4. Les indicateurs non encore mesurables peuvent rester vides ; le score se calcule automatiquement et l'enregistrement est instantané."],
               ["5. Suivi à 3, 6 et 12 mois", "Chaque formation déclenche automatiquement 3 points de suivi : à 3 mois (transfert des acquis au poste), 6 mois (effets organisationnels mesurables) et 12 mois (pérennité et retour sur investissement). Les jalons sont regroupés en 4 piles : En retard, À faire sous 14 j, Programmés, Effectués. Ces suivis alimentent directement les dimensions Impact organisationnel et Durabilité des compétences."],
@@ -1326,7 +1423,25 @@ export default function MipPpaApp() {
             </section>
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <h3 className="font-bold mb-1"><Icone n="plus" t={16} /> Inviter un nouvel utilisateur</h3>
-              <p className="text-sm text-stone-600">Communiquez l'URL de la plateforme et le lien <b>« Créer un compte »</b> à vos collaborateurs (FDFP, entreprises, formateurs). Dès leur inscription, ils apparaissent ici en statut « En attente » : il vous suffit alors de leur attribuer le bon rôle.</p>
+              <p className="text-sm text-stone-600 mb-4">Saisissez l'email d'un collaborateur : un message d'invitation pré-rempli (avec le lien de la plateforme et les instructions) s'ouvrira dans votre messagerie. Après inscription, il apparaîtra ci-dessus en statut « En attente », prêt à recevoir son rôle.</p>
+              <div className="flex flex-wrap items-end gap-3">
+                <label className="text-sm font-semibold text-stone-800 flex-1 min-w-[220px]">Email du collaborateur
+                  <input type="email" value={emailInvite} onChange={(e) => setEmailInvite(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && envoyerInvitation()}
+                    placeholder="prenom.nom@organisation.ci"
+                    className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
+                </label>
+                <label className="text-sm font-semibold text-stone-800">Rôle prévu <span className="font-normal text-stone-400">(indicatif)</span>
+                  <select value={roleInvite} onChange={(e) => setRoleInvite(e.target.value)}
+                    className="mt-1.5 w-full border border-stone-300 rounded-xl px-3 py-2.5 font-normal bg-white outline-none focus:border-sky-600">
+                    {ROLES.filter((r) => r !== "En attente d'activation").map((r) => <option key={r}>{r}</option>)}
+                  </select>
+                </label>
+                <button onClick={envoyerInvitation} className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm flex items-center gap-1.5" style={{ background: C.vertFonce }}>
+                  <Icone n="telecharger" t={15} /> Envoyer l'invitation
+                </button>
+              </div>
+              <p className="text-xs text-stone-400 mt-3">Le lien communiqué est celui de cette plateforme : <span className="font-mono">{urlApp}</span></p>
             </section>
           </>) : (
             <section className="bg-white rounded-2xl border border-stone-200 p-10 text-center text-stone-500">
