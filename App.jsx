@@ -7,7 +7,7 @@ import {
 } from "recharts";
 
 /* ================================================================
-   FDFP · MIP-PPA — Suivi des Projets Apprentissage dans l'agro-industrie
+   FDFP · MIP-PPA — Suivi des projets de formation de type apprentissage dans l'agro-industrie
    Reconstruction fidèle de l'application (modèle : 5 dimensions,
    23 indicateurs, notes 0–4, suivi post-formation à 3/6/12 mois)
    ================================================================ */
@@ -73,19 +73,19 @@ const REFERENTIEL_DEFAUT = [
 const FORMATIONS_DEMO = [
   {
     id: "f1", titre: "Maîtrise HACCP en ligne de conditionnement cacao",
-    entreprise: "CocoaPro Côte d'Ivoire", operateur: "Cabinet AgroForm CI", beneficiaire: "Coopérative CAYAT", filiere: "Cacao-Café", region: "Abidjan",
+    entreprise: "SACO", operateur: "A.C.A", beneficiaire: "SCINPA", filiere: "Cacao-Café", region: "Abidjan",
     apprenants: 18, budget: 12500000, statut: "Terminée",
     notes: { P1: 4, P2: 3, P3: 4, P4: 4, EP1: 3, EP2: 3, EP3: 4, EP4: 4, EP5: 3, EP6: 4, EE1: 3, EE2: 3, EE3: 4, EE4: 3, IO1: 3, IO2: 3, IO3: 4, IO4: 3, IO5: 3, DC1: 3, DC2: 2, DC3: 3, DC4: 3 },
   },
   {
     id: "f2", titre: "Conduite de séchoir industriel — fruits tropicaux",
-    entreprise: "Tropic'Or SARL", operateur: "Institut IFCA", beneficiaire: "Tropic'Or SARL", filiere: "Fruits & Légumes", region: "Yamoussoukro",
+    entreprise: "AGROCI", operateur: "Emergence", beneficiaire: "AGROCI", filiere: "Fruits & Légumes", region: "Yamoussoukro",
     apprenants: 9, budget: 6800000, statut: "Terminée",
     notes: { P1: 3, P2: 2, P3: 3, P4: 2, EP1: 2, EP2: 2, EP3: 3, EP4: 4, EP5: 2, EP6: 2, EE1: 2, EE2: 3, EE3: 2, EE4: 2, IO1: 2, IO2: 2, IO3: 3, IO4: 2, IO5: 2, DC1: 3, DC2: 2, DC3: 2, DC4: 2 },
   },
   {
     id: "f3", titre: "Sécurité alimentaire & traçabilité ISO 22000",
-    entreprise: "LaitiAfrique", operateur: "Cabinet AgroForm CI", beneficiaire: "LaitiAfrique", filiere: "Lait & Dérivés", region: "San-Pédro",
+    entreprise: "FrieslandCampina", operateur: "Domny", beneficiaire: "FrieslandCampina", filiere: "Lait & Dérivés", region: "San-Pédro",
     apprenants: 24, budget: 15200000, statut: "Terminée",
     notes: { P1: 4, P2: 4, P3: 4, P4: 4, EP1: 4, EP2: 3, EP3: 4, EP4: 4, EP5: 4, EP6: 4, EE1: 3, EE2: 3, EE3: 4, EE4: 3, IO1: 4, IO2: 3, IO3: 4, IO4: 4, IO5: 3, DC1: 3, DC2: 3, DC3: 4, DC4: 3 },
   },
@@ -190,7 +190,7 @@ function Icone({ n, t = 18, className = "" }) {
 // Descriptions affichées au survol des rubriques (info-bulles)
 const DESCR_NAV = {
   dashboard: "Vision consolidée du portefeuille : scores, radar, secteurs",
-  formations: "Portefeuille des projets de formation financés par le FDFP",
+  projets: "Portefeuille des projets de formation financés par le FDFP",
   evaluation: "Noter un projet sur les 5 dimensions et 23 indicateurs",
   suivi: "Jalons M+3 / M+6 / M+12 : notes, documents, échéances",
   indicateurs: "Référentiel MIP-PPA : dimensions, pondérations, indicateurs",
@@ -589,7 +589,7 @@ export default function MipPpaApp() {
     const corps = [
       "Bonjour,",
       "",
-      "Vous etes invite(e) a rejoindre la plateforme FDFP MIP-PPA (suivi des Projets Apprentissage dans l'agro-industrie).",
+      "Vous etes invite(e) a rejoindre la plateforme FDFP MIP-PPA (suivi des projets de formation de type apprentissage dans l'agro-industrie).",
       "",
       "1. Rendez-vous sur : " + urlApp,
       "2. Cliquez sur \"Creer un compte\" et renseignez vos informations (nom, organisation, email, mot de passe).",
@@ -937,10 +937,10 @@ export default function MipPpaApp() {
     ...(P.users ? [{ section: "Administration", items: [["users", "utilisateurs", "Utilisateurs & rôles"]] }] : []),
   ];
   const titres = {
-    dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des Projets de formation de type Apprentissage (Enploi-qualification) dans l'agro-industrie"],
-    formations: ["Projets", "Portefeuille des projets de formation financés par le FDFP"],
+    dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des projets de formation de type Apprentissage (Enploi-qualification) dans l'agro-industrie"],
+    formations: ["Projets de formation de type apprentissage", "Portefeuille des projets de formation financés par le FDFP"],
     evaluation: ["Évaluation", fEval ? fEval.titre : "Sélectionnez une formation à évaluer"],
-    suivi: ["Suivi post-formation", "Évaluations à 3, 6 et 12 mois — impact et durabilité"],
+    suivi: ["Suivi", "Évaluations à 3, 6 et 12 mois — impact et durabilité"],
     indicateurs: ["Référentiel des indicateurs", "Modèle MIP-PPA — dimensions, pondérations, indicateurs"],
     alertes: ["Alertes & risques", "Formations sous-performantes et suivis en retard"],
     exports: ["Exports", "Fiches PDF et tableaux Excel pour les rapports FDFP"],
@@ -990,7 +990,7 @@ export default function MipPpaApp() {
           </div>
           <div>
             <div className="text-white font-bold leading-tight">MIP-PPA</div>
-            <div className="text-xs text-stone-400">Suivi des formations agro-industrielles</div>
+            <div className="text-xs text-stone-400">Suivi des projets de formation de type apprentissage dans les agro-industries</div>
           </div>
         </div>
         <nav className="flex-1 px-3 space-y-5 pb-4">
@@ -1106,7 +1106,7 @@ export default function MipPpaApp() {
 
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
               <h3 className="font-bold flex items-center gap-2"><Icone n="tendance" t={18} /> Niveaux de performance</h3>
-              <p className="text-sm text-stone-500 mb-3">Lecture du score global MIP-PPA.</p>
+              <p className="text-sm text-stone-500 mb-3">Lecture du score global MIP-PPA (Modèle d'Indicateurs de Performance - Produit Projet Apprentissage).</p>
               <div className="flex flex-wrap gap-2">
                 {[["Insuffisant (0–40 %)", C.insuffisant], ["En développement (40–60 %)", C.dev], ["Satisfaisant (60–80 %)", C.satisfaisant], ["Excellent (80–100 %)", C.excellent]].map(([t, c]) => (
                   <span key={t} className="text-xs font-semibold text-white px-3 py-1.5 rounded-full" style={{ background: c }}>{t}</span>
@@ -1769,4 +1769,3 @@ export default function MipPpaApp() {
     </div>
   );
 }
- 
