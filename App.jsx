@@ -190,7 +190,7 @@ function Icone({ n, t = 18, className = "" }) {
 // Descriptions affichées au survol des rubriques (info-bulles)
 const DESCR_NAV = {
   dashboard: "Vision consolidée du portefeuille : scores, radar, secteurs",
-  formations: "Portefeuille des formations financées par le FDFP",
+  formations: "Portefeuille des projets de formation financés par le FDFP",
   evaluation: "Noter un projet sur les 5 dimensions et 23 indicateurs",
   suivi: "Jalons M+3 / M+6 / M+12 : notes, documents, échéances",
   indicateurs: "Référentiel MIP-PPA : dimensions, pondérations, indicateurs",
