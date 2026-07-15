@@ -990,7 +990,7 @@ export default function MipPpaApp() {
           </div>
           <div>
             <div className="text-white font-bold leading-tight">MIP-PPA</div>
-            <div className="text-xs text-stone-400">Suivi des projets de formation de type apprentissage dans les agro-industries</div>
+            <div className="text-xs text-stone-400">Modèle d'Indicateurs de Performance - Produit Projet Apprentissage</div>
           </div>
         </div>
         <nav className="flex-1 px-3 space-y-5 pb-4">
@@ -1039,7 +1039,7 @@ export default function MipPpaApp() {
           {page === "dashboard" && (<>
             <section className="rounded-3xl p-8 text-white" style={{ background: "linear-gradient(120deg,#0e3c60 0%,#1d6fa8 100%)" }}>
               <span className="text-xs font-semibold px-3 py-1 rounded-full text-stone-900" style={{ background: C.gold }}>FDFP · Côte d'Ivoire</span>
-              <h2 className="text-4xl font-bold mt-4 leading-tight">Mesurer la vraie valeur<br />des Projets Apprentissage</h2>
+              <h2 className="text-4xl font-bold mt-4 leading-tight">Mesurer la vraie valeur<br />des projets de formation de type apprentissage</h2>
               <p className="mt-3 text-sky-100 max-w-2xl">
                 Le modèle MIP-PPA évalue chaque projet de formation de type apprentissage sur {referentiel.length} dimensions et {referentiel.reduce((a, d) => a + d.indicateurs.length, 0)} indicateurs,
                 de la conception jusqu'à 12 mois après — pour des décisions éclairées au service de l'agro-industrie ivoirienne.
@@ -1356,7 +1356,7 @@ export default function MipPpaApp() {
             {P.secteurs && (
               <section className="bg-white rounded-2xl border border-stone-200 p-5">
                 <h3 className="font-bold">Secteurs</h3>
-                <p className="text-sm text-stone-500 mb-3">Liste des secteurs proposés à la création d'une formation — gérée par l'administrateur lead.</p>
+                <p className="text-sm text-stone-500 mb-3">Liste des secteurs proposés à la création d'un projet de formation de type apprentissage — gérée par l'administrateur lead.</p>
                 <div className="flex flex-wrap gap-2">
                   {secteurs.map((s, i) => (
                     <span key={i} className="flex items-center gap-1.5 bg-stone-100 rounded-full pl-3 pr-1.5 py-1 text-sm">
