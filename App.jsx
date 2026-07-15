@@ -937,7 +937,7 @@ export default function MipPpaApp() {
     ...(P.users ? [{ section: "Administration", items: [["users", "utilisateurs", "Utilisateurs & rôles"]] }] : []),
   ];
   const titres = {
-    dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des Projets Apprentissage dans l'agro-industrie"],
+    dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des Projets de formation de type Apprentissage (Enploi-qualification) dans l'agro-industrie"],
     formations: ["Projets", "Portefeuille des projets de formation financés par le FDFP"],
     evaluation: ["Évaluation", fEval ? fEval.titre : "Sélectionnez une formation à évaluer"],
     suivi: ["Suivi post-formation", "Évaluations à 3, 6 et 12 mois — impact et durabilité"],
@@ -1041,7 +1041,7 @@ export default function MipPpaApp() {
               <span className="text-xs font-semibold px-3 py-1 rounded-full text-stone-900" style={{ background: C.gold }}>FDFP · Côte d'Ivoire</span>
               <h2 className="text-4xl font-bold mt-4 leading-tight">Mesurer la vraie valeur<br />des Projets Apprentissage</h2>
               <p className="mt-3 text-sky-100 max-w-2xl">
-                Le modèle MIP-PPA évalue chaque formation sur {referentiel.length} dimensions et {referentiel.reduce((a, d) => a + d.indicateurs.length, 0)} indicateurs,
+                Le modèle MIP-PPA évalue chaque projet de formation de type apprentissage sur {referentiel.length} dimensions et {referentiel.reduce((a, d) => a + d.indicateurs.length, 0)} indicateurs,
                 de la conception jusqu'à 12 mois après — pour des décisions éclairées au service de l'agro-industrie ivoirienne.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
@@ -1058,7 +1058,7 @@ export default function MipPpaApp() {
             </section>
 
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
-              <h3 className="font-bold">Performance moyenne par dimension</h3>
+              <h3 className="font-bold">Niveau de performance moyenne par dimension</h3>
               <p className="text-sm text-stone-500 mb-2">Profil consolidé du portefeuille PPA en cours.</p>
               <ResponsiveContainer width="100%" height={300}>
                 <RadarChart data={radarData}>
@@ -1087,8 +1087,8 @@ export default function MipPpaApp() {
 
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
               <div className="flex items-center justify-between">
-                <div><h3 className="font-bold">Formations récentes</h3><p className="text-sm text-stone-500">Cliquez pour évaluer ou consulter.</p></div>
-                <button onClick={() => setPage("formations")} className="text-sm font-semibold hover:underline" style={{ color: C.vert }}>Tout voir →</button>
+                <div><h3 className="font-bold">Projets de formation de type apprentissage (emploi-qualifcation) récents</h3><p className="text-sm text-stone-500">Cliquez pour évaluer ou consulter.</p></div>
+                <button onClick={() => setPage("Projet de formation de type apprentissage")} className="text-sm font-semibold hover:underline" style={{ color: C.vert }}>Tout voir →</button>
               </div>
               <div className="divide-y divide-stone-100 mt-2">
                 {formationsVisibles.slice(-4).map((f) => (
@@ -1119,7 +1119,7 @@ export default function MipPpaApp() {
           </>)}
 
           {/* =========== FORMATIONS =========== */}
-          {page === "formations" && (<>
+          {page === "Projets de formation de type apprentissage" && (<>
             <div className="flex flex-wrap items-center gap-3">
               <input value={recherche} onChange={(e) => setRecherche(e.target.value)} placeholder="Rechercher entreprise, formation, secteur…"
                 className="flex-1 min-w-[240px] bg-white border border-stone-200 rounded-full px-5 py-2.5 text-sm outline-none focus:border-stone-400" />
@@ -1175,7 +1175,7 @@ export default function MipPpaApp() {
 
             <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden">
               <div className="grid grid-cols-12 px-5 py-3 text-sm font-semibold text-stone-600 border-b border-stone-100">
-                <div className="col-span-6">Formation</div><div className="col-span-2">Secteur</div><div className="col-span-2">Score MIP</div><div className="col-span-2 text-right">Actions</div>
+                <div className="col-span-6">Projet de formation de type apprentissage</div><div className="col-span-2">Secteur</div><div className="col-span-2">Score MIP</div><div className="col-span-2 text-right">Actions</div>
               </div>
               {formationsVisibles.filter((f) => (f.titre + f.entreprise + f.filiere).toLowerCase().includes(recherche.toLowerCase())).map((f) => (
                 <div key={f.id} className="grid grid-cols-12 items-center px-5 py-4 border-b border-stone-50 hover:bg-stone-50">
@@ -1199,7 +1199,7 @@ export default function MipPpaApp() {
           {/* =========== ÉVALUATION MIP =========== */}
           {page === "evaluation" && (!fEval ? (
             <div className="bg-white rounded-2xl border border-stone-200 p-8 text-center">
-              <p className="text-stone-600 mb-4">Sélectionnez la formation à évaluer :</p>
+              <p className="text-stone-600 mb-4">Sélectionnez le Projet de formation de type apprentissage à évaluer :</p>
               <div className="flex flex-col gap-2 max-w-xl mx-auto">
                 {formationsVisibles.map((f) => (
                   <button key={f.id} onClick={() => setEvalId(f.id)} className="flex items-center justify-between gap-3 border border-stone-200 rounded-xl px-4 py-3 hover:bg-stone-50 text-left">
@@ -1460,14 +1460,14 @@ export default function MipPpaApp() {
           {page === "exports" && (<>
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <h3 className="font-bold">Export consolidé</h3>
-              <p className="text-sm text-stone-500 mb-4">Toutes les formations et indicateurs en une feuille Excel.</p>
+              <p className="text-sm text-stone-500 mb-4">Tous les projets de formation de type apprentissage et indicateurs en une feuille Excel.</p>
               <button onClick={exportExcel} className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm" style={{ background: C.vertFonce }} title="Toutes les formations et indicateurs en une feuille">
                 <Icone n="telecharger" t={15} /> Télécharger l'Excel ({formationsVisibles.length} formations)
               </button>
             </section>
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <h3 className="font-bold">Fiches d'évaluation PDF</h3>
-              <p className="text-sm text-stone-500">Une fiche officielle par formation.</p>
+              <p className="text-sm text-stone-500">Une fiche officielle par projet de formation de type apprentissage.</p>
               <div className="divide-y divide-stone-100 mt-2">
                 {formationsVisibles.map((f) => (
                   <div key={f.id} className="flex items-center justify-between gap-3 py-3.5">
@@ -1553,9 +1553,9 @@ export default function MipPpaApp() {
             </section>
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <h3 className="font-bold mb-1"><Icone n="plus" t={16} /> Inviter un nouvel utilisateur</h3>
-              <p className="text-sm text-stone-600 mb-4">Saisissez l'email d'un collaborateur : un message d'invitation pré-rempli (avec le lien de la plateforme et les instructions) s'ouvrira dans votre messagerie. Après inscription, il apparaîtra ci-dessus en statut « En attente », prêt à recevoir son rôle.</p>
+              <p className="text-sm text-stone-600 mb-4">Saisissez l'email d'un partenaire : un message d'invitation pré-rempli (avec le lien de la plateforme et les instructions) s'ouvrira dans votre messagerie. Après inscription, il apparaîtra ci-dessus en statut « En attente », prêt à recevoir son rôle.</p>
               <div className="flex flex-wrap items-end gap-3">
-                <label className="text-sm font-semibold text-stone-800 flex-1 min-w-[220px]">Email du collaborateur
+                <label className="text-sm font-semibold text-stone-800 flex-1 min-w-[220px]">Email du partenaire
                   <input type="email" value={emailInvite} onChange={(e) => setEmailInvite(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && envoyerInvitation()}
                     placeholder="prenom.nom@organisation.ci"
@@ -1724,7 +1724,7 @@ export default function MipPpaApp() {
             <div className="mt-4">
               <div className="text-sm font-semibold text-stone-800">Documents de suivi <span className="font-normal text-stone-400">(rattachés à la fiche PDF — 2 Mo max par fichier)</span></div>
               <label className="mt-2 flex items-center justify-center gap-2 border-2 border-dashed border-stone-300 rounded-xl py-4 text-sm text-stone-500 cursor-pointer hover:bg-stone-50">
-                <Icone n="trombone" t={16} /> Choisir des fichiers (photos, rapports, grilles…)
+                <Icone n="trombone" t={16} /> Choisir des fichiers (photos, rapports…)
                 <input type="file" multiple className="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
                   onChange={(e) => {
                     Array.from(e.target.files || []).forEach((fich) => {
