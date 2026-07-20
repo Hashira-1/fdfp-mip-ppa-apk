@@ -7,7 +7,7 @@ import {
 } from "recharts";
 
 /* ================================================================
-   FDFP · MIP-PPA — Suivi des projets de formation de type apprentissage dans l'agro-industrie
+   FDFP · MIP-PPA — Suivi des Projets Apprentissage dans l'agro-industrie
    Reconstruction fidèle de l'application (modèle : 5 dimensions,
    23 indicateurs, notes 0–4, suivi post-formation à 3/6/12 mois)
    ================================================================ */
@@ -73,19 +73,19 @@ const REFERENTIEL_DEFAUT = [
 const FORMATIONS_DEMO = [
   {
     id: "f1", titre: "Maîtrise HACCP en ligne de conditionnement cacao",
-    entreprise: "SACO", operateur: "A.C.A", beneficiaire: "SCINPA", filiere: "Cacao-Café", region: "Abidjan",
+    entreprise: "CocoaPro Côte d'Ivoire", operateur: "Cabinet AgroForm CI", beneficiaire: "Coopérative CAYAT", filiere: "Cacao-Café", region: "Abidjan",
     apprenants: 18, budget: 12500000, statut: "Terminée",
     notes: { P1: 4, P2: 3, P3: 4, P4: 4, EP1: 3, EP2: 3, EP3: 4, EP4: 4, EP5: 3, EP6: 4, EE1: 3, EE2: 3, EE3: 4, EE4: 3, IO1: 3, IO2: 3, IO3: 4, IO4: 3, IO5: 3, DC1: 3, DC2: 2, DC3: 3, DC4: 3 },
   },
   {
     id: "f2", titre: "Conduite de séchoir industriel — fruits tropicaux",
-    entreprise: "AGROCI", operateur: "Emergence", beneficiaire: "AGROCI", filiere: "Fruits & Légumes", region: "Yamoussoukro",
+    entreprise: "Tropic'Or SARL", operateur: "Institut IFCA", beneficiaire: "Tropic'Or SARL", filiere: "Fruits & Légumes", region: "Yamoussoukro",
     apprenants: 9, budget: 6800000, statut: "Terminée",
     notes: { P1: 3, P2: 2, P3: 3, P4: 2, EP1: 2, EP2: 2, EP3: 3, EP4: 4, EP5: 2, EP6: 2, EE1: 2, EE2: 3, EE3: 2, EE4: 2, IO1: 2, IO2: 2, IO3: 3, IO4: 2, IO5: 2, DC1: 3, DC2: 2, DC3: 2, DC4: 2 },
   },
   {
     id: "f3", titre: "Sécurité alimentaire & traçabilité ISO 22000",
-    entreprise: "FrieslandCampina", operateur: "Domny", beneficiaire: "FrieslandCampina", filiere: "Lait & Dérivés", region: "San-Pédro",
+    entreprise: "LaitiAfrique", operateur: "Cabinet AgroForm CI", beneficiaire: "LaitiAfrique", filiere: "Lait & Dérivés", region: "San-Pédro",
     apprenants: 24, budget: 15200000, statut: "Terminée",
     notes: { P1: 4, P2: 4, P3: 4, P4: 4, EP1: 4, EP2: 3, EP3: 4, EP4: 4, EP5: 4, EP6: 4, EE1: 3, EE2: 3, EE3: 4, EE4: 3, IO1: 4, IO2: 3, IO3: 4, IO4: 4, IO5: 3, DC1: 3, DC2: 3, DC3: 4, DC4: 3 },
   },
@@ -190,11 +190,11 @@ function Icone({ n, t = 18, className = "" }) {
 // Descriptions affichées au survol des rubriques (info-bulles)
 const DESCR_NAV = {
   dashboard: "Vision consolidée du portefeuille : scores, radar, secteurs",
-  projets: "Portefeuille des projets de formation financés par le FDFP",
-  evaluation: "Noter un projet sur les 5 dimensions et 23 indicateurs",
+  formations: "Portefeuille des formations financées par le FDFP",
+  evaluation: "Noter une formation sur les 5 dimensions et 23 indicateurs",
   suivi: "Jalons M+3 / M+6 / M+12 : notes, documents, échéances",
   indicateurs: "Référentiel MIP-PPA : dimensions, pondérations, indicateurs",
-  alertes: "Projets de formation de type apprentissage sous-performantes et suivis en retard",
+  alertes: "Formations sous-performantes et suivis en retard",
   exports: "Fiches PDF officielles et tableau Excel consolidé",
   guide: "Documentation complète de la plateforme",
   users: "Activer les comptes et attribuer les rôles",
@@ -434,43 +434,16 @@ function EcranConnexion() {
 // ================= APPLICATION ===================================
 export default function MipPpaApp() {
   const [page, setPage] = useState("dashboard");
-  // Donnees metier centralisees dans Supabase (phase 2)
-  const [referentiel, setReferentielBrut] = useState(REFERENTIEL_DEFAUT);
-  const [formations, setFormationsBrut] = useState([]);
-  const [suivis, setSuivisBrut] = useState([]);
-  const [secteurs, setSecteursBrut] = useState(SECTEURS_DEFAUT);
-  const [phases, setPhasesBrut] = useState(["À la conception", "En fin de formation", "Suivi post-formation (3 / 6 / 12 mois)"]);
-  const [chargementData, setChargementData] = useState(true);
-
-  // --- Ecriture Supabase : projets (upsert individuel) ---
-  const projetVersRow = (f) => ({ id: f.id, titre: f.titre || "", promoteur: f.entreprise || f.promoteur || "", operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", secteur: f.filiere || f.secteur || "", region: f.region || "", apprenants: Number(f.apprenants) || 0, budget: Number(f.budget) || 0, statut: f.statut || "Planifiée", notes: f.notes || {}, maj_le: new Date().toISOString() });
-  const rowVersProjet = (r) => ({ id: r.id, titre: r.titre, entreprise: r.promoteur, operateur: r.operateur, beneficiaire: r.beneficiaire, filiere: r.secteur, region: r.region, apprenants: r.apprenants, budget: r.budget, statut: r.statut, notes: r.notes || {} });
-  const suiviVersRow = (s) => ({ id: s.id, projet_id: s.formationId, jalon: s.jalon, echeance: s.echeance || null, statut: s.statut || "programmé", note: s.note || "", docs: s.docs || [], maj_le: new Date().toISOString() });
-  const rowVersSuivi = (r) => ({ id: r.id, formationId: r.projet_id, jalon: r.jalon, echeance: r.echeance, statut: r.statut, note: r.note || "", docs: r.docs || [] });
-
-  // Les setters gardent la meme signature qu'avant, mais propagent vers Supabase
-  const setFormations = (fn) => setFormationsBrut((v) => {
-    const n = typeof fn === "function" ? fn(v) : fn;
-    if (sb) {
-      const avantIds = new Set(v.map((x) => x.id)), apresIds = new Set(n.map((x) => x.id));
-      n.forEach((f) => { const a = v.find((x) => x.id === f.id); if (!a || JSON.stringify(a) !== JSON.stringify(f)) sb.from("projets").upsert(projetVersRow(f)).then(({ error }) => error && console.warn(error.message)); });
-      v.forEach((f) => { if (!apresIds.has(f.id)) sb.from("projets").delete().eq("id", f.id).then(() => {}); });
-    }
-    return n;
-  });
-  const setSuivis = (fn) => setSuivisBrut((v) => {
-    const n = typeof fn === "function" ? fn(v) : fn;
-    if (sb) {
-      const apresIds = new Set(n.map((x) => x.id));
-      n.forEach((s) => { const a = v.find((x) => x.id === s.id); if (!a || JSON.stringify(a) !== JSON.stringify(s)) sb.from("suivis").upsert(suiviVersRow(s)).then(({ error }) => error && console.warn(error.message)); });
-      v.forEach((s) => { if (!apresIds.has(s.id)) sb.from("suivis").delete().eq("id", s.id).then(() => {}); });
-    }
-    return n;
-  });
-  const sauverConfig = (champ, valeur) => { if (sb) sb.from("configuration").update({ [champ]: valeur, maj_le: new Date().toISOString() }).eq("id", 1).then(({ error }) => error && console.warn(error.message)); };
-  const setReferentiel = (fn) => setReferentielBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; sauverConfig("referentiel", n); return n; });
-  const setSecteurs = (fn) => setSecteursBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; sauverConfig("secteurs", n); return n; });
-  const setPhases = (fn) => setPhasesBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; sauverConfig("phases", n); return n; });
+  const [referentiel, setReferentielBrut] = useState(() => lireStock("mip-ppa-referentiel", REFERENTIEL_DEFAUT));
+  const [formations, setFormationsBrut] = useState(() => lireStock("mip-ppa-formations", FORMATIONS_DEMO));
+  const [suivis, setSuivisBrut] = useState(() => lireStock("mip-ppa-suivis", SUIVIS_DEMO));
+  const setReferentiel = (fn) => setReferentielBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-referentiel", n); return n; });
+  const setFormations = (fn) => setFormationsBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-formations", n); return n; });
+  const setSuivis = (fn) => setSuivisBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-suivis", n); return n; });
+  const [secteurs, setSecteursBrut] = useState(() => lireStock("mip-ppa-secteurs", SECTEURS_DEFAUT));
+  const [phases, setPhasesBrut] = useState(() => lireStock("mip-ppa-phases", ["À la conception", "En fin de formation", "Suivi post-formation (3 / 6 / 12 mois)"]));
+  const setPhases = (fn) => setPhasesBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-phases", n); return n; });
+  const setSecteurs = (fn) => setSecteursBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-secteurs", n); return n; });
   const [comptes, setComptes] = useState([]);          // liste chargée depuis Supabase (page Utilisateurs)
   const [session, setSession] = useState(null);         // { id, email, nom, org, role }
   const [chargementAuth, setChargementAuth] = useState(true);
@@ -514,69 +487,6 @@ export default function MipPpaApp() {
   const monCompte = session;
   useEffect(() => { if (session && !P.pages.includes(page)) setPage(P.pages[0]); }, [roleActif, session]); // redirection selon le rôle
   useEffect(() => { if (page === "users" && P.users && sb) chargerComptes(); }, [page, roleActif]);
-
-  // --- Chargement initial des donnees metier depuis Supabase + temps reel ---
-  const chargerDonnees = async () => {
-    if (!sb) { setChargementData(false); return; }
-    try {
-      // Configuration partagee (referentiel / secteurs / phases)
-      const { data: cfg } = await sb.from("configuration").select("*").eq("id", 1).maybeSingle();
-      if (cfg) {
-        if (Array.isArray(cfg.referentiel) && cfg.referentiel.length) setReferentielBrut(cfg.referentiel);
-        else sauverConfig("referentiel", REFERENTIEL_DEFAUT); // 1re initialisation
-        if (Array.isArray(cfg.secteurs) && cfg.secteurs.length) setSecteursBrut(cfg.secteurs);
-        else sauverConfig("secteurs", SECTEURS_DEFAUT);
-        if (Array.isArray(cfg.phases) && cfg.phases.length) setPhasesBrut(cfg.phases);
-        else sauverConfig("phases", ["À la conception", "En fin de formation", "Suivi post-formation (3 / 6 / 12 mois)"]);
-      }
-      // Projets + suivis
-      const { data: projs } = await sb.from("projets").select("*").order("cree_le");
-      const { data: suivs } = await sb.from("suivis").select("*");
-      let listeProjets = (projs || []).map(rowVersProjet);
-      let listeSuivis = (suivs || []).map(rowVersSuivi);
-      // Amorçage : si la base est vide ET qu'on est admin, injecter les donnees de demo
-      if (!listeProjets.length && est_admin_amorcage()) {
-        for (const f of FORMATIONS_DEMO) { await sb.from("projets").upsert(projetVersRow(f)); }
-        for (const s of SUIVIS_DEMO) { await sb.from("suivis").upsert(suiviVersRow(s)); }
-        listeProjets = FORMATIONS_DEMO.map((f) => ({ ...f }));
-        listeSuivis = SUIVIS_DEMO.map((s) => ({ ...s }));
-      }
-      setFormationsBrut(listeProjets);
-      setSuivisBrut(listeSuivis);
-    } catch (e) { console.warn("Chargement donnees:", e.message); }
-    setChargementData(false);
-  };
-  const est_admin_amorcage = () => ["Administrateur lead", "Administrateur FDFP"].includes(roleActif);
-
-  useEffect(() => {
-    if (!session || roleActif === "En attente d'activation") return;
-    chargerDonnees();
-    if (!sb) return;
-    // Temps reel : quand un autre utilisateur modifie, on recharge
-    const canal = sb.channel("mip-ppa-sync")
-      .on("postgres_changes", { event: "*", schema: "public", table: "projets" }, () => rechargerLeger())
-      .on("postgres_changes", { event: "*", schema: "public", table: "suivis" }, () => rechargerLeger())
-      .on("postgres_changes", { event: "*", schema: "public", table: "configuration" }, () => rechargerLeger())
-      .subscribe();
-    return () => { sb.removeChannel(canal); };
-  }, [session, roleActif]);
-
-  // Rechargement silencieux (declenche par le temps reel des autres utilisateurs)
-  let rechargeEnCours = false;
-  const rechargerLeger = async () => {
-    if (!sb || rechargeEnCours) return; rechargeEnCours = true;
-    setTimeout(async () => {
-      try {
-        const { data: cfg } = await sb.from("configuration").select("*").eq("id", 1).maybeSingle();
-        if (cfg) { if (Array.isArray(cfg.referentiel) && cfg.referentiel.length) setReferentielBrut(cfg.referentiel); if (Array.isArray(cfg.secteurs)) setSecteursBrut(cfg.secteurs); if (Array.isArray(cfg.phases)) setPhasesBrut(cfg.phases); }
-        const { data: projs } = await sb.from("projets").select("*").order("cree_le");
-        const { data: suivs } = await sb.from("suivis").select("*");
-        setFormationsBrut((projs || []).map(rowVersProjet));
-        setSuivisBrut((suivs || []).map(rowVersSuivi));
-      } catch (e) {}
-      rechargeEnCours = false;
-    }, 400);
-  };
   const [nouvelle, setNouvelle] = useState({ titre: "", entreprise: "", operateur: "", beneficiaire: "", filiere: secteurs[0] || "Autre agro-industrie", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
   const [toast, setToast] = useState("");
   const notif = (m) => { setToast(m); setTimeout(() => setToast(""), 2500); };
@@ -589,7 +499,7 @@ export default function MipPpaApp() {
     const corps = [
       "Bonjour,",
       "",
-      "Vous etes invite(e) a rejoindre la plateforme FDFP MIP-PPA (suivi des projets de formation de type apprentissage dans l'agro-industrie).",
+      "Vous etes invite(e) a rejoindre la plateforme FDFP MIP-PPA (suivi des Projets Apprentissage dans l'agro-industrie).",
       "",
       "1. Rendez-vous sur : " + urlApp,
       "2. Cliquez sur \"Creer un compte\" et renseignez vos informations (nom, organisation, email, mot de passe).",
@@ -937,10 +847,10 @@ export default function MipPpaApp() {
     ...(P.users ? [{ section: "Administration", items: [["users", "utilisateurs", "Utilisateurs & rôles"]] }] : []),
   ];
   const titres = {
-    dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des projets de formation de type Apprentissage (Enploi-qualification) dans l'agro-industrie"],
-    formations: ["Projets de formation de type apprentissage", "Portefeuille des projets de formation financés par le FDFP"],
+    dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des Projets Apprentissage dans l'agro-industrie"],
+    formations: ["Projets", "Portefeuille des projets de formation financés par le FDFP"],
     evaluation: ["Évaluation", fEval ? fEval.titre : "Sélectionnez une formation à évaluer"],
-    suivi: ["Suivi", "Évaluations à 3, 6 et 12 mois — impact et durabilité"],
+    suivi: ["Suivi post-formation", "Évaluations à 3, 6 et 12 mois — impact et durabilité"],
     indicateurs: ["Référentiel des indicateurs", "Modèle MIP-PPA — dimensions, pondérations, indicateurs"],
     alertes: ["Alertes & risques", "Formations sous-performantes et suivis en retard"],
     exports: ["Exports", "Fiches PDF et tableaux Excel pour les rapports FDFP"],
@@ -958,9 +868,6 @@ export default function MipPpaApp() {
     return <EcranAttente session={session}
       surActualiser={() => sb.auth.getUser().then(({ data }) => data.user && chargerProfil(data.user))}
       surDeconnexion={() => { sb.auth.signOut(); setSession(null); }} />;
-  }
-  if (chargementData) {
-    return <CadreAccueil enfants={<div className="text-sky-100 text-sm page-anim">Chargement des données de la plateforme…</div>} />;
   }
 
   // =================== RENDU =====================================
@@ -990,7 +897,7 @@ export default function MipPpaApp() {
           </div>
           <div>
             <div className="text-white font-bold leading-tight">MIP-PPA</div>
-            <div className="text-xs text-stone-400">Modèle d'Indicateurs de Performance - Produit Projet Apprentissage</div>
+            <div className="text-xs text-stone-400">Suivi des formations agro-industrielles</div>
           </div>
         </div>
         <nav className="flex-1 px-3 space-y-5 pb-4">
@@ -1039,9 +946,9 @@ export default function MipPpaApp() {
           {page === "dashboard" && (<>
             <section className="rounded-3xl p-8 text-white" style={{ background: "linear-gradient(120deg,#0e3c60 0%,#1d6fa8 100%)" }}>
               <span className="text-xs font-semibold px-3 py-1 rounded-full text-stone-900" style={{ background: C.gold }}>FDFP · Côte d'Ivoire</span>
-              <h2 className="text-4xl font-bold mt-4 leading-tight">Mesurer la vraie valeur<br />des projets de formation de type apprentissage</h2>
+              <h2 className="text-4xl font-bold mt-4 leading-tight">Mesurer la vraie valeur<br />des Projets Apprentissage</h2>
               <p className="mt-3 text-sky-100 max-w-2xl">
-                Le modèle MIP-PPA évalue chaque projet de formation de type apprentissage sur {referentiel.length} dimensions et {referentiel.reduce((a, d) => a + d.indicateurs.length, 0)} indicateurs,
+                Le modèle MIP-PPA évalue chaque formation sur {referentiel.length} dimensions et {referentiel.reduce((a, d) => a + d.indicateurs.length, 0)} indicateurs,
                 de la conception jusqu'à 12 mois après — pour des décisions éclairées au service de l'agro-industrie ivoirienne.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
@@ -1058,7 +965,7 @@ export default function MipPpaApp() {
             </section>
 
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
-              <h3 className="font-bold">Niveau de performance moyenne par dimension</h3>
+              <h3 className="font-bold">Performance moyenne par dimension</h3>
               <p className="text-sm text-stone-500 mb-2">Profil consolidé du portefeuille PPA en cours.</p>
               <ResponsiveContainer width="100%" height={300}>
                 <RadarChart data={radarData}>
@@ -1087,8 +994,8 @@ export default function MipPpaApp() {
 
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
               <div className="flex items-center justify-between">
-                <div><h3 className="font-bold">Projets de formation de type apprentissage (emploi-qualifcation) récents</h3><p className="text-sm text-stone-500">Cliquez pour évaluer ou consulter.</p></div>
-                <button onClick={() => setPage("Projet de formation de type apprentissage")} className="text-sm font-semibold hover:underline" style={{ color: C.vert }}>Tout voir →</button>
+                <div><h3 className="font-bold">Formations récentes</h3><p className="text-sm text-stone-500">Cliquez pour évaluer ou consulter.</p></div>
+                <button onClick={() => setPage("formations")} className="text-sm font-semibold hover:underline" style={{ color: C.vert }}>Tout voir →</button>
               </div>
               <div className="divide-y divide-stone-100 mt-2">
                 {formationsVisibles.slice(-4).map((f) => (
@@ -1106,7 +1013,7 @@ export default function MipPpaApp() {
 
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
               <h3 className="font-bold flex items-center gap-2"><Icone n="tendance" t={18} /> Niveaux de performance</h3>
-              <p className="text-sm text-stone-500 mb-3">Lecture du score global MIP-PPA (Modèle d'Indicateurs de Performance - Produit Projet Apprentissage).</p>
+              <p className="text-sm text-stone-500 mb-3">Lecture du score global MIP-PPA.</p>
               <div className="flex flex-wrap gap-2">
                 {[["Insuffisant (0–40 %)", C.insuffisant], ["En développement (40–60 %)", C.dev], ["Satisfaisant (60–80 %)", C.satisfaisant], ["Excellent (80–100 %)", C.excellent]].map(([t, c]) => (
                   <span key={t} className="text-xs font-semibold text-white px-3 py-1.5 rounded-full" style={{ background: c }}>{t}</span>
@@ -1119,7 +1026,7 @@ export default function MipPpaApp() {
           </>)}
 
           {/* =========== FORMATIONS =========== */}
-          {page === "Projets de formation de type apprentissage" && (<>
+          {page === "formations" && (<>
             <div className="flex flex-wrap items-center gap-3">
               <input value={recherche} onChange={(e) => setRecherche(e.target.value)} placeholder="Rechercher entreprise, formation, secteur…"
                 className="flex-1 min-w-[240px] bg-white border border-stone-200 rounded-full px-5 py-2.5 text-sm outline-none focus:border-stone-400" />
@@ -1175,7 +1082,7 @@ export default function MipPpaApp() {
 
             <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden">
               <div className="grid grid-cols-12 px-5 py-3 text-sm font-semibold text-stone-600 border-b border-stone-100">
-                <div className="col-span-6">Projet de formation de type apprentissage</div><div className="col-span-2">Secteur</div><div className="col-span-2">Score MIP</div><div className="col-span-2 text-right">Actions</div>
+                <div className="col-span-6">Formation</div><div className="col-span-2">Secteur</div><div className="col-span-2">Score MIP</div><div className="col-span-2 text-right">Actions</div>
               </div>
               {formationsVisibles.filter((f) => (f.titre + f.entreprise + f.filiere).toLowerCase().includes(recherche.toLowerCase())).map((f) => (
                 <div key={f.id} className="grid grid-cols-12 items-center px-5 py-4 border-b border-stone-50 hover:bg-stone-50">
@@ -1199,7 +1106,7 @@ export default function MipPpaApp() {
           {/* =========== ÉVALUATION MIP =========== */}
           {page === "evaluation" && (!fEval ? (
             <div className="bg-white rounded-2xl border border-stone-200 p-8 text-center">
-              <p className="text-stone-600 mb-4">Sélectionnez le Projet de formation de type apprentissage à évaluer :</p>
+              <p className="text-stone-600 mb-4">Sélectionnez la formation à évaluer :</p>
               <div className="flex flex-col gap-2 max-w-xl mx-auto">
                 {formationsVisibles.map((f) => (
                   <button key={f.id} onClick={() => setEvalId(f.id)} className="flex items-center justify-between gap-3 border border-stone-200 rounded-xl px-4 py-3 hover:bg-stone-50 text-left">
@@ -1356,7 +1263,7 @@ export default function MipPpaApp() {
             {P.secteurs && (
               <section className="bg-white rounded-2xl border border-stone-200 p-5">
                 <h3 className="font-bold">Secteurs</h3>
-                <p className="text-sm text-stone-500 mb-3">Liste des secteurs proposés à la création d'un projet de formation de type apprentissage — gérée par l'administrateur lead.</p>
+                <p className="text-sm text-stone-500 mb-3">Liste des secteurs proposés à la création d'une formation — gérée par l'administrateur lead.</p>
                 <div className="flex flex-wrap gap-2">
                   {secteurs.map((s, i) => (
                     <span key={i} className="flex items-center gap-1.5 bg-stone-100 rounded-full pl-3 pr-1.5 py-1 text-sm">
@@ -1460,14 +1367,14 @@ export default function MipPpaApp() {
           {page === "exports" && (<>
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <h3 className="font-bold">Export consolidé</h3>
-              <p className="text-sm text-stone-500 mb-4">Tous les projets de formation de type apprentissage et indicateurs en une feuille Excel.</p>
+              <p className="text-sm text-stone-500 mb-4">Toutes les formations et indicateurs en une feuille Excel.</p>
               <button onClick={exportExcel} className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm" style={{ background: C.vertFonce }} title="Toutes les formations et indicateurs en une feuille">
                 <Icone n="telecharger" t={15} /> Télécharger l'Excel ({formationsVisibles.length} formations)
               </button>
             </section>
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <h3 className="font-bold">Fiches d'évaluation PDF</h3>
-              <p className="text-sm text-stone-500">Une fiche officielle par projet de formation de type apprentissage.</p>
+              <p className="text-sm text-stone-500">Une fiche officielle par formation.</p>
               <div className="divide-y divide-stone-100 mt-2">
                 {formationsVisibles.map((f) => (
                   <div key={f.id} className="flex items-center justify-between gap-3 py-3.5">
@@ -1553,9 +1460,9 @@ export default function MipPpaApp() {
             </section>
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <h3 className="font-bold mb-1"><Icone n="plus" t={16} /> Inviter un nouvel utilisateur</h3>
-              <p className="text-sm text-stone-600 mb-4">Saisissez l'email d'un partenaire : un message d'invitation pré-rempli (avec le lien de la plateforme et les instructions) s'ouvrira dans votre messagerie. Après inscription, il apparaîtra ci-dessus en statut « En attente », prêt à recevoir son rôle.</p>
+              <p className="text-sm text-stone-600 mb-4">Saisissez l'email d'un collaborateur : un message d'invitation pré-rempli (avec le lien de la plateforme et les instructions) s'ouvrira dans votre messagerie. Après inscription, il apparaîtra ci-dessus en statut « En attente », prêt à recevoir son rôle.</p>
               <div className="flex flex-wrap items-end gap-3">
-                <label className="text-sm font-semibold text-stone-800 flex-1 min-w-[220px]">Email du partenaire
+                <label className="text-sm font-semibold text-stone-800 flex-1 min-w-[220px]">Email du collaborateur
                   <input type="email" value={emailInvite} onChange={(e) => setEmailInvite(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && envoyerInvitation()}
                     placeholder="prenom.nom@organisation.ci"
@@ -1724,7 +1631,7 @@ export default function MipPpaApp() {
             <div className="mt-4">
               <div className="text-sm font-semibold text-stone-800">Documents de suivi <span className="font-normal text-stone-400">(rattachés à la fiche PDF — 2 Mo max par fichier)</span></div>
               <label className="mt-2 flex items-center justify-center gap-2 border-2 border-dashed border-stone-300 rounded-xl py-4 text-sm text-stone-500 cursor-pointer hover:bg-stone-50">
-                <Icone n="trombone" t={16} /> Choisir des fichiers (photos, rapports…)
+                <Icone n="trombone" t={16} /> Choisir des fichiers (photos, rapports, grilles…)
                 <input type="file" multiple className="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
                   onChange={(e) => {
                     Array.from(e.target.files || []).forEach((fich) => {
