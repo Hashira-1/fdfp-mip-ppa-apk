@@ -18,53 +18,53 @@ const REFERENTIEL_DEFAUT = [
     id: "P", nom: "Pertinence", poids: 20,
     desc: "Alignement de la formation aux besoins métiers et aux normes de l'agro-industrie.",
     indicateurs: [
-      { id: "P1", phase: "À la conception", label: "Alignement des objectifs pédagogiques avec les besoins en compétences" },
-      { id: "P2", phase: "À la conception", label: "Adéquation du contenu avec les référentiels métiers du secteur agro-industriel" },
-      { id: "P3", phase: "À la conception", label: "Pertinence du profil des formateurs par rapport aux contenus dispensés" },
-      { id: "P4", phase: "À la conception", label: "Conformité avec les normes HACCP et réglementations alimentaires applicables" },
+      { id: "P1", phase: "À la conception", label: "Part des objectifs pédagogiques rattachés à un besoin en compétences identifié par diagnostic formalisé avec l'entreprise, validée avant le démarrage (cible : 100 %)" },
+      { id: "P2", phase: "À la conception", label: "Part des modules du programme alignés sur les référentiels métiers du secteur, vérifiée à l'instruction du dossier (cible : 100 %)" },
+      { id: "P3", phase: "À la conception", label: "Part des formateurs justifiant d'une qualification et d'une expérience conformes aux contenus dispensés, contrôlée avant le démarrage (cible : 100 %)" },
+      { id: "P4", phase: "À la conception", label: "Part des exigences HACCP et réglementaires applicables couvertes par le programme, vérifiée avant le démarrage (cible : 100 %)" },
     ],
   },
   {
     id: "EP", nom: "Efficacité pédagogique", poids: 25,
     desc: "Acquisition réelle des connaissances et gestes techniques.",
     indicateurs: [
-      { id: "EP1", phase: "En fin de formation", label: "Taux d'acquisition des connaissances théoriques (test avant/après)" },
-      { id: "EP2", phase: "En fin de formation", label: "Taux de maîtrise des gestes techniques évalués en situation de travail" },
-      { id: "EP3", phase: "En fin de formation", label: "Taux d'assiduité et de participation active des apprenants" },
-      { id: "EP4", phase: "En fin de formation", label: "Satisfaction globale des apprenants envers la formation" },
-      { id: "EP5", phase: "En fin de formation", label: "Satisfaction des tuteurs en entreprise envers la qualité pédagogique" },
-      { id: "EP6", phase: "En fin de formation", label: "Taux d'obtention de la certification ou attestation visée" },
+      { id: "EP1", phase: "En fin de formation", label: "Progression moyenne des connaissances théoriques entre le test initial et le test final (cible : ≥ 30 points de pourcentage)" },
+      { id: "EP2", phase: "En fin de formation", label: "Part des apprenants maîtrisant les gestes techniques évalués en situation de travail en fin de formation (cible : ≥ 80 %)" },
+      { id: "EP3", phase: "En fin de formation", label: "Taux d'assiduité moyen des apprenants sur la durée totale de la formation (cible : ≥ 90 %)" },
+      { id: "EP4", phase: "En fin de formation", label: "Taux de satisfaction des apprenants mesuré par questionnaire en fin de formation (cible : ≥ 80 %)" },
+      { id: "EP5", phase: "En fin de formation", label: "Taux de satisfaction des tuteurs en entreprise sur la qualité pédagogique, recueilli en fin de formation (cible : ≥ 80 %)" },
+      { id: "EP6", phase: "En fin de formation", label: "Taux de réussite aux épreuves de certification ou d'attestation en fin de formation (cible : ≥ 85 %)" },
     ],
   },
   {
     id: "IE", nom: "Insertion et employabilité", poids: 20,
     desc: "Insertion professionnelle des apprenants à l'issue du projet : accès à l'emploi, adéquation emploi-qualification et reconnaissance des compétences (OIT, Recommandation n° 208 sur les apprentissages de qualité, 2023).",
     indicateurs: [
-      { id: "IE1", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Taux d'insertion des apprenants dans l'emploi (salarié ou auto-emploi) dans les 6 mois suivant le projet" },
-      { id: "IE2", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Adéquation entre l'emploi occupé et la qualification visée par le projet (emploi-qualification)" },
-      { id: "IE3", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Qualité de l'insertion : nature du contrat, rémunération et maintien dans l'entreprise" },
-      { id: "IE4", phase: "En fin de formation", label: "Certification ou reconnaissance officielle des compétences acquises (CQP, titre, attestation reconnue)" },
+      { id: "IE1", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Taux d'insertion des apprenants dans l'emploi (salarié ou auto-emploi) mesuré au suivi M+6 (cible : ≥ 70 %)" },
+      { id: "IE2", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des apprenants insérés occupant un emploi en adéquation avec la qualification visée, mesurée à M+6 (cible : ≥ 80 %)" },
+      { id: "IE3", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des apprenants insérés en emploi stable (contrat ≥ 6 mois ou CDI, rémunération ≥ SMIG) mesurée à M+12 (cible : ≥ 60 %)" },
+      { id: "IE4", phase: "En fin de formation", label: "Part des apprenants ayant reçu leur certification officielle (CQP, titre, attestation) dans le mois suivant la fin de la formation — délivrance systématique attendue (cible : 100 % dans le délai)" },
     ],
   },
   {
     id: "IO", nom: "Impact organisationnel", poids: 25,
     desc: "Effets mesurables sur la qualité, la productivité et la sécurité.",
     indicateurs: [
-      { id: "IO1", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Évolution du taux de non-conformité qualité avant/après formation" },
-      { id: "IO2", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Variation du taux de productivité de la ligne ou du poste concerné" },
-      { id: "IO3", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Réduction du taux d'accidents ou d'incidents de sécurité alimentaire" },
-      { id: "IO4", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Transfert observable des compétences à 3 mois (évaluation managériale)" },
-      { id: "IO5", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Satisfaction du management sur l'amélioration des performances des formés" },
+      { id: "IO1", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Réduction du taux de non-conformité qualité sur les postes concernés entre M+0 et M+6 (cible : ≥ 20 %)" },
+      { id: "IO2", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Amélioration de la productivité de la ligne ou du poste concerné entre M+0 et M+6 (cible : ≥ 10 %)" },
+      { id: "IO3", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Réduction du nombre d'accidents et d'incidents de sécurité alimentaire sur les postes concernés entre M+0 et M+12 (cible : ≥ 25 %)" },
+      { id: "IO4", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des compétences acquises effectivement mobilisées au poste de travail, constatée par le management à M+3 (cible : ≥ 70 %)" },
+      { id: "IO5", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Taux de satisfaction du management sur l'atteinte des objectifs de performance du projet, mesuré à M+6 (cible : ≥ 80 %)" },
     ],
   },
   {
     id: "DC", nom: "Durabilité des compétences", poids: 10,
     desc: "Ancrage durable des compétences acquises (6 et 12 mois).",
     indicateurs: [
-      { id: "DC1", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Taux de rétention des apprenants dans l'entreprise à 6 mois" },
-      { id: "DC2", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Proportion des formés promus ou évolués dans les 12 mois" },
-      { id: "DC3", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Intégration des compétences dans les fiches de poste et procédures" },
-      { id: "DC4", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Continuité des pratiques apprises mesurée par observation à 6 mois" },
+      { id: "DC1", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Taux de rétention des apprenants dans l'entreprise mesuré à M+6 (cible : ≥ 80 %)" },
+      { id: "DC2", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des apprenants promus ou ayant évolué vers un poste supérieur, mesurée à M+12 (cible : ≥ 30 %)" },
+      { id: "DC3", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des compétences acquises intégrées aux fiches de poste et procédures internes, vérifiée à M+12 (cible : ≥ 50 %)" },
+      { id: "DC4", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des apprenants appliquant les pratiques apprises sans supervision, constatée par observation à M+6 puis M+12 (cible : ≥ 70 %)" },
     ],
   },
 ];
@@ -246,7 +246,7 @@ const DESCR_NAV = {
   dashboard: "Vision consolidée du portefeuille : scores, radar, secteurs",
   projets: "Portefeuille des projets de formation financés par le FDFP",
   evaluation: "Noter un projet sur les 5 dimensions et 23 indicateurs",
-  suivi: "Jalons M+3 / M+6 / M+12 : notes, documents, échéances",
+  suivi: "Suivi du niveau de performance : jalons M+3 / M+6 / M+12",
   indicateurs: "Référentiel MIP-PPA : dimensions, pondérations, indicateurs",
   alertes: "Projets de formation de type apprentissage sous-performantes et suivis en retard",
   exports: "Fiches PDF officielles et tableau Excel consolidé",
@@ -350,7 +350,7 @@ function CadreAccueil({ enfants }) {
         <LogoFDFP h={34} />
         <div>
           <div className="text-white font-bold text-lg leading-tight">FDFP · MIP-PPA</div>
-          <div className="text-sky-200 text-sm">Suivi des formations agro-industrielles</div>
+          <div className="text-sky-200 text-sm">Suivi des projets de formation de type apprentissage (emploi-qualification) dans les agro-industries</div>
         </div>
       </div>
       {enfants}
@@ -559,6 +559,7 @@ export default function MipPpaApp() {
   const [recherche, setRecherche] = useState("");
   const [formOuvert, setFormOuvert] = useState(false);
   const [menuMobile, setMenuMobile] = useState(false);
+  const [menuCompte, setMenuCompte] = useState(false);
   const [editionId, setEditionId] = useState(null);
   const [suiviEdit, setSuiviEdit] = useState(null); // fenêtre Notes & date & documents
   const [dimEdit, setDimEdit] = useState(null);     // fenêtre Modifier la dimension
@@ -985,7 +986,7 @@ export default function MipPpaApp() {
   const NAV = [
     { section: "Pilotage", items: [
       ["dashboard", "grid", "Tableau de bord"], ["formations", "cap", "Projets"],
-      ["evaluation", "clipboard", "Évaluation"], ["suivi", "calendrier", "Suivi post-formation"],
+      ["evaluation", "clipboard", "Évaluation"], ["suivi", "calendrier", "Suivi niveau de performance"],
       ["indicateurs", "graphique", "Indicateurs"], ["alertes", "cloche", "Alertes"], ["exports", "telecharger", "Exports"],
     ].filter(([id]) => P.pages.includes(id)) },
     { section: "Aide", items: [["guide", "livre", "Guide d'utilisation"]] },
@@ -995,7 +996,7 @@ export default function MipPpaApp() {
     dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des projets de formation de type Apprentissage (Enploi-qualification) dans l'agro-industrie"],
     formations: ["Projets de formation de type apprentissage", "Portefeuille des projets de formation financés par le FDFP"],
     evaluation: ["Évaluation", fEval ? fEval.titre : "Sélectionnez une formation à évaluer"],
-    suivi: ["Suivi", "Évaluations à 3, 6 et 12 mois — impact et durabilité"],
+    suivi: ["Suivi niveau de performance", "Évaluations à 3, 6 et 12 mois — impact et durabilité"],
     indicateurs: ["Référentiel des indicateurs", "Modèle MIP-PPA — dimensions, pondérations, indicateurs"],
     alertes: ["Alertes & risques", "Formations sous-performantes et suivis en retard"],
     exports: ["Exports", "Fiches PDF et tableaux Excel pour les rapports FDFP"],
@@ -1076,17 +1077,34 @@ export default function MipPpaApp() {
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
             </button>
           <div className="min-w-0">
-            <h1 className="text-lg font-bold truncate">{titres[page][0]}</h1>
-            <div className="text-xs text-stone-500 truncate">{titres[page][1]}</div>
+            <h1 className="text-base md:text-lg font-bold break-words">{titres[page][0]}</h1>
+            <div className="text-xs text-stone-500 break-words">{titres[page][1]}</div>
           </div>
           <div className="flex items-center gap-5 shrink-0">
             <button onClick={() => setPage("guide")} className="text-sm text-stone-600 hover:text-stone-900 flex items-center gap-1.5" title="Ouvrir le guide d'utilisation"><Icone n="livre" t={16} /> Guide</button>
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-full text-white flex items-center justify-center text-sm font-semibold" style={{ background: C.vert }}>{(session?.nom || "?").split(" ").map((m) => m[0]).slice(0, 2).join("").toUpperCase()}</div>
-              <div className="hidden md:block">
-                <div className="text-sm font-semibold leading-tight">{session?.nom}</div>
-                <div className="text-xs text-stone-500">{roleActif}</div>
-              </div>
+            <div className="relative">
+              <button onClick={() => setMenuCompte(!menuCompte)} title="Ouvrir le menu du compte" className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-full text-white flex items-center justify-center text-sm font-semibold" style={{ background: C.vert }}>{(session?.nom || "?").split(" ").map((m) => m[0]).slice(0, 2).join("").toUpperCase()}</div>
+                <div className="hidden md:block text-left">
+                  <div className="text-sm font-semibold leading-tight">{session?.nom}</div>
+                  <div className="text-xs text-stone-500">{roleActif}</div>
+                </div>
+              </button>
+              {menuCompte && (
+                <div className="absolute right-0 top-12 bg-white border border-stone-200 rounded-xl shadow-xl w-64 p-2 z-40 page-anim">
+                  <div className="px-3 py-2 border-b border-stone-100">
+                    <div className="text-sm font-semibold break-words">{session?.nom}</div>
+                    <div className="text-xs text-stone-500 break-words">{session?.email}</div>
+                    <div className="text-xs text-stone-400 mt-0.5">{session?.org} · {roleActif}</div>
+                  </div>
+                  {P.users && <button onClick={() => { setPage("users"); setMenuCompte(false); }}
+                    className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-stone-50 flex items-center gap-2"><Icone n="utilisateurs" t={15} /> Utilisateurs & rôles</button>}
+                  <button onClick={() => { setPage("guide"); setMenuCompte(false); }}
+                    className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-stone-50 flex items-center gap-2"><Icone n="livre" t={15} /> Guide d'utilisation</button>
+                  <button onClick={() => { if (sb) sb.auth.signOut(); setSession(null); setMenuCompte(false); }}
+                    className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-red-50 text-red-600 flex items-center gap-2"><Icone n="deconnexion" t={15} /> Déconnexion</button>
+                </div>
+              )}
             </div>
           </div>
         </header>
@@ -1429,8 +1447,8 @@ export default function MipPpaApp() {
                 <h3 className="font-bold">Secteurs, branches et domaines d'activité</h3>
                 <p className="text-sm text-stone-500 mb-3">Trois niveaux : le grand secteur, ses branches, et les domaines de chaque branche. Tout est modifiable — cette hiérarchie alimente le formulaire de projet.</p>
                 <div className="space-y-4">
-                  {Object.entries(normaliserSecteurs(secteurs)).map(([grand, branches]) => (
-                    <div key={grand} className="border border-stone-200 rounded-xl p-4">
+                  {Object.entries(normaliserSecteurs(secteurs)).map(([grand, branches], gi) => (
+                    <div key={gi} className="border border-stone-200 rounded-xl p-4">
                       <div className="flex items-center justify-between gap-2">
                         <input value={grand}
                           onChange={(e) => setSecteurs((s) => { const n = normaliserSecteurs(s), o = {}; Object.entries(n).forEach(([k, v]) => { o[k === grand ? e.target.value : k] = v; }); return o; })}
@@ -1440,8 +1458,8 @@ export default function MipPpaApp() {
                           className="text-red-400 hover:text-red-600" title="Supprimer ce secteur"><Icone n="poubelle" t={15} /></button>
                       </div>
                       <div className="space-y-3 mt-3">
-                        {Object.entries(branches || {}).map(([branche, domaines]) => (
-                          <div key={branche} className="bg-stone-50 rounded-lg p-3">
+                        {Object.entries(branches || {}).map(([branche, domaines], bi) => (
+                          <div key={bi} className="bg-stone-50 rounded-lg p-3">
                             <div className="flex items-center justify-between gap-2">
                               <input value={branche}
                                 onChange={(e) => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; const bo = {}; Object.entries(n[grand]).forEach(([k, v]) => { bo[k === branche ? e.target.value : k] = v; }); n[grand] = bo; return n; })}
@@ -1620,8 +1638,15 @@ export default function MipPpaApp() {
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <div className="flex items-center justify-between mb-1">
                 <h3 className="font-bold">Comptes ({comptes.length})</h3>
-                <button onClick={chargerComptes} title="Recharger la liste depuis la base"
-                  className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50 flex items-center gap-1.5"><Icone n="rotation" t={14} /> Actualiser</button>
+                <div className="flex items-center gap-2">
+                  <button onClick={chargerComptes} title="Recharger la liste depuis la base"
+                    className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50 flex items-center gap-1.5"><Icone n="rotation" t={14} /> Actualiser</button>
+                  <select defaultValue="" onChange={(e) => { if (e.target.value === "deconnexion") { if (sb) sb.auth.signOut(); setSession(null); } e.target.value = ""; }}
+                    className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg bg-white cursor-pointer" title="Options du compte">
+                    <option value="" disabled>Options ▾</option>
+                    <option value="deconnexion">Déconnexion</option>
+                  </select>
+                </div>
               </div>
               <p className="text-sm text-stone-500 mb-4">Sélectionnez un rôle pour chaque utilisateur. Les comptes « En attente » n'ont aucun accès tant qu'aucun rôle ne leur est attribué. Seul l'administrateur lead peut modifier les rôles.</p>
               <div className="divide-y divide-stone-100">
@@ -1693,7 +1718,7 @@ export default function MipPpaApp() {
           onClick={(e) => e.target === e.currentTarget && setDocVu(null)}>
           <div className="flex items-center justify-between px-5 py-3 text-white shrink-0">
             <div className="min-w-0">
-              <div className="font-semibold truncate">{docVu.nom}</div>
+              <div className="font-semibold break-words">{docVu.nom}</div>
               <div className="text-xs text-stone-300">{(docVu.taille / 1024).toFixed(0)} Ko · ajouté le {docVu.date}</div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -1847,7 +1872,7 @@ export default function MipPpaApp() {
                           ? <img src={d.data} alt="" className="w-9 h-9 object-cover rounded-lg border border-stone-200 shrink-0" />
                           : <span className="w-9 h-9 rounded-lg bg-stone-100 flex items-center justify-center shrink-0"><Icone n="fichier" t={17} className="text-stone-500" /></span>}
                         <div className="min-w-0">
-                          <div className="truncate font-medium underline decoration-dotted underline-offset-2">{d.nom}</div>
+                          <div className="break-words font-medium underline decoration-dotted underline-offset-2">{d.nom}</div>
                           <div className="text-xs text-stone-400">{(d.taille / 1024).toFixed(0)} Ko · ajouté le {d.date}</div>
                         </div>
                       </button>
