@@ -7,7 +7,7 @@ import {
 } from "recharts";
 
 /* ================================================================
-   FDFP · MIP-PPA — Suivi des Projets Apprentissage dans l'agro-industrie
+   FDFP · MIP-PPA — Suivi des projets de formation de type apprentissage dans l'agro-industrie
    Reconstruction fidèle de l'application (modèle : 5 dimensions,
    23 indicateurs, notes 0–4, suivi post-formation à 3/6/12 mois)
    ================================================================ */
@@ -37,13 +37,13 @@ const REFERENTIEL_DEFAUT = [
     ],
   },
   {
-    id: "EE", nom: "Efficience économique", poids: 20,
-    desc: "Optimisation des coûts et utilisation du financement PPA.",
+    id: "IE", nom: "Insertion et employabilité", poids: 20,
+    desc: "Insertion professionnelle des apprenants à l'issue du projet : accès à l'emploi, adéquation emploi-qualification et reconnaissance des compétences (OIT, Recommandation n° 208 sur les apprentissages de qualité, 2023).",
     indicateurs: [
-      { id: "EE1", phase: "À la conception", label: "Coût de la formation par apprenant formé" },
-      { id: "EE2", phase: "En fin de formation", label: "Coût de formation par compétence certifiée acquise" },
-      { id: "EE3", phase: "En fin de formation", label: "Taux d'utilisation du financement PPA alloué" },
-      { id: "EE4", phase: "En fin de formation", label: "Ratio coût-bénéfice estimé de la formation (méthode simplifiée)" },
+      { id: "IE1", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Taux d'insertion des apprenants dans l'emploi (salarié ou auto-emploi) dans les 6 mois suivant le projet" },
+      { id: "IE2", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Adéquation entre l'emploi occupé et la qualification visée par le projet (emploi-qualification)" },
+      { id: "IE3", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Qualité de l'insertion : nature du contrat, rémunération et maintien dans l'entreprise" },
+      { id: "IE4", phase: "En fin de formation", label: "Certification ou reconnaissance officielle des compétences acquises (CQP, titre, attestation reconnue)" },
     ],
   },
   {
@@ -73,21 +73,21 @@ const REFERENTIEL_DEFAUT = [
 const FORMATIONS_DEMO = [
   {
     id: "f1", titre: "Maîtrise HACCP en ligne de conditionnement cacao",
-    entreprise: "CocoaPro Côte d'Ivoire", operateur: "Cabinet AgroForm CI", beneficiaire: "Coopérative CAYAT", filiere: "Cacao-Café", region: "Abidjan",
+    entreprise: "SACO", operateur: "A.C.A", beneficiaire: "SCINPA", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "Abidjan",
     apprenants: 18, budget: 12500000, statut: "Terminée",
-    notes: { P1: 4, P2: 3, P3: 4, P4: 4, EP1: 3, EP2: 3, EP3: 4, EP4: 4, EP5: 3, EP6: 4, EE1: 3, EE2: 3, EE3: 4, EE4: 3, IO1: 3, IO2: 3, IO3: 4, IO4: 3, IO5: 3, DC1: 3, DC2: 2, DC3: 3, DC4: 3 },
+    notes: { P1: 4, P2: 3, P3: 4, P4: 4, EP1: 3, EP2: 3, EP3: 4, EP4: 4, EP5: 3, EP6: 4, IE1: 3, IE2: 3, IE3: 4, IE4: 3, IO1: 3, IO2: 3, IO3: 4, IO4: 3, IO5: 3, DC1: 3, DC2: 2, DC3: 3, DC4: 3 },
   },
   {
     id: "f2", titre: "Conduite de séchoir industriel — fruits tropicaux",
-    entreprise: "Tropic'Or SARL", operateur: "Institut IFCA", beneficiaire: "Tropic'Or SARL", filiere: "Fruits & Légumes", region: "Yamoussoukro",
+    entreprise: "AGROCI", operateur: "Emergence", beneficiaire: "AGROCI", secteurGrand: "Secteur secondaire", filiere: "Transformation des fruits et légumes", domaine: "Jus et concentrés", region: "Yamoussoukro",
     apprenants: 9, budget: 6800000, statut: "Terminée",
-    notes: { P1: 3, P2: 2, P3: 3, P4: 2, EP1: 2, EP2: 2, EP3: 3, EP4: 4, EP5: 2, EP6: 2, EE1: 2, EE2: 3, EE3: 2, EE4: 2, IO1: 2, IO2: 2, IO3: 3, IO4: 2, IO5: 2, DC1: 3, DC2: 2, DC3: 2, DC4: 2 },
+    notes: { P1: 3, P2: 2, P3: 3, P4: 2, EP1: 2, EP2: 2, EP3: 3, EP4: 4, EP5: 2, EP6: 2, IE1: 2, IE2: 3, IE3: 2, IE4: 2, IO1: 2, IO2: 2, IO3: 3, IO4: 2, IO5: 2, DC1: 3, DC2: 2, DC3: 2, DC4: 2 },
   },
   {
     id: "f3", titre: "Sécurité alimentaire & traçabilité ISO 22000",
-    entreprise: "LaitiAfrique", operateur: "Cabinet AgroForm CI", beneficiaire: "LaitiAfrique", filiere: "Lait & Dérivés", region: "San-Pédro",
+    entreprise: "FrieslandCampina", operateur: "Domny", beneficiaire: "FrieslandCampina", secteurGrand: "Secteur secondaire", filiere: "Industrie laitière", domaine: "Lait et yaourts", region: "San-Pédro",
     apprenants: 24, budget: 15200000, statut: "Terminée",
-    notes: { P1: 4, P2: 4, P3: 4, P4: 4, EP1: 4, EP2: 3, EP3: 4, EP4: 4, EP5: 4, EP6: 4, EE1: 3, EE2: 3, EE3: 4, EE4: 3, IO1: 4, IO2: 3, IO3: 4, IO4: 4, IO5: 3, DC1: 3, DC2: 3, DC3: 4, DC4: 3 },
+    notes: { P1: 4, P2: 4, P3: 4, P4: 4, EP1: 4, EP2: 3, EP3: 4, EP4: 4, EP5: 4, EP6: 4, IE1: 3, IE2: 3, IE3: 4, IE4: 3, IO1: 4, IO2: 3, IO3: 4, IO4: 4, IO5: 3, DC1: 3, DC2: 3, DC3: 4, DC4: 3 },
   },
 ];
 
@@ -132,7 +132,61 @@ function ecrireStock(cle, val) {
 }
 
 const ROLES = ["Administrateur lead", "Administrateur FDFP", "Agent FDFP", "Promoteur", "Opérateur", "En attente d'activation"];
-const SECTEURS_DEFAUT = ["Cacao-Café", "Fruits & Légumes", "Lait & Dérivés", "Anacarde", "Céréales", "Autre agro-industrie"];
+const SECTEURS_DEFAUT = {
+  "Secteur primaire": {
+    "Cultures de rente": ["Cacao", "Café", "Anacarde", "Coton", "Hévéa", "Palmier à huile"],
+    "Cultures vivrières et maraîchères": ["Riz", "Manioc", "Igname", "Banane plantain", "Maraîchage", "Fruits"],
+    "Élevage et aviculture": ["Bovins", "Petits ruminants", "Porcins", "Aviculture", "Apiculture"],
+    "Pêche et aquaculture": ["Pêche artisanale", "Pêche industrielle", "Pisciculture"],
+    "Sylviculture et exploitation forestière": ["Reboisement", "Exploitation du bois"],
+    "Extraction minière": ["Or", "Manganèse", "Autres minerais"],
+  },
+  "Secteur secondaire": {
+    "Transformation du cacao et du café": ["Fèves et masse de cacao", "Beurre et poudre", "Chocolaterie", "Torréfaction café"],
+    "Transformation de l'anacarde": ["Décorticage", "Calibrage et conditionnement", "Valorisation des coques et pommes"],
+    "Transformation des fruits et légumes": ["Jus et concentrés", "Séchage", "Conserves"],
+    "Industrie laitière": ["Lait et yaourts", "Fromages", "Crèmes glacées"],
+    "Meunerie et céréales": ["Farines", "Boulangerie-pâtisserie", "Biscuiterie", "Brasserie et boissons"],
+    "Corps gras et huilerie": ["Huile de palme", "Huile de coton", "Savonnerie"],
+    "Produits halieutiques": ["Conserverie de thon", "Fumage et salaison"],
+    "Conditionnement et emballage": ["Emballages plastiques", "Cartons", "Étiquetage"],
+    "Autres industries": ["Chimie et pharmacie", "Textile", "Métallurgie", "BTP", "Énergie"],
+  },
+  "Secteur tertiaire": {
+    "Commerce et distribution": ["Grande distribution", "Commerce de gros", "Négoce agricole"],
+    "Transport et logistique": ["Transport routier", "Logistique portuaire", "Entreposage et chaîne du froid"],
+    "Hôtellerie et restauration": ["Hôtellerie", "Restauration collective", "Traiteurs"],
+    "Services aux entreprises": ["Banque et assurance", "Conseil et audit", "Numérique et télécoms"],
+    "Formation et santé": ["Éducation et formation professionnelle", "Santé et action sociale"],
+    "Administration et tourisme": ["Administration publique", "Tourisme et loisirs"],
+  },
+};
+// Accepte les anciens formats et les convertit vers {secteur: {branche: [domaines]}}
+const normaliserSecteurs = (s) => {
+  if (Array.isArray(s)) { const o = {}; s.forEach((b) => { o[b] = ["Général"]; }); return { "Secteur secondaire": o }; }
+  if (s && typeof s === "object" && Object.keys(s).length) {
+    const o = {};
+    for (const [grand, val] of Object.entries(s)) {
+      if (Array.isArray(val)) { const bo = {}; val.forEach((b) => { bo[b] = ["Général"]; }); o[grand] = bo; }
+      else if (val && typeof val === "object") o[grand] = val;
+    }
+    return Object.keys(o).length ? o : SECTEURS_DEFAUT;
+  }
+  return SECTEURS_DEFAUT;
+};
+// Retrouve le grand secteur d'une branche donnee
+const grandSecteurDe = (secteurs, branche) => {
+  const n = normaliserSecteurs(secteurs);
+  for (const [grand, branches] of Object.entries(n)) if (Object.keys(branches || {}).includes(branche)) return grand;
+  return "";
+};
+// Libelle complet : "Secteur secondaire · Transformation de l'anacarde · Décorticage"
+const libelleSecteur = (f, secteurs) => {
+  const grand = f.secteurGrand || grandSecteurDe(secteurs, f.filiere);
+  const morceaux = [grand, f.filiere, f.domaine].filter(Boolean);
+  return morceaux.join(" · ");
+};
+const listeSecteursPlate = (s) => Object.values(normaliserSecteurs(s)).map((b) => Object.keys(b)).flat();
 
 // ----------------- MATRICE DES PERMISSIONS PAR RÔLE -------------
 const PERMS = {
@@ -190,11 +244,11 @@ function Icone({ n, t = 18, className = "" }) {
 // Descriptions affichées au survol des rubriques (info-bulles)
 const DESCR_NAV = {
   dashboard: "Vision consolidée du portefeuille : scores, radar, secteurs",
-  formations: "Portefeuille des formations financées par le FDFP",
-  evaluation: "Noter une formation sur les 5 dimensions et 23 indicateurs",
+  projets: "Portefeuille des projets de formation financés par le FDFP",
+  evaluation: "Noter un projet sur les 5 dimensions et 23 indicateurs",
   suivi: "Jalons M+3 / M+6 / M+12 : notes, documents, échéances",
   indicateurs: "Référentiel MIP-PPA : dimensions, pondérations, indicateurs",
-  alertes: "Formations sous-performantes et suivis en retard",
+  alertes: "Projets de formation de type apprentissage sous-performantes et suivis en retard",
   exports: "Fiches PDF officielles et tableau Excel consolidé",
   guide: "Documentation complète de la plateforme",
   users: "Activer les comptes et attribuer les rôles",
@@ -434,16 +488,43 @@ function EcranConnexion() {
 // ================= APPLICATION ===================================
 export default function MipPpaApp() {
   const [page, setPage] = useState("dashboard");
-  const [referentiel, setReferentielBrut] = useState(() => lireStock("mip-ppa-referentiel", REFERENTIEL_DEFAUT));
-  const [formations, setFormationsBrut] = useState(() => lireStock("mip-ppa-formations", FORMATIONS_DEMO));
-  const [suivis, setSuivisBrut] = useState(() => lireStock("mip-ppa-suivis", SUIVIS_DEMO));
-  const setReferentiel = (fn) => setReferentielBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-referentiel", n); return n; });
-  const setFormations = (fn) => setFormationsBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-formations", n); return n; });
-  const setSuivis = (fn) => setSuivisBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-suivis", n); return n; });
-  const [secteurs, setSecteursBrut] = useState(() => lireStock("mip-ppa-secteurs", SECTEURS_DEFAUT));
-  const [phases, setPhasesBrut] = useState(() => lireStock("mip-ppa-phases", ["À la conception", "En fin de formation", "Suivi post-formation (3 / 6 / 12 mois)"]));
-  const setPhases = (fn) => setPhasesBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-phases", n); return n; });
-  const setSecteurs = (fn) => setSecteursBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; ecrireStock("mip-ppa-secteurs", n); return n; });
+  // Donnees metier centralisees dans Supabase (phase 2)
+  const [referentiel, setReferentielBrut] = useState(REFERENTIEL_DEFAUT);
+  const [formations, setFormationsBrut] = useState([]);
+  const [suivis, setSuivisBrut] = useState([]);
+  const [secteurs, setSecteursBrut] = useState(SECTEURS_DEFAUT);
+  const [phases, setPhasesBrut] = useState(["À la conception", "En fin de formation", "Suivi post-formation (3 / 6 / 12 mois)"]);
+  const [chargementData, setChargementData] = useState(true);
+
+  // --- Ecriture Supabase : projets (upsert individuel) ---
+  const projetVersRow = (f) => ({ id: f.id, titre: f.titre || "", promoteur: f.entreprise || f.promoteur || "", operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", secteur: f.filiere || f.secteur || "", secteur_grand: f.secteurGrand || "", domaine: f.domaine || "", region: f.region || "", apprenants: Number(f.apprenants) || 0, budget: Number(f.budget) || 0, statut: f.statut || "Planifiée", notes: f.notes || {}, maj_le: new Date().toISOString() });
+  const rowVersProjet = (r) => ({ id: r.id, titre: r.titre, entreprise: r.promoteur, operateur: r.operateur, beneficiaire: r.beneficiaire, filiere: r.secteur, secteurGrand: r.secteur_grand || "", domaine: r.domaine || "", region: r.region, apprenants: r.apprenants, budget: r.budget, statut: r.statut, notes: r.notes || {} });
+  const suiviVersRow = (s) => ({ id: s.id, projet_id: s.formationId, jalon: s.jalon, echeance: s.echeance || null, statut: s.statut || "programmé", note: s.note || "", docs: s.docs || [], maj_le: new Date().toISOString() });
+  const rowVersSuivi = (r) => ({ id: r.id, formationId: r.projet_id, jalon: r.jalon, echeance: r.echeance, statut: r.statut, note: r.note || "", docs: r.docs || [] });
+
+  // Les setters gardent la meme signature qu'avant, mais propagent vers Supabase
+  const setFormations = (fn) => setFormationsBrut((v) => {
+    const n = typeof fn === "function" ? fn(v) : fn;
+    if (sb) {
+      const avantIds = new Set(v.map((x) => x.id)), apresIds = new Set(n.map((x) => x.id));
+      n.forEach((f) => { const a = v.find((x) => x.id === f.id); if (!a || JSON.stringify(a) !== JSON.stringify(f)) sb.from("projets").upsert(projetVersRow(f)).then(({ error }) => error && console.warn(error.message)); });
+      v.forEach((f) => { if (!apresIds.has(f.id)) sb.from("projets").delete().eq("id", f.id).then(() => {}); });
+    }
+    return n;
+  });
+  const setSuivis = (fn) => setSuivisBrut((v) => {
+    const n = typeof fn === "function" ? fn(v) : fn;
+    if (sb) {
+      const apresIds = new Set(n.map((x) => x.id));
+      n.forEach((s) => { const a = v.find((x) => x.id === s.id); if (!a || JSON.stringify(a) !== JSON.stringify(s)) sb.from("suivis").upsert(suiviVersRow(s)).then(({ error }) => error && console.warn(error.message)); });
+      v.forEach((s) => { if (!apresIds.has(s.id)) sb.from("suivis").delete().eq("id", s.id).then(() => {}); });
+    }
+    return n;
+  });
+  const sauverConfig = (champ, valeur) => { if (sb) sb.from("configuration").update({ [champ]: valeur, maj_le: new Date().toISOString() }).eq("id", 1).then(({ error }) => error && console.warn(error.message)); };
+  const setReferentiel = (fn) => setReferentielBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; sauverConfig("referentiel", n); return n; });
+  const setSecteurs = (fn) => setSecteursBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; sauverConfig("secteurs", n); return n; });
+  const setPhases = (fn) => setPhasesBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; sauverConfig("phases", n); return n; });
   const [comptes, setComptes] = useState([]);          // liste chargée depuis Supabase (page Utilisateurs)
   const [session, setSession] = useState(null);         // { id, email, nom, org, role }
   const [chargementAuth, setChargementAuth] = useState(true);
@@ -477,6 +558,7 @@ export default function MipPpaApp() {
   const [evalId, setEvalId] = useState(null);
   const [recherche, setRecherche] = useState("");
   const [formOuvert, setFormOuvert] = useState(false);
+  const [menuMobile, setMenuMobile] = useState(false);
   const [editionId, setEditionId] = useState(null);
   const [suiviEdit, setSuiviEdit] = useState(null); // fenêtre Notes & date & documents
   const [dimEdit, setDimEdit] = useState(null);     // fenêtre Modifier la dimension
@@ -487,7 +569,70 @@ export default function MipPpaApp() {
   const monCompte = session;
   useEffect(() => { if (session && !P.pages.includes(page)) setPage(P.pages[0]); }, [roleActif, session]); // redirection selon le rôle
   useEffect(() => { if (page === "users" && P.users && sb) chargerComptes(); }, [page, roleActif]);
-  const [nouvelle, setNouvelle] = useState({ titre: "", entreprise: "", operateur: "", beneficiaire: "", filiere: secteurs[0] || "Autre agro-industrie", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
+
+  // --- Chargement initial des donnees metier depuis Supabase + temps reel ---
+  const chargerDonnees = async () => {
+    if (!sb) { setChargementData(false); return; }
+    try {
+      // Configuration partagee (referentiel / secteurs / phases)
+      const { data: cfg } = await sb.from("configuration").select("*").eq("id", 1).maybeSingle();
+      if (cfg) {
+        if (Array.isArray(cfg.referentiel) && cfg.referentiel.length) setReferentielBrut(cfg.referentiel);
+        else sauverConfig("referentiel", REFERENTIEL_DEFAUT); // 1re initialisation
+        if (cfg.secteurs && Object.keys(cfg.secteurs).length) setSecteursBrut(normaliserSecteurs(cfg.secteurs));
+        else sauverConfig("secteurs", SECTEURS_DEFAUT);
+        if (Array.isArray(cfg.phases) && cfg.phases.length) setPhasesBrut(cfg.phases);
+        else sauverConfig("phases", ["À la conception", "En fin de formation", "Suivi post-formation (3 / 6 / 12 mois)"]);
+      }
+      // Projets + suivis
+      const { data: projs } = await sb.from("projets").select("*").order("cree_le");
+      const { data: suivs } = await sb.from("suivis").select("*");
+      let listeProjets = (projs || []).map(rowVersProjet);
+      let listeSuivis = (suivs || []).map(rowVersSuivi);
+      // Amorçage : si la base est vide ET qu'on est admin, injecter les donnees de demo
+      if (!listeProjets.length && est_admin_amorcage()) {
+        for (const f of FORMATIONS_DEMO) { await sb.from("projets").upsert(projetVersRow(f)); }
+        for (const s of SUIVIS_DEMO) { await sb.from("suivis").upsert(suiviVersRow(s)); }
+        listeProjets = FORMATIONS_DEMO.map((f) => ({ ...f }));
+        listeSuivis = SUIVIS_DEMO.map((s) => ({ ...s }));
+      }
+      setFormationsBrut(listeProjets);
+      setSuivisBrut(listeSuivis);
+    } catch (e) { console.warn("Chargement donnees:", e.message); }
+    setChargementData(false);
+  };
+  const est_admin_amorcage = () => ["Administrateur lead", "Administrateur FDFP"].includes(roleActif);
+
+  useEffect(() => {
+    if (!session || roleActif === "En attente d'activation") return;
+    chargerDonnees();
+    if (!sb) return;
+    // Temps reel : quand un autre utilisateur modifie, on recharge
+    const canal = sb.channel("mip-ppa-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "projets" }, () => rechargerLeger())
+      .on("postgres_changes", { event: "*", schema: "public", table: "suivis" }, () => rechargerLeger())
+      .on("postgres_changes", { event: "*", schema: "public", table: "configuration" }, () => rechargerLeger())
+      .subscribe();
+    return () => { sb.removeChannel(canal); };
+  }, [session, roleActif]);
+
+  // Rechargement silencieux (declenche par le temps reel des autres utilisateurs)
+  let rechargeEnCours = false;
+  const rechargerLeger = async () => {
+    if (!sb || rechargeEnCours) return; rechargeEnCours = true;
+    setTimeout(async () => {
+      try {
+        const { data: cfg } = await sb.from("configuration").select("*").eq("id", 1).maybeSingle();
+        if (cfg) { if (Array.isArray(cfg.referentiel) && cfg.referentiel.length) setReferentielBrut(cfg.referentiel); if (cfg.secteurs) setSecteursBrut(normaliserSecteurs(cfg.secteurs)); if (Array.isArray(cfg.phases)) setPhasesBrut(cfg.phases); }
+        const { data: projs } = await sb.from("projets").select("*").order("cree_le");
+        const { data: suivs } = await sb.from("suivis").select("*");
+        setFormationsBrut((projs || []).map(rowVersProjet));
+        setSuivisBrut((suivs || []).map(rowVersSuivi));
+      } catch (e) {}
+      rechargeEnCours = false;
+    }, 400);
+  };
+  const [nouvelle, setNouvelle] = useState({ titre: "", entreprise: "", operateur: "", beneficiaire: "", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
   const [toast, setToast] = useState("");
   const notif = (m) => { setToast(m); setTimeout(() => setToast(""), 2500); };
   const [emailInvite, setEmailInvite] = useState("");
@@ -499,7 +644,7 @@ export default function MipPpaApp() {
     const corps = [
       "Bonjour,",
       "",
-      "Vous etes invite(e) a rejoindre la plateforme FDFP MIP-PPA (suivi des Projets Apprentissage dans l'agro-industrie).",
+      "Vous etes invite(e) a rejoindre la plateforme FDFP MIP-PPA (suivi des projets de formation de type apprentissage dans l'agro-industrie).",
       "",
       "1. Rendez-vous sur : " + urlApp,
       "2. Cliquez sur \"Creer un compte\" et renseignez vos informations (nom, organisation, email, mot de passe).",
@@ -553,7 +698,7 @@ export default function MipPpaApp() {
     formationsVisibles.forEach((f) => {
       const s = scoreGlobal(referentiel, f.notes);
       if (s === null) return;
-      if (!map[f.filiere]) map[f.filiere] = []; map[f.filiere].push(s);
+      const cle = libelleSecteur(f, secteurs); if (!map[cle]) map[cle] = []; map[cle].push(s);
     });
     return Object.entries(map).map(([fil, arr]) => ({ filiere: fil, score: arr.reduce((a, b) => a + b, 0) / arr.length }));
   }, [formationsVisibles, referentiel]);
@@ -567,7 +712,7 @@ export default function MipPpaApp() {
     if (editionId) {
       setFormations((fs) => fs.map((f) => f.id === editionId ? { ...f, ...nouvelle } : f));
       setEditionId(null); setFormOuvert(false);
-      setNouvelle({ titre: "", entreprise: "", operateur: "", beneficiaire: "", filiere: secteurs[0] || "Autre agro-industrie", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
+      setNouvelle({ titre: "", entreprise: "", operateur: "", beneficiaire: "", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
       notif("Formation mise à jour"); return;
     }
     const id = "f" + Date.now();
@@ -577,20 +722,20 @@ export default function MipPpaApp() {
       setSuivis((ss) => [...ss, { id: "s" + Date.now() + i, formationId: id, jalon: j, echeance: d.toISOString().slice(0, 10), statut: "programmé", note: "", docs: [] }]);
     });
     setFormOuvert(false);
-    setNouvelle({ titre: "", entreprise: "", operateur: "", beneficiaire: "", filiere: secteurs[0] || "Autre agro-industrie", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
+    setNouvelle({ titre: "", entreprise: "", operateur: "", beneficiaire: "", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
     notif("Formation créée — 3 suivis (M+3/M+6/M+12) planifiés");
   };
   const editerFormation = (f) => {
-    setNouvelle({ titre: f.titre, entreprise: f.entreprise, operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", filiere: f.filiere, region: f.region, apprenants: f.apprenants, budget: f.budget, statut: f.statut });
+    setNouvelle({ titre: f.titre, entreprise: f.entreprise, operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", secteurGrand: f.secteurGrand || grandSecteurDe(secteurs, f.filiere), filiere: f.filiere, domaine: f.domaine || "", region: f.region, apprenants: f.apprenants, budget: f.budget, statut: f.statut });
     setEditionId(f.id); setFormOuvert(true); setPage("formations");
   };
 
   const exportExcel = () => {
-    const entetes = ["Formation", "Entreprise", "Secteur", "Région", "Apprenants", "Budget FCFA", "Statut",
+    const entetes = ["Projet", "Promoteur", "Secteur", "Branche", "Domaine", "Région", "Apprenants", "Budget FCFA", "Statut",
       ...referentiel.map((d) => `${d.nom} (%)`), "Score global (%)", "Niveau"];
     const lignes = formationsVisibles.map((f) => {
       const g = scoreGlobal(referentiel, f.notes);
-      return [f.titre, f.entreprise, f.filiere, f.region, f.apprenants, f.budget, f.statut,
+      return [f.titre, f.entreprise, f.secteurGrand || grandSecteurDe(secteurs, f.filiere), f.filiere, f.domaine || "", f.region, f.apprenants, f.budget, f.statut,
         ...referentiel.map((d) => { const s = scoreDimension(referentiel, d.id, f.notes); return s === null ? "" : Math.round(s); }),
         g === null ? "" : Math.round(g), niveau(g).txt].join(";");
     });
@@ -847,10 +992,10 @@ export default function MipPpaApp() {
     ...(P.users ? [{ section: "Administration", items: [["users", "utilisateurs", "Utilisateurs & rôles"]] }] : []),
   ];
   const titres = {
-    dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des Projets Apprentissage dans l'agro-industrie"],
-    formations: ["Projets", "Portefeuille des projets de formation financés par le FDFP"],
+    dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des projets de formation de type Apprentissage (Enploi-qualification) dans l'agro-industrie"],
+    formations: ["Projets de formation de type apprentissage", "Portefeuille des projets de formation financés par le FDFP"],
     evaluation: ["Évaluation", fEval ? fEval.titre : "Sélectionnez une formation à évaluer"],
-    suivi: ["Suivi post-formation", "Évaluations à 3, 6 et 12 mois — impact et durabilité"],
+    suivi: ["Suivi", "Évaluations à 3, 6 et 12 mois — impact et durabilité"],
     indicateurs: ["Référentiel des indicateurs", "Modèle MIP-PPA — dimensions, pondérations, indicateurs"],
     alertes: ["Alertes & risques", "Formations sous-performantes et suivis en retard"],
     exports: ["Exports", "Fiches PDF et tableaux Excel pour les rapports FDFP"],
@@ -868,6 +1013,9 @@ export default function MipPpaApp() {
     return <EcranAttente session={session}
       surActualiser={() => sb.auth.getUser().then(({ data }) => data.user && chargerProfil(data.user))}
       surDeconnexion={() => { sb.auth.signOut(); setSession(null); }} />;
+  }
+  if (chargementData) {
+    return <CadreAccueil enfants={<div className="text-sky-100 text-sm page-anim">Chargement des données de la plateforme…</div>} />;
   }
 
   // =================== RENDU =====================================
@@ -890,14 +1038,15 @@ export default function MipPpaApp() {
         html { scroll-behavior: smooth; }
       `}</style>
       {/* ---------------- SIDEBAR ---------------- */}
-      <aside className="w-64 shrink-0 flex flex-col text-stone-300 h-screen sticky top-0 overflow-hidden" style={{ background: C.sidebar }}>
+      {menuMobile && <div className="fixed inset-0 z-40 md:hidden" style={{ background: "rgba(10,25,38,.55)" }} onClick={() => setMenuMobile(false)} />}
+      <aside className={(menuMobile ? "flex fixed inset-y-0 left-0 z-50 " : "hidden ") + "md:flex md:sticky md:top-0 w-64 shrink-0 flex-col text-stone-300 h-screen overflow-hidden"} style={{ background: C.sidebar }}>
         <div className="flex items-center gap-3 px-5 py-5">
           <div className="bg-white rounded-xl px-2 py-1.5 flex items-center justify-center shrink-0">
             <LogoFDFP h={30} />
           </div>
           <div>
             <div className="text-white font-bold leading-tight">MIP-PPA</div>
-            <div className="text-xs text-stone-400">Suivi des formations agro-industrielles</div>
+            <div className="text-xs text-stone-400">Modèle d'Indicateurs de Performance - Produit Projet Apprentissage</div>
           </div>
         </div>
         <nav className="flex-1 px-3 space-y-5 pb-4">
@@ -905,7 +1054,7 @@ export default function MipPpaApp() {
             <div key={g.section}>
               <div className="text-[11px] uppercase tracking-wider text-stone-500 px-3 mb-1.5">{g.section}</div>
               {g.items.map(([id, ic, lbl]) => (
-                <button key={id} onClick={() => setPage(id)} title={DESCR_NAV[id] || lbl}
+                <button key={id} onClick={() => { setPage(id); setMenuMobile(false); }} title={DESCR_NAV[id] || lbl}
                   className={"nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left " + (page === id ? "nav-actif" : "")}>
                   <Icone n={ic} t={17} />{lbl}
                 </button>
@@ -922,7 +1071,10 @@ export default function MipPpaApp() {
 
       {/* ---------------- ZONE PRINCIPALE ---------------- */}
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="bg-white border-b border-stone-200 px-6 py-3.5 flex items-center justify-between gap-4 sticky top-0 z-10">
+        <header className="bg-white border-b border-stone-200 px-4 md:px-6 py-3.5 flex items-center justify-between gap-3 md:gap-4 sticky top-0 z-10">
+            <button onClick={() => setMenuMobile(true)} className="md:hidden text-stone-600 shrink-0" title="Ouvrir le menu">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
+            </button>
           <div className="min-w-0">
             <h1 className="text-lg font-bold truncate">{titres[page][0]}</h1>
             <div className="text-xs text-stone-500 truncate">{titres[page][1]}</div>
@@ -939,33 +1091,33 @@ export default function MipPpaApp() {
           </div>
         </header>
 
-        <main key={page + (evalId || "")} className="page-anim flex-1 p-6 space-y-5 max-w-5xl w-full mx-auto">
+        <main key={page + (evalId || "")} className="page-anim flex-1 p-4 md:p-6 space-y-5 max-w-5xl w-full mx-auto">
           {P.lectureSeule && <div className="rounded-xl px-4 py-2.5 text-sm flex items-center gap-2" style={{ background: "#e0f0fb", color: "#0d3b57" }}><Icone n="oeil" t={16} /> Mode consultation — votre profil ({roleActif}) donne un accès en lecture seule.</div>}
 
           {/* =========== TABLEAU DE BORD =========== */}
           {page === "dashboard" && (<>
             <section className="rounded-3xl p-8 text-white" style={{ background: "linear-gradient(120deg,#0e3c60 0%,#1d6fa8 100%)" }}>
               <span className="text-xs font-semibold px-3 py-1 rounded-full text-stone-900" style={{ background: C.gold }}>FDFP · Côte d'Ivoire</span>
-              <h2 className="text-4xl font-bold mt-4 leading-tight">Mesurer la vraie valeur<br />des Projets Apprentissage</h2>
+              <h2 className="text-2xl md:text-4xl font-bold mt-4 leading-tight">Mesurer la vraie valeur<br />des projets de formation de type apprentissage</h2>
               <p className="mt-3 text-sky-100 max-w-2xl">
-                Le modèle MIP-PPA évalue chaque formation sur {referentiel.length} dimensions et {referentiel.reduce((a, d) => a + d.indicateurs.length, 0)} indicateurs,
+                Le modèle MIP-PPA évalue chaque projet de formation de type apprentissage sur {referentiel.length} dimensions et {referentiel.reduce((a, d) => a + d.indicateurs.length, 0)} indicateurs,
                 de la conception jusqu'à 12 mois après — pour des décisions éclairées au service de l'agro-industrie ivoirienne.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <button onClick={() => setPage("formations")} className="bg-white text-stone-900 font-semibold px-5 py-2.5 rounded-xl hover:bg-stone-100">Évaluer une formation →</button>
+                <button onClick={() => setPage("formations")} className="bg-white text-stone-900 font-semibold px-5 py-2.5 rounded-xl hover:bg-stone-100">Évaluer un projet →</button>
                 <button onClick={() => setPage("formations")} className="border border-sky-300/50 text-white px-5 py-2.5 rounded-xl hover:bg-white/10">Voir le portefeuille</button>
               </div>
             </section>
 
             <section className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard icone={<Icone n="cap" t={20} />} titre="Formations suivies" valeur={stats.nb} />
+              <StatCard icone={<Icone n="cap" t={20} />} titre="Projets suivis" valeur={stats.nb} />
               <StatCard icone={<Icone n="usine" t={20} />} titre="Apprenants concernés" valeur={stats.apprenants} teinte="#fdf0da" fg="#b07515" />
               <StatCard icone={<Icone n="cible" t={20} />} titre="Score moyen MIP" valeur={fmtPct(stats.moy)} sous="Moyenne pondérée du portefeuille" teinte="#dcebf7" fg={C.vert} />
               <StatCard icone={<Icone n="alerte" t={20} />} titre="Alertes actives" valeur={stats.alertes} sous={stats.alertes ? "À traiter en priorité" : "Rien à signaler"} teinte="#fde8e8" fg={C.insuffisant} />
             </section>
 
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
-              <h3 className="font-bold">Performance moyenne par dimension</h3>
+              <h3 className="font-bold">Niveau de performance moyenne par dimension</h3>
               <p className="text-sm text-stone-500 mb-2">Profil consolidé du portefeuille PPA en cours.</p>
               <ResponsiveContainer width="100%" height={300}>
                 <RadarChart data={radarData}>
@@ -994,7 +1146,7 @@ export default function MipPpaApp() {
 
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
               <div className="flex items-center justify-between">
-                <div><h3 className="font-bold">Formations récentes</h3><p className="text-sm text-stone-500">Cliquez pour évaluer ou consulter.</p></div>
+                <div><h3 className="font-bold">Projets de formation de type apprentissage (emploi-qualifcation) récents</h3><p className="text-sm text-stone-500">Cliquez pour évaluer ou consulter.</p></div>
                 <button onClick={() => setPage("formations")} className="text-sm font-semibold hover:underline" style={{ color: C.vert }}>Tout voir →</button>
               </div>
               <div className="divide-y divide-stone-100 mt-2">
@@ -1003,7 +1155,7 @@ export default function MipPpaApp() {
                     className="w-full flex items-center justify-between gap-4 py-3.5 text-left hover:bg-stone-50 px-2 rounded-lg">
                     <div>
                       <div className="font-semibold">{f.titre}</div>
-                      <div className="text-sm text-stone-500">{f.entreprise} · {f.filiere} · {f.apprenants} apprenants</div>
+                      <div className="text-sm text-stone-500">{f.entreprise} · {libelleSecteur(f, secteurs)} · {f.apprenants} apprenants</div>
                     </div>
                     <Badge score={scoreGlobal(referentiel, f.notes)} />
                   </button>
@@ -1013,7 +1165,7 @@ export default function MipPpaApp() {
 
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
               <h3 className="font-bold flex items-center gap-2"><Icone n="tendance" t={18} /> Niveaux de performance</h3>
-              <p className="text-sm text-stone-500 mb-3">Lecture du score global MIP-PPA.</p>
+              <p className="text-sm text-stone-500 mb-3">Lecture du score global MIP-PPA (Modèle d'Indicateurs de Performance - Produit Projet Apprentissage).</p>
               <div className="flex flex-wrap gap-2">
                 {[["Insuffisant (0–40 %)", C.insuffisant], ["En développement (40–60 %)", C.dev], ["Satisfaisant (60–80 %)", C.satisfaisant], ["Excellent (80–100 %)", C.excellent]].map(([t, c]) => (
                   <span key={t} className="text-xs font-semibold text-white px-3 py-1.5 rounded-full" style={{ background: c }}>{t}</span>
@@ -1032,9 +1184,9 @@ export default function MipPpaApp() {
                 className="flex-1 min-w-[240px] bg-white border border-stone-200 rounded-full px-5 py-2.5 text-sm outline-none focus:border-stone-400" />
               {P.exports && <button onClick={exportExcel} className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50" title="Télécharger le tableau Excel consolidé"><Icone n="telecharger" t={15} /> Exporter Excel</button>}
               <button onClick={() => { setFormations(FORMATIONS_DEMO); setSuivis(SUIVIS_DEMO); notif("Données démo restaurées"); }}
-                className="text-sm text-stone-600 hover:text-stone-900" title="Restaurer les 3 formations de démonstration"><Icone n="rotation" t={14} /> Données démo</button>
+                className="text-sm text-stone-600 hover:text-stone-900" title="Restaurer les 3 projets de démonstration"><Icone n="rotation" t={14} /> Données démo</button>
             </div>
-            {P.creerFormation && <button onClick={() => { setEditionId(null); setNouvelle({ titre: "", entreprise: "", operateur: "", beneficiaire: "", filiere: secteurs[0] || "Autre agro-industrie", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" }); setFormOuvert(!formOuvert); }}
+            {P.creerFormation && <button onClick={() => { setEditionId(null); setNouvelle({ titre: "", entreprise: "", operateur: "", beneficiaire: "", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" }); setFormOuvert(!formOuvert); }}
               className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm" style={{ background: C.vertFonce }}>
               + Nouveau projet
             </button>}
@@ -1055,8 +1207,20 @@ export default function MipPpaApp() {
                   <input value={nouvelle.beneficiaire} onChange={(e) => setNouvelle({ ...nouvelle, beneficiaire: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" placeholder="Ex. Coopérative bénéficiaire de la formation" />
                 </label>
                 <label className="text-sm">Secteur
-                  <select value={nouvelle.filiere} onChange={(e) => setNouvelle({ ...nouvelle, filiere: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
-                    {secteurs.map((f) => <option key={f}>{f}</option>)}
+                  <select value={nouvelle.secteurGrand || ""} onChange={(e) => { const g = e.target.value; const branches = Object.keys(normaliserSecteurs(secteurs)[g] || {}); const b0 = branches[0] || ""; const doms = (normaliserSecteurs(secteurs)[g] || {})[b0] || []; setNouvelle({ ...nouvelle, secteurGrand: g, filiere: b0, domaine: doms[0] || "" }); }}
+                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
+                    {Object.keys(normaliserSecteurs(secteurs)).map((g) => <option key={g}>{g}</option>)}
+                  </select>
+                </label>
+                <label className="text-sm">Branche d'activité
+                  <select value={nouvelle.filiere} onChange={(e) => { const b = e.target.value; const doms = (normaliserSecteurs(secteurs)[nouvelle.secteurGrand] || {})[b] || []; setNouvelle({ ...nouvelle, filiere: b, domaine: doms[0] || "" }); }}
+                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
+                    {Object.keys(normaliserSecteurs(secteurs)[nouvelle.secteurGrand] || {}).map((f) => <option key={f}>{f}</option>)}
+                  </select>
+                </label>
+                <label className="text-sm">Domaine
+                  <select value={nouvelle.domaine || ""} onChange={(e) => setNouvelle({ ...nouvelle, domaine: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
+                    {((normaliserSecteurs(secteurs)[nouvelle.secteurGrand] || {})[nouvelle.filiere] || []).map((d) => <option key={d}>{d}</option>)}
                   </select>
                 </label>
                 <label className="text-sm">Région
@@ -1081,17 +1245,17 @@ export default function MipPpaApp() {
             )}
 
             <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden">
-              <div className="grid grid-cols-12 px-5 py-3 text-sm font-semibold text-stone-600 border-b border-stone-100">
-                <div className="col-span-6">Formation</div><div className="col-span-2">Secteur</div><div className="col-span-2">Score MIP</div><div className="col-span-2 text-right">Actions</div>
+              <div className="grid grid-cols-12 px-5 py-3 text-sm font-semibold text-stone-600 border-b border-stone-100 min-w-[680px]">
+                <div className="col-span-6">Projet de formation de type apprentissage</div><div className="col-span-2">Secteur</div><div className="col-span-2">Score MIP</div><div className="col-span-2 text-right">Actions</div>
               </div>
-              {formationsVisibles.filter((f) => (f.titre + f.entreprise + f.filiere).toLowerCase().includes(recherche.toLowerCase())).map((f) => (
-                <div key={f.id} className="grid grid-cols-12 items-center px-5 py-4 border-b border-stone-50 hover:bg-stone-50">
+              {formationsVisibles.filter((f) => (f.titre + f.entreprise + f.filiere + (f.secteurGrand || "") + (f.domaine || "")).toLowerCase().includes(recherche.toLowerCase())).map((f) => (
+                <div key={f.id} className="grid grid-cols-12 items-center px-5 py-4 border-b border-stone-50 hover:bg-stone-50 min-w-[680px]">
                   <div className="col-span-6 pr-3">
                     <div className="font-semibold">{f.titre}</div>
                     <div className="text-sm text-stone-500">Promoteur : {f.entreprise}{f.operateur ? ` · Opérateur : ${f.operateur}` : ""} · {f.region}</div>
                     {f.beneficiaire && <div className="text-xs text-stone-400">Bénéficiaire : {f.beneficiaire}</div>}
                   </div>
-                  <div className="col-span-2 text-sm">{f.filiere}</div>
+                  <div className="col-span-2 text-sm"><div className="font-medium">{f.secteurGrand || grandSecteurDe(secteurs, f.filiere)}</div><div className="text-stone-500 text-xs">{f.filiere}{f.domaine ? " · " + f.domaine : ""}</div></div>
                   <div className="col-span-2"><Badge score={scoreGlobal(referentiel, f.notes)} /></div>
                   <div className="col-span-2 flex justify-end items-center gap-3">
                     <button onClick={() => { setEvalId(f.id); setPage("evaluation"); }} className="text-sm font-medium hover:underline" style={{ color: C.vert }}>Évaluer</button>
@@ -1106,7 +1270,7 @@ export default function MipPpaApp() {
           {/* =========== ÉVALUATION MIP =========== */}
           {page === "evaluation" && (!fEval ? (
             <div className="bg-white rounded-2xl border border-stone-200 p-8 text-center">
-              <p className="text-stone-600 mb-4">Sélectionnez la formation à évaluer :</p>
+              <p className="text-stone-600 mb-4">Sélectionnez le Projet de formation de type apprentissage à évaluer :</p>
               <div className="flex flex-col gap-2 max-w-xl mx-auto">
                 {formationsVisibles.map((f) => (
                   <button key={f.id} onClick={() => setEvalId(f.id)} className="flex items-center justify-between gap-3 border border-stone-200 rounded-xl px-4 py-3 hover:bg-stone-50 text-left">
@@ -1128,7 +1292,7 @@ export default function MipPpaApp() {
               <div>
                 <div className="text-xs uppercase tracking-wider text-sky-200">Promoteur : {fEval.entreprise}</div>
                 <h2 className="text-2xl font-bold mt-1">{fEval.titre}</h2>
-                <div className="text-sm text-sky-100 mt-1">{fEval.filiere} · {fEval.region} · {fEval.apprenants} apprenants</div>
+                <div className="text-sm text-sky-100 mt-1">{libelleSecteur(fEval, secteurs)} · {fEval.region} · {fEval.apprenants} apprenants</div>
                 {(fEval.operateur || fEval.beneficiaire) && <div className="text-xs text-sky-200 mt-1">{[fEval.operateur ? `Opérateur : ${fEval.operateur}` : "", fEval.beneficiaire ? `Bénéficiaire : ${fEval.beneficiaire}` : ""].filter(Boolean).join(" · ")}</div>}
               </div>
               <div className="text-right">
@@ -1211,7 +1375,7 @@ export default function MipPpaApp() {
                     <div>
                       <span className="text-xs font-semibold px-2 py-0.5 rounded-full mr-2" style={{ background: teinte, color: "#1c1917" }}>{s.jalon}</span>
                       <span className="font-semibold">{s.f.titre}</span>
-                      <div className="text-sm text-stone-500 mt-0.5">{s.f.entreprise} · {s.f.filiere} · échéance {s.echeance}{s.statut === "programmé" ? ` · ${joursRestants(s.echeance) < 0 ? Math.abs(joursRestants(s.echeance)) + " j de retard" : "dans " + joursRestants(s.echeance) + " j"}` : ""}</div>
+                      <div className="text-sm text-stone-500 mt-0.5">{s.f.entreprise} · {libelleSecteur(s.f, secteurs)} · échéance {s.echeance}{s.statut === "programmé" ? ` · ${joursRestants(s.echeance) < 0 ? Math.abs(joursRestants(s.echeance)) + " j de retard" : "dans " + joursRestants(s.echeance) + " j"}` : ""}</div>
                       {s.note && <div className="text-xs text-stone-500 italic mt-1"><Icone n="note" t={13} /> {s.note}</div>}
                       {(s.docs || []).length > 0 && <div className="text-xs text-sky-700 mt-1"><Icone n="trombone" t={13} /> {s.docs.length} document{s.docs.length > 1 ? "s" : ""} de suivi rattaché{s.docs.length > 1 ? "s" : ""}</div>}
                     </div>
@@ -1262,19 +1426,50 @@ export default function MipPpaApp() {
 
             {P.secteurs && (
               <section className="bg-white rounded-2xl border border-stone-200 p-5">
-                <h3 className="font-bold">Secteurs</h3>
-                <p className="text-sm text-stone-500 mb-3">Liste des secteurs proposés à la création d'une formation — gérée par l'administrateur lead.</p>
-                <div className="flex flex-wrap gap-2">
-                  {secteurs.map((s, i) => (
-                    <span key={i} className="flex items-center gap-1.5 bg-stone-100 rounded-full pl-3 pr-1.5 py-1 text-sm">
-                      <input value={s} onChange={(e) => setSecteurs((ss) => ss.map((x, j) => j === i ? e.target.value : x))}
-                        className="bg-transparent outline-none" style={{ width: Math.max(6, s.length) + "ch" }} />
-                      <button onClick={() => { if (window.confirm(`Supprimer le secteur « ${s} » ? (les formations existantes gardent leur libellé)`)) setSecteurs((ss) => ss.filter((_, j) => j !== i)); }}
-                        className="text-stone-400 hover:text-red-600 w-5 h-5 rounded-full flex items-center justify-center" title="Supprimer ce secteur"><Icone n="fermer" t={12} /></button>
-                    </span>
+                <h3 className="font-bold">Secteurs, branches et domaines d'activité</h3>
+                <p className="text-sm text-stone-500 mb-3">Trois niveaux : le grand secteur, ses branches, et les domaines de chaque branche. Tout est modifiable — cette hiérarchie alimente le formulaire de projet.</p>
+                <div className="space-y-4">
+                  {Object.entries(normaliserSecteurs(secteurs)).map(([grand, branches]) => (
+                    <div key={grand} className="border border-stone-200 rounded-xl p-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <input value={grand}
+                          onChange={(e) => setSecteurs((s) => { const n = normaliserSecteurs(s), o = {}; Object.entries(n).forEach(([k, v]) => { o[k === grand ? e.target.value : k] = v; }); return o; })}
+                          className="font-semibold bg-transparent outline-none border-b border-transparent focus:border-stone-300 flex-1" />
+                        <span className="text-xs text-stone-400">{Object.keys(branches || {}).length} branches</span>
+                        <button onClick={() => { if (window.confirm(`Supprimer « ${grand} » et tout son contenu ?`)) setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; delete n[grand]; return n; }); }}
+                          className="text-red-400 hover:text-red-600" title="Supprimer ce secteur"><Icone n="poubelle" t={15} /></button>
+                      </div>
+                      <div className="space-y-3 mt-3">
+                        {Object.entries(branches || {}).map(([branche, domaines]) => (
+                          <div key={branche} className="bg-stone-50 rounded-lg p-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <input value={branche}
+                                onChange={(e) => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; const bo = {}; Object.entries(n[grand]).forEach(([k, v]) => { bo[k === branche ? e.target.value : k] = v; }); n[grand] = bo; return n; })}
+                                className="text-sm font-medium bg-transparent outline-none border-b border-transparent focus:border-stone-300 flex-1" />
+                              <button onClick={() => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; const bo = { ...n[grand] }; delete bo[branche]; n[grand] = bo; return n; })}
+                                className="text-red-400 hover:text-red-600" title="Supprimer cette branche"><Icone n="fermer" t={13} /></button>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {(domaines || []).map((d, i) => (
+                                <span key={i} className="flex items-center gap-1 bg-white border border-stone-200 rounded-full pl-2.5 pr-1 py-0.5 text-xs">
+                                  <input value={d} onChange={(e) => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; n[grand] = { ...n[grand], [branche]: n[grand][branche].map((x, j) => j === i ? e.target.value : x) }; return n; })}
+                                    className="bg-transparent outline-none" style={{ width: Math.max(6, d.length) + "ch" }} />
+                                  <button onClick={() => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; n[grand] = { ...n[grand], [branche]: n[grand][branche].filter((_, j) => j !== i) }; return n; })}
+                                    className="text-stone-300 hover:text-red-600" title="Supprimer ce domaine"><Icone n="fermer" t={10} /></button>
+                                </span>
+                              ))}
+                              <button onClick={() => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; n[grand] = { ...n[grand], [branche]: [...(n[grand][branche] || []), "Nouveau domaine"] }; return n; })}
+                                className="text-xs border border-dashed border-stone-300 rounded-full px-2.5 py-0.5 text-stone-500 hover:bg-white">+ Domaine</button>
+                            </div>
+                          </div>
+                        ))}
+                        <button onClick={() => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; n[grand] = { ...n[grand], ["Nouvelle branche " + (Object.keys(n[grand] || {}).length + 1)]: ["Général"] }; return n; })}
+                          className="text-sm border border-dashed border-stone-300 rounded-lg px-3 py-1.5 text-stone-500 hover:bg-stone-50 w-full">+ Ajouter une branche</button>
+                      </div>
+                    </div>
                   ))}
-                  <button onClick={() => setSecteurs((ss) => [...ss, "Nouveau secteur"])}
-                    className="text-sm border border-dashed border-stone-300 rounded-full px-3 py-1 text-stone-500 hover:bg-stone-50">+ Ajouter</button>
+                  <button onClick={() => setSecteurs((s) => ({ ...normaliserSecteurs(s), ["Nouveau secteur " + (Object.keys(normaliserSecteurs(s)).length + 1)]: { "Nouvelle branche": ["Général"] } }))}
+                    className="text-sm border border-dashed border-stone-300 rounded-xl px-4 py-2 text-stone-500 hover:bg-stone-50 w-full">+ Ajouter un grand secteur</button>
                 </div>
                 <h3 className="font-bold mt-6">Phases de mesure</h3>
                 <p className="text-sm text-stone-500 mb-3">Moments où chaque indicateur est renseigné (proposés dans la fenêtre d'un indicateur).</p>
@@ -1367,20 +1562,20 @@ export default function MipPpaApp() {
           {page === "exports" && (<>
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <h3 className="font-bold">Export consolidé</h3>
-              <p className="text-sm text-stone-500 mb-4">Toutes les formations et indicateurs en une feuille Excel.</p>
+              <p className="text-sm text-stone-500 mb-4">Tous les projets de formation de type apprentissage et indicateurs en une feuille Excel.</p>
               <button onClick={exportExcel} className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm" style={{ background: C.vertFonce }} title="Toutes les formations et indicateurs en une feuille">
                 <Icone n="telecharger" t={15} /> Télécharger l'Excel ({formationsVisibles.length} formations)
               </button>
             </section>
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <h3 className="font-bold">Fiches d'évaluation PDF</h3>
-              <p className="text-sm text-stone-500">Une fiche officielle par formation.</p>
+              <p className="text-sm text-stone-500">Une fiche officielle par projet de formation de type apprentissage.</p>
               <div className="divide-y divide-stone-100 mt-2">
                 {formationsVisibles.map((f) => (
                   <div key={f.id} className="flex items-center justify-between gap-3 py-3.5">
                     <div>
                       <div className="font-semibold">{f.titre}</div>
-                      <div className="text-sm text-stone-500">{f.entreprise} · {f.filiere}</div>
+                      <div className="text-sm text-stone-500">{f.entreprise} · {libelleSecteur(f, secteurs)}</div>
                     </div>
                     <button onClick={() => fichePDF(f)} className="bg-white border border-stone-200 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-50 shrink-0" title="Générer la fiche PDF de cette formation"><Icone n="fichier" t={15} /> Fiche PDF</button>
                   </div>
@@ -1406,7 +1601,7 @@ export default function MipPpaApp() {
             ] : [
               ["1. Démarrer", "Créez votre compte (nom, organisation, email, mot de passe), attendez l'activation par l'administrateur lead qui vous attribue un rôle, puis connectez-vous. Le tout premier compte créé devient automatiquement Administrateur lead."],
               ["2. Comptes & rôles", "Cinq niveaux d'accès : Administrateur lead (tous les droits, distribue les accès) ; Administrateur FDFP (pilotage global, validation, configuration) ; Agent FDFP (évaluation MIP-PPA, suivis, exports) ; Promoteur (consultation en lecture seule de l'ensemble du portefeuille) ; Opérateur (saisie des indicateurs pédagogiques et suivi des apprenants). Les rôles sont protégés côté serveur : aucun utilisateur ne peut s'auto-attribuer un accès."],
-              ["3. Gérer les projets", "Créez une formation (intitulé, entreprise bénéficiaire, secteur, région, apprenants, budget FCFA), suivez son statut (Planifiée / En cours / Terminée), puis cliquez dessus pour ouvrir sa fiche d'évaluation."],
+              ["3. Gérer les projets", "Créez un projet de formation de type apprentissage (intitulé, entreprise bénéficiaire, secteur, région, apprenants, budget FCFA), suivez son statut (Planifiée / En cours / Terminée), puis cliquez dessus pour ouvrir sa fiche d'évaluation."],
               ["4. Évaluer (modèle MIP-PPA)", "Le modèle mesure la valeur réelle d'une formation à travers 5 dimensions et 23 indicateurs notés de 0 à 4. Les indicateurs non encore mesurables peuvent rester vides ; le score se calcule automatiquement et l'enregistrement est instantané."],
               ["5. Suivi à 3, 6 et 12 mois", "Chaque formation déclenche automatiquement 3 points de suivi : à 3 mois (transfert des acquis au poste), 6 mois (effets organisationnels mesurables) et 12 mois (pérennité et retour sur investissement). Les jalons sont regroupés en 4 piles : En retard, À faire sous 14 j, Programmés, Effectués. Ces suivis alimentent directement les dimensions Impact organisationnel et Durabilité des compétences."],
               ["6. Tableaux de bord & référentiel", "Le tableau de bord offre la vision consolidée (formations, apprenants, score moyen, radar des 5 dimensions, comparaison par secteur). L'administrateur lead peut ajouter, modifier ou supprimer dimensions et indicateurs ; la somme des pondérations doit rester à 100 %. Un bouton permet de restaurer le référentiel MIP-PPA d'origine."],
@@ -1460,9 +1655,9 @@ export default function MipPpaApp() {
             </section>
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <h3 className="font-bold mb-1"><Icone n="plus" t={16} /> Inviter un nouvel utilisateur</h3>
-              <p className="text-sm text-stone-600 mb-4">Saisissez l'email d'un collaborateur : un message d'invitation pré-rempli (avec le lien de la plateforme et les instructions) s'ouvrira dans votre messagerie. Après inscription, il apparaîtra ci-dessus en statut « En attente », prêt à recevoir son rôle.</p>
+              <p className="text-sm text-stone-600 mb-4">Saisissez l'email d'un partenaire : un message d'invitation pré-rempli (avec le lien de la plateforme et les instructions) s'ouvrira dans votre messagerie. Après inscription, il apparaîtra ci-dessus en statut « En attente », prêt à recevoir son rôle.</p>
               <div className="flex flex-wrap items-end gap-3">
-                <label className="text-sm font-semibold text-stone-800 flex-1 min-w-[220px]">Email du collaborateur
+                <label className="text-sm font-semibold text-stone-800 flex-1 min-w-[220px]">Email du partenaire
                   <input type="email" value={emailInvite} onChange={(e) => setEmailInvite(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && envoyerInvitation()}
                     placeholder="prenom.nom@organisation.ci"
@@ -1631,7 +1826,7 @@ export default function MipPpaApp() {
             <div className="mt-4">
               <div className="text-sm font-semibold text-stone-800">Documents de suivi <span className="font-normal text-stone-400">(rattachés à la fiche PDF — 2 Mo max par fichier)</span></div>
               <label className="mt-2 flex items-center justify-center gap-2 border-2 border-dashed border-stone-300 rounded-xl py-4 text-sm text-stone-500 cursor-pointer hover:bg-stone-50">
-                <Icone n="trombone" t={16} /> Choisir des fichiers (photos, rapports, grilles…)
+                <Icone n="trombone" t={16} /> Choisir des fichiers (photos, rapports…)
                 <input type="file" multiple className="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
                   onChange={(e) => {
                     Array.from(e.target.files || []).forEach((fich) => {
