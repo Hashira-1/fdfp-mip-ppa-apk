@@ -607,7 +607,6 @@ export default function MipPpaApp() {
   const [evalId, setEvalId] = useState(null);
   const [recherche, setRecherche] = useState("");
   const [formOuvert, setFormOuvert] = useState(false);
-  const [menuMobile, setMenuMobile] = useState(false);
   const [menuCompte, setMenuCompte] = useState(false);
   const [sombre, setSombre] = useState(() => { try { return localStorage.getItem("mip-ppa-theme") === "sombre"; } catch { return false; } });
   const basculerTheme = () => setSombre((v) => { const n = !v; try { localStorage.setItem("mip-ppa-theme", n ? "sombre" : "clair"); } catch {} return n; });
@@ -697,20 +696,41 @@ export default function MipPpaApp() {
   const [roleInvite, setRoleInvite] = useState("Agent FDFP");
   const urlApp = (typeof window !== "undefined" && window.location && window.location.origin) ? window.location.origin : "https://fdfp-mip-ppa-apk.vercel.app";
   const [envoiInvite, setEnvoiInvite] = useState(false);
+  // Regex proche RFC 5322 (raisonnable côté navigateur) : rejette les espaces, doubles points,
+  // domaines sans TLD valide, etc. — première barrière contre les emails qui rebondiraient.
+  const REGEX_EMAIL = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+  // Fautes de frappe fréquentes sur les domaines grand public -> avertissement (non bloquant)
+  const DOMAINES_PROCHES = {
+    "gmial.com": "gmail.com", "gmai.com": "gmail.com", "gmail.co": "gmail.com", "gmal.com": "gmail.com",
+    "yahou.com": "yahoo.com", "yaho.com": "yahoo.com", "yahoo.co": "yahoo.com",
+    "hotmial.com": "hotmail.com", "hotmail.co": "hotmail.com", "hotnail.com": "hotmail.com",
+    "outlok.com": "outlook.com", "outlook.co": "outlook.com",
+  };
+  const suggestionDomaine = (email) => {
+    const d = email.split("@")[1]?.toLowerCase();
+    return d && DOMAINES_PROCHES[d] ? DOMAINES_PROCHES[d] : null;
+  };
   const envoyerInvitation = async () => {
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailInvite.trim())) { notif("Saisissez un email valide"); return; }
+    const email = emailInvite.trim().toLowerCase();
+    if (!REGEX_EMAIL.test(email)) { notif("Adresse email invalide — vérifiez le format (ex. nom@organisation.ci)"); return; }
+    const suggestion = suggestionDomaine(email);
+    if (suggestion) {
+      const corrige = email.split("@")[0] + "@" + suggestion;
+      const veutCorriger = window.confirm(`Vouliez-vous dire « ${corrige} » au lieu de « ${email} » ?\n\nOK pour corriger automatiquement, Annuler pour envoyer tel quel.`);
+      if (veutCorriger) { setEmailInvite(corrige); notif("Adresse corrigée — cliquez à nouveau sur Envoyer pour confirmer"); return; }
+    }
     setEnvoiInvite(true);
     try {
-      const { data, error } = await sb.functions.invoke("inviter", { body: { email: emailInvite.trim() } });
+      const { data, error } = await sb.functions.invoke("inviter", { body: { email } });
       if (error || (data && data.erreur)) throw new Error((data && data.erreur) || error.message);
-      notif("Invitation envoyée à " + emailInvite.trim());
+      notif("Invitation envoyée à " + email);
       setEmailInvite("");
     } catch (e) {
       // Repli : la fonction serveur n'est pas (encore) déployée -> messagerie pré-remplie
       notif("Envoi direct indisponible (" + (e.message || e) + ") — ouverture de votre messagerie");
       const sujet = "Invitation - Plateforme FDFP MIP-PPA";
       const corps = ["Bonjour,", "", "Vous etes invite(e) a rejoindre la plateforme FDFP MIP-PPA.", "", "1. Rendez-vous sur : " + urlApp, "2. Cliquez sur \"Creer un compte\".", "3. Confirmez votre email puis attendez l'activation de votre acces (role prevu : " + roleInvite + ").", "", "L'equipe FDFP"].join("\n");
-      window.location.href = "mailto:" + encodeURIComponent(emailInvite.trim()) + "?subject=" + encodeURIComponent(sujet) + "&body=" + encodeURIComponent(corps);
+      window.location.href = "mailto:" + encodeURIComponent(email) + "?subject=" + encodeURIComponent(sujet) + "&body=" + encodeURIComponent(corps);
     }
     setEnvoiInvite(false);
   };
@@ -1122,43 +1142,39 @@ export default function MipPpaApp() {
         html { scroll-behavior: smooth; }
       `}</style>
       {/* ---------------- SIDEBAR ---------------- */}
-      {menuMobile && <div className="fixed inset-0 z-40 md:hidden" style={{ background: "rgba(10,25,38,.55)" }} onClick={() => setMenuMobile(false)} />}
-      <aside className={(menuMobile ? "flex fixed inset-y-0 left-0 z-50 " : "hidden ") + "md:flex md:sticky md:top-0 w-64 shrink-0 flex-col text-stone-300 h-screen overflow-hidden"} style={{ background: C.sidebar }}>
-        <div className="flex items-center gap-3 px-5 py-5">
+      <aside className="flex sticky top-0 w-16 sm:w-64 shrink-0 flex-col text-stone-300 h-screen overflow-y-auto overflow-x-hidden" style={{ background: C.sidebar }}>
+        <div className="flex items-center justify-center sm:justify-start gap-3 px-2 sm:px-5 py-5">
           <div className="bg-white rounded-xl px-2 py-1.5 flex items-center justify-center shrink-0">
-            <LogoFDFP h={30} />
+            <LogoFDFP h={26} />
           </div>
-          <div>
+          <div className="hidden sm:block min-w-0">
             <div className="text-white font-bold leading-tight">MIP-PPA</div>
-            <div className="text-xs text-stone-400">Modèle d'Indicateurs de Performance - Produit Projet Apprentissage</div>
+            <div className="text-xs text-stone-400 break-words">Modèle d'Indicateurs de Performance - Produit Projet Apprentissage</div>
           </div>
         </div>
-        <nav className="flex-1 px-3 space-y-5 pb-4">
+        <nav className="flex-1 px-1.5 sm:px-3 space-y-3 sm:space-y-5 pb-4">
           {NAV.map((g) => (
             <div key={g.section}>
-              <div className="text-[11px] uppercase tracking-wider text-stone-500 px-3 mb-1.5">{g.section}</div>
+              <div className="hidden sm:block text-[11px] uppercase tracking-wider text-stone-500 px-3 mb-1.5">{g.section}</div>
               {g.items.map(([id, ic, lbl]) => (
-                <button key={id} onClick={() => { setPage(id); setMenuMobile(false); }} title={DESCR_NAV[id] || lbl}
-                  className={"nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left " + (page === id ? "nav-actif" : "")}>
-                  <Icone n={ic} t={17} />{lbl}
+                <button key={id} onClick={() => setPage(id)} title={DESCR_NAV[id] || lbl}
+                  className={"nav-item w-full flex items-center justify-center sm:justify-start gap-3 px-2 sm:px-3 py-2.5 rounded-lg text-sm text-left " + (page === id ? "nav-actif" : "")}>
+                  <Icone n={ic} t={19} /><span className="hidden sm:inline">{lbl}</span>
                 </button>
               ))}
             </div>
           ))}
         </nav>
-        <div className="px-5 py-4 border-t" style={{ borderColor: "#1c4a66" }}>
-          <div className="flex items-center gap-2 text-sm" style={{ color: C.gold }}><Icone n="bouclier" t={16} /> {roleActif}</div>
+        <div className="px-2 sm:px-5 py-4 border-t flex flex-col items-center sm:items-stretch gap-2.5" style={{ borderColor: "#1c4a66" }}>
+          <div className="flex items-center gap-2 text-sm" style={{ color: C.gold }} title={roleActif}><Icone n="bouclier" t={17} /><span className="hidden sm:inline">{roleActif}</span></div>
           <button onClick={() => { if (sb) sb.auth.signOut(); setSession(null); setPage("dashboard"); }}
-            className="mt-2 text-xs text-stone-400 hover:text-white flex items-center gap-1.5" title="Fermer votre session"><Icone n="deconnexion" t={13} /> Se déconnecter</button>
+            className="text-xs text-stone-400 hover:text-white flex items-center gap-1.5" title="Se déconnecter"><Icone n="deconnexion" t={16} /><span className="hidden sm:inline">Se déconnecter</span></button>
         </div>
       </aside>
 
       {/* ---------------- ZONE PRINCIPALE ---------------- */}
       <div className="flex-1 min-w-0 flex flex-col">
         <header className="bg-white border-b border-stone-200 px-4 md:px-6 py-3.5 flex items-center justify-between gap-3 md:gap-4 sticky top-0 z-10">
-            <button onClick={() => setMenuMobile(true)} className="md:hidden text-stone-600 shrink-0" title="Ouvrir le menu">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
-            </button>
           <div className="min-w-0">
             <h1 className="text-base md:text-lg font-bold break-words">{titres[page][0]}</h1>
             <div className="text-xs text-stone-500 break-words">{titres[page][1]}</div>
