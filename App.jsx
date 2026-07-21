@@ -221,6 +221,8 @@ const IC = {
   oeil: <><path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/></>,
   oeilBarre: <><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.53 13.53 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><path d="m2 2 20 20"/></>,
   deconnexion: <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></>,
+  lune: <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>,
+  soleil: <><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></>,
   coche: <><path d="M20 6 9 17l-5-5"/></>,
   rotation: <><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></>,
   alerte: <><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></>,
@@ -404,6 +406,53 @@ function EcranAttente({ session, surActualiser, surDeconnexion }) {
   );
 }
 
+function EcranFinalisation({ session, surTermine }) {
+  const [nom, setNom] = useState("");
+  const [org, setOrg] = useState("");
+  const [mdp, setMdp] = useState("");
+  const [voir, setVoir] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [envoi, setEnvoi] = useState(false);
+  const valider = async () => {
+    if (!nom.trim() || !org.trim()) return setMsg("Renseignez votre nom complet et votre organisation.");
+    if (mdp.length < 6) return setMsg("Mot de passe : 6 caractères minimum.");
+    setEnvoi(true);
+    const { error: e1 } = await sb.auth.updateUser({ password: mdp, data: { nom: nom.trim(), org: org.trim() } });
+    const { error: e2 } = await sb.from("profiles").update({ nom: nom.trim(), org: org.trim() }).eq("id", session.id);
+    setEnvoi(false);
+    if (e1 || e2) return setMsg((e1 || e2).message);
+    surTermine({ nom: nom.trim(), org: org.trim() });
+  };
+  return (
+    <CadreAccueil enfants={
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-7 page-anim">
+        <div className="flex items-center gap-2 font-bold text-stone-900"><Icone n="bouclier" t={18} /> Bienvenue !</div>
+        <p className="text-sm text-stone-500 mt-1">Votre invitation est validée ({session.email}). Complétez votre profil et choisissez votre mot de passe pour terminer.</p>
+        {msg && <div className="mt-3 text-sm rounded-xl px-3.5 py-2.5 bg-red-50 text-red-700 border border-red-200">{msg}</div>}
+        <label className="block text-sm font-semibold text-stone-800 mt-4">Nom complet
+          <input value={nom} onChange={(e) => setNom(e.target.value)} className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
+        </label>
+        <label className="block text-sm font-semibold text-stone-800 mt-4">Organisation <span className="font-normal text-stone-400">(entreprise / cabinet)</span>
+          <input value={org} onChange={(e) => setOrg(e.target.value)} className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
+        </label>
+        <label className="block text-sm font-semibold text-stone-800 mt-4">Mot de passe <span className="font-normal text-stone-400">(6 caractères min.)</span>
+          <div className="relative mt-1.5">
+            <input type={voir ? "text" : "password"} value={mdp} onChange={(e) => setMdp(e.target.value)}
+              className="w-full border border-stone-300 rounded-xl px-3.5 py-2.5 pr-12 font-normal outline-none focus:border-sky-600" />
+            <button type="button" onClick={() => setVoir(!voir)} tabIndex={-1} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700">
+              {voir ? <Icone n="oeilBarre" t={19} /> : <Icone n="oeil" t={19} />}
+            </button>
+          </div>
+        </label>
+        <button onClick={valider} disabled={envoi}
+          className="w-full mt-6 text-white font-semibold py-3 rounded-xl disabled:opacity-60" style={{ background: C.vertFonce }}>
+          {envoi ? "Un instant…" : "Terminer et accéder à la plateforme"}
+        </button>
+      </div>
+    } />
+  );
+}
+
 function EcranConnexion() {
   const [onglet, setOnglet] = useState("connexion");
   const [email, setEmail] = useState("");
@@ -534,7 +583,7 @@ export default function MipPpaApp() {
   const chargerProfil = async (utilisateur) => {
     const { data: p } = await sb.from("profiles").select("*").eq("id", utilisateur.id).maybeSingle();
     const { data: r } = await sb.from("user_roles").select("role").eq("user_id", utilisateur.id).maybeSingle();
-    setSession({ id: utilisateur.id, email: utilisateur.email, nom: p?.nom || utilisateur.email, org: p?.org || "", role: r?.role || "En attente d'activation" });
+    setSession({ id: utilisateur.id, email: utilisateur.email, nom: p?.nom || "", org: p?.org || "", role: r?.role || "En attente d'activation", aFinaliser: !(p && p.nom) });
     setChargementAuth(false);
   };
   useEffect(() => {
@@ -560,6 +609,14 @@ export default function MipPpaApp() {
   const [formOuvert, setFormOuvert] = useState(false);
   const [menuMobile, setMenuMobile] = useState(false);
   const [menuCompte, setMenuCompte] = useState(false);
+  const [sombre, setSombre] = useState(() => { try { return localStorage.getItem("mip-ppa-theme") === "sombre"; } catch { return false; } });
+  const basculerTheme = () => setSombre((v) => { const n = !v; try { localStorage.setItem("mip-ppa-theme", n ? "sombre" : "clair"); } catch {} return n; });
+  const [estMobile, setEstMobile] = useState(typeof window !== "undefined" && window.innerWidth < 768);
+  useEffect(() => {
+    const maj = () => setEstMobile(window.innerWidth < 768);
+    window.addEventListener("resize", maj);
+    return () => window.removeEventListener("resize", maj);
+  }, []);
   const [editionId, setEditionId] = useState(null);
   const [suiviEdit, setSuiviEdit] = useState(null); // fenêtre Notes & date & documents
   const [dimEdit, setDimEdit] = useState(null);     // fenêtre Modifier la dimension
@@ -639,28 +696,25 @@ export default function MipPpaApp() {
   const [emailInvite, setEmailInvite] = useState("");
   const [roleInvite, setRoleInvite] = useState("Agent FDFP");
   const urlApp = (typeof window !== "undefined" && window.location && window.location.origin) ? window.location.origin : "https://fdfp-mip-ppa-apk.vercel.app";
-  const envoyerInvitation = () => {
+  const [envoiInvite, setEnvoiInvite] = useState(false);
+  const envoyerInvitation = async () => {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailInvite.trim())) { notif("Saisissez un email valide"); return; }
-    const sujet = "Invitation - Plateforme FDFP MIP-PPA";
-    const corps = [
-      "Bonjour,",
-      "",
-      "Vous etes invite(e) a rejoindre la plateforme FDFP MIP-PPA (suivi des projets de formation de type apprentissage dans l'agro-industrie).",
-      "",
-      "1. Rendez-vous sur : " + urlApp,
-      "2. Cliquez sur \"Creer un compte\" et renseignez vos informations (nom, organisation, email, mot de passe).",
-      "3. Confirmez votre email via le lien qui vous sera envoye.",
-      "4. Un administrateur activera votre acces (role prevu : " + roleInvite + ").",
-      "",
-      "A bientot sur la plateforme.",
-      "L'equipe FDFP",
-    ].join("\n");
-    const lien = "mailto:" + encodeURIComponent(emailInvite.trim())
-      + "?subject=" + encodeURIComponent(sujet)
-      + "&body=" + encodeURIComponent(corps);
-    window.location.href = lien;
-    notif("Ouverture de votre messagerie…");
+    setEnvoiInvite(true);
+    try {
+      const { data, error } = await sb.functions.invoke("inviter", { body: { email: emailInvite.trim() } });
+      if (error || (data && data.erreur)) throw new Error((data && data.erreur) || error.message);
+      notif("Invitation envoyée à " + emailInvite.trim());
+      setEmailInvite("");
+    } catch (e) {
+      // Repli : la fonction serveur n'est pas (encore) déployée -> messagerie pré-remplie
+      notif("Envoi direct indisponible (" + (e.message || e) + ") — ouverture de votre messagerie");
+      const sujet = "Invitation - Plateforme FDFP MIP-PPA";
+      const corps = ["Bonjour,", "", "Vous etes invite(e) a rejoindre la plateforme FDFP MIP-PPA.", "", "1. Rendez-vous sur : " + urlApp, "2. Cliquez sur \"Creer un compte\".", "3. Confirmez votre email puis attendez l'activation de votre acces (role prevu : " + roleInvite + ").", "", "L'equipe FDFP"].join("\n");
+      window.location.href = "mailto:" + encodeURIComponent(emailInvite.trim()) + "?subject=" + encodeURIComponent(sujet) + "&body=" + encodeURIComponent(corps);
+    }
+    setEnvoiInvite(false);
   };
+
 
   const admin = P.referentiel;
 
@@ -1010,6 +1064,9 @@ export default function MipPpaApp() {
     return <CadreAccueil enfants={<div className="text-sky-100 text-sm page-anim">Connexion au serveur…</div>} />;
   }
   if (!session) return (<><EcranConnexion /><Toast msg={toast} /></>);
+  if (session?.aFinaliser) {
+    return <EcranFinalisation session={session} surTermine={(maj) => setSession({ ...session, ...maj, aFinaliser: false })} />;
+  }
   if (roleActif === "En attente d'activation") {
     return <EcranAttente session={session}
       surActualiser={() => sb.auth.getUser().then(({ data }) => data.user && chargerProfil(data.user))}
@@ -1021,8 +1078,34 @@ export default function MipPpaApp() {
 
   // =================== RENDU =====================================
   return (
-    <div className="min-h-screen flex bg-stone-100 text-stone-900" style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
+    <div className={"min-h-screen flex bg-stone-100 text-stone-900" + (sombre ? " sombre" : "")} style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
       <style>{`
+        /* ---------- MODE SOMBRE ---------- */
+        .sombre{background:#0d1721!important;color:#d6d3d1!important}
+        .sombre .bg-stone-100{background:#0d1721!important}
+        .sombre .bg-white{background:#152230!important;color:#d6d3d1}
+        .sombre .bg-stone-50{background:#1a2a3a!important}
+        .sombre .hover\:bg-stone-50:hover{background:#1f3245!important}
+        .sombre .hover\:bg-stone-100:hover{background:#1f3245!important}
+        .sombre .border-stone-200,.sombre .border-stone-100,.sombre .border-stone-300{border-color:#2b3d50!important}
+        .sombre .border-stone-50{border-color:#223446!important}
+        .sombre .text-stone-900,.sombre .text-stone-800{color:#e7e5e4!important}
+        .sombre .text-stone-700,.sombre .text-stone-600{color:#b8c0c9!important}
+        .sombre .text-stone-500{color:#93a1af!important}
+        .sombre .text-stone-400{color:#7b8896!important}
+        .sombre input,.sombre select,.sombre textarea{background:#1a2a3a!important;color:#e7e5e4!important;border-color:#2b3d50!important}
+        .sombre input::placeholder,.sombre textarea::placeholder{color:#64748b}
+        .sombre .bg-sky-50{background:rgba(56,130,190,.16)!important}
+        .sombre .bg-red-50{background:rgba(220,60,60,.14)!important}
+        .sombre .hover\:bg-red-50:hover{background:rgba(220,60,60,.2)!important}
+        .sombre .bg-amber-50{background:rgba(217,160,40,.14)!important}
+        .sombre .bg-emerald-50{background:rgba(30,160,110,.15)!important}
+        .sombre .text-stone-300{color:#a8b3bd!important}
+        .sombre .shadow-xl,.sombre .shadow-2xl{box-shadow:0 18px 45px rgba(0,0,0,.55)!important}
+        .sombre svg text{fill:#b8c0c9}
+        .sombre .recharts-cartesian-grid line{stroke:#2b3d50!important}
+        .sombre .recharts-default-tooltip{background:#152230!important;border-color:#2b3d50!important;color:#e7e5e4!important}
+
         @keyframes pageIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
         @keyframes toastIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
         .page-anim { animation: pageIn .32s ease-out both; }
@@ -1082,6 +1165,9 @@ export default function MipPpaApp() {
           </div>
           <div className="flex items-center gap-5 shrink-0">
             <button onClick={() => setPage("guide")} className="text-sm text-stone-600 hover:text-stone-900 flex items-center gap-1.5" title="Ouvrir le guide d'utilisation"><Icone n="livre" t={16} /> Guide</button>
+            <button onClick={basculerTheme} className="text-stone-500 hover:text-stone-800 shrink-0" title={sombre ? "Passer en mode éclairé" : "Passer en mode sombre"}>
+              <Icone n={sombre ? "soleil" : "lune"} t={19} />
+            </button>
             <div className="relative">
               <button onClick={() => setMenuCompte(!menuCompte)} title="Ouvrir le menu du compte" className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-full text-white flex items-center justify-center text-sm font-semibold" style={{ background: C.vert }}>{(session?.nom || "?").split(" ").map((m) => m[0]).slice(0, 2).join("").toUpperCase()}</div>
@@ -1091,7 +1177,7 @@ export default function MipPpaApp() {
                 </div>
               </button>
               {menuCompte && (
-                <div className="absolute right-0 top-12 bg-white border border-stone-200 rounded-xl shadow-xl w-64 p-2 z-40 page-anim">
+                <div className="absolute right-0 top-12 bg-white border border-stone-200 rounded-xl shadow-xl w-64 max-w-[88vw] p-2 z-40 page-anim">
                   <div className="px-3 py-2 border-b border-stone-100">
                     <div className="text-sm font-semibold break-words">{session?.nom}</div>
                     <div className="text-xs text-stone-500 break-words">{session?.email}</div>
@@ -1127,7 +1213,7 @@ export default function MipPpaApp() {
               </div>
             </section>
 
-            <section className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
               <StatCard icone={<Icone n="cap" t={20} />} titre="Projets suivis" valeur={stats.nb} />
               <StatCard icone={<Icone n="usine" t={20} />} titre="Apprenants concernés" valeur={stats.apprenants} teinte="#fdf0da" fg="#b07515" />
               <StatCard icone={<Icone n="cible" t={20} />} titre="Score moyen MIP" valeur={fmtPct(stats.moy)} sous="Moyenne pondérée du portefeuille" teinte="#dcebf7" fg={C.vert} />
@@ -1151,19 +1237,33 @@ export default function MipPpaApp() {
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
               <h3 className="font-bold">Score moyen par secteur</h3>
               <p className="text-sm text-stone-500 mb-2">Comparaison sectorielle.</p>
-              <ResponsiveContainer width="100%" height={60 * filiereData.length + 40}>
-                <BarChart data={filiereData} layout="vertical" margin={{ left: 30 }}>
+              <ResponsiveContainer width="100%" height={Math.max(72, 66 * filiereData.length) + 40}>
+                <BarChart data={filiereData} layout="vertical" margin={{ left: 6, right: 18 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
                   <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10 }} />
-                  <YAxis type="category" dataKey="filiere" width={100} tick={{ fontSize: 11 }} />
+                  <YAxis type="category" dataKey="filiere" width={estMobile ? 150 : 240} interval={0}
+                    tick={({ x, y, payload }) => {
+                      // Découpe le libellé en lignes complètes (aucune condensation)
+                      const larg = estMobile ? 22 : 36;
+                      const mots = String(payload.value).split(" ");
+                      const lignes = [];
+                      let cour = "";
+                      mots.forEach((m) => { if ((cour + " " + m).trim().length > larg) { if (cour) lignes.push(cour); cour = m; } else cour = (cour + " " + m).trim(); });
+                      if (cour) lignes.push(cour);
+                      return (
+                        <text x={x} y={y} textAnchor="end" fill="#57534e" fontSize={estMobile ? 10 : 11}>
+                          {lignes.map((l, i) => <tspan key={i} x={x - 4} dy={i === 0 ? -((lignes.length - 1) * 5.5) + 4 : 12}>{l}</tspan>)}
+                        </text>
+                      );
+                    }} />
                   <Tooltip formatter={(v) => `${Math.round(v)} %`} />
-                  <Bar dataKey="score" fill={C.vert} radius={[0, 6, 6, 0]} barSize={34} />
+                  <Bar dataKey="score" fill={C.vert} radius={[0, 6, 6, 0]} barSize={26} />
                 </BarChart>
               </ResponsiveContainer>
             </section>
 
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div><h3 className="font-bold">Projets de formation de type apprentissage (emploi-qualifcation) récents</h3><p className="text-sm text-stone-500">Cliquez pour évaluer ou consulter.</p></div>
                 <button onClick={() => setPage("formations")} className="text-sm font-semibold hover:underline" style={{ color: C.vert }}>Tout voir →</button>
               </div>
@@ -1210,7 +1310,7 @@ export default function MipPpaApp() {
             </button>}
 
             {formOuvert && (
-              <div className="bg-white rounded-2xl border border-stone-200 p-5 grid md:grid-cols-2 gap-4">
+              <div className="bg-white rounded-2xl border border-stone-200 p-5 grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                 <div className="md:col-span-2 font-bold text-stone-800">{editionId ? "Modifier le projet" : "Nouveau projet"}</div>
                 <label className="text-sm md:col-span-2">Intitulé du projet
                   <input value={nouvelle.titre} onChange={(e) => setNouvelle({ ...nouvelle, titre: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" placeholder="Ex. Bonnes pratiques de décorticage du cajou" />
@@ -1320,7 +1420,7 @@ export default function MipPpaApp() {
               </div>
             </section>
 
-            <section className="grid md:grid-cols-2 gap-4">
+            <section className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
               {referentiel.map((d) => {
                 const s = scoreDimension(referentiel, d.id, fEval.notes);
                 return (
@@ -1409,7 +1509,7 @@ export default function MipPpaApp() {
               </section>
             );
             return (<>
-              <section className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                 <StatCard icone={<Icone n="calendrier" t={20} />} titre="Suivis planifiés" valeur={enrichis.length} />
                 <StatCard icone={<Icone n="alerte" t={20} />} titre="En retard" valeur={retard.length} sous="À traiter en priorité" teinte="#fde8e8" fg={C.insuffisant} />
                 <StatCard icone={<Icone n="horloge" t={20} />} titre="À faire sous 14 j" valeur={sous14.length} teinte="#fdf0da" fg="#b07515" />
@@ -1680,7 +1780,7 @@ export default function MipPpaApp() {
             </section>
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <h3 className="font-bold mb-1"><Icone n="plus" t={16} /> Inviter un nouvel utilisateur</h3>
-              <p className="text-sm text-stone-600 mb-4">Saisissez l'email d'un partenaire : un message d'invitation pré-rempli (avec le lien de la plateforme et les instructions) s'ouvrira dans votre messagerie. Après inscription, il apparaîtra ci-dessus en statut « En attente », prêt à recevoir son rôle.</p>
+              <p className="text-sm text-stone-600 mb-4">Saisissez l'email d'un partenaire : un email d'invitation contenant le lien de la plateforme lui sera envoyé directement (comme l'email de confirmation d'inscription). Après inscription, il apparaîtra ci-dessus en statut « En attente », prêt à recevoir son rôle.</p>
               <div className="flex flex-wrap items-end gap-3">
                 <label className="text-sm font-semibold text-stone-800 flex-1 min-w-[220px]">Email du partenaire
                   <input type="email" value={emailInvite} onChange={(e) => setEmailInvite(e.target.value)}
@@ -1695,7 +1795,7 @@ export default function MipPpaApp() {
                   </select>
                 </label>
                 <button onClick={envoyerInvitation} className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm flex items-center gap-1.5" style={{ background: C.vertFonce }}>
-                  <Icone n="telecharger" t={15} /> Envoyer l'invitation
+                  <Icone n="telecharger" t={15} /> {envoiInvite ? "Envoi en cours…" : "Envoyer l'invitation"}
                 </button>
               </div>
               <p className="text-xs text-stone-400 mt-3">Le lien communiqué est celui de cette plateforme : <span className="font-mono">{urlApp}</span></p>
@@ -1751,7 +1851,7 @@ export default function MipPpaApp() {
       {dimEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(10,25,38,.55)" }}
           onClick={(e) => e.target === e.currentTarget && setDimEdit(null)}>
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-7 page-anim">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-5 md:p-7 page-anim max-h-[92vh] overflow-y-auto">
             <div className="flex items-start justify-between">
               <h3 className="text-xl font-bold">Modifier la dimension</h3>
               <button onClick={() => setDimEdit(null)} className="text-stone-400 hover:text-stone-700" title="Fermer"><Icone n="fermer" t={18} /></button>
@@ -1791,7 +1891,7 @@ export default function MipPpaApp() {
       {indEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(10,25,38,.55)" }}
           onClick={(e) => e.target === e.currentTarget && setIndEdit(null)}>
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-7 page-anim">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-5 md:p-7 page-anim max-h-[92vh] overflow-y-auto">
             <div className="flex items-start justify-between">
               <h3 className="text-xl font-bold">Modifier l'indicateur</h3>
               <button onClick={() => setIndEdit(null)} className="text-stone-400 hover:text-stone-700" title="Fermer"><Icone n="fermer" t={18} /></button>
@@ -1830,7 +1930,7 @@ export default function MipPpaApp() {
       {suiviEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(10,25,38,.55)" }}
           onClick={(e) => e.target === e.currentTarget && setSuiviEdit(null)}>
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-7 page-anim max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-5 md:p-7 page-anim max-h-[92vh] overflow-y-auto">
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="text-xl font-bold">Suivi {suiviEdit.jalon}</h3>
