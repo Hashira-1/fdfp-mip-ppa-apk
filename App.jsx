@@ -607,6 +607,7 @@ export default function MipPpaApp() {
   const [evalId, setEvalId] = useState(null);
   const [recherche, setRecherche] = useState("");
   const [formOuvert, setFormOuvert] = useState(false);
+  const [menuMobile, setMenuMobile] = useState(false);
   const [menuCompte, setMenuCompte] = useState(false);
   const [sombre, setSombre] = useState(() => { try { return localStorage.getItem("mip-ppa-theme") === "sombre"; } catch { return false; } });
   const basculerTheme = () => setSombre((v) => { const n = !v; try { localStorage.setItem("mip-ppa-theme", n ? "sombre" : "clair"); } catch {} return n; });
@@ -1121,39 +1122,43 @@ export default function MipPpaApp() {
         html { scroll-behavior: smooth; }
       `}</style>
       {/* ---------------- SIDEBAR ---------------- */}
-      <aside className="flex sticky top-0 w-16 md:w-64 shrink-0 flex-col text-stone-300 h-screen overflow-y-auto overflow-x-hidden" style={{ background: C.sidebar }}>
-        <div className="flex items-center justify-center md:justify-start gap-3 px-2 md:px-5 py-5">
+      {menuMobile && <div className="fixed inset-0 z-40 md:hidden" style={{ background: "rgba(10,25,38,.55)" }} onClick={() => setMenuMobile(false)} />}
+      <aside className={(menuMobile ? "flex fixed inset-y-0 left-0 z-50 " : "hidden ") + "md:flex md:sticky md:top-0 w-64 shrink-0 flex-col text-stone-300 h-screen overflow-hidden"} style={{ background: C.sidebar }}>
+        <div className="flex items-center gap-3 px-5 py-5">
           <div className="bg-white rounded-xl px-2 py-1.5 flex items-center justify-center shrink-0">
-            <LogoFDFP h={26} />
+            <LogoFDFP h={30} />
           </div>
-          <div className="hidden md:block min-w-0">
+          <div>
             <div className="text-white font-bold leading-tight">MIP-PPA</div>
-            <div className="text-xs text-stone-400 break-words">Modèle d'Indicateurs de Performance - Produit Projet Apprentissage</div>
+            <div className="text-xs text-stone-400">Modèle d'Indicateurs de Performance - Produit Projet Apprentissage</div>
           </div>
         </div>
-        <nav className="flex-1 px-1.5 md:px-3 space-y-3 md:space-y-5 pb-4">
+        <nav className="flex-1 px-3 space-y-5 pb-4">
           {NAV.map((g) => (
             <div key={g.section}>
-              <div className="hidden md:block text-[11px] uppercase tracking-wider text-stone-500 px-3 mb-1.5">{g.section}</div>
+              <div className="text-[11px] uppercase tracking-wider text-stone-500 px-3 mb-1.5">{g.section}</div>
               {g.items.map(([id, ic, lbl]) => (
-                <button key={id} onClick={() => setPage(id)} title={DESCR_NAV[id] || lbl}
-                  className={"nav-item w-full flex items-center justify-center md:justify-start gap-3 px-2 md:px-3 py-2.5 rounded-lg text-sm text-left " + (page === id ? "nav-actif" : "")}>
-                  <Icone n={ic} t={19} /><span className="hidden md:inline">{lbl}</span>
+                <button key={id} onClick={() => { setPage(id); setMenuMobile(false); }} title={DESCR_NAV[id] || lbl}
+                  className={"nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left " + (page === id ? "nav-actif" : "")}>
+                  <Icone n={ic} t={17} />{lbl}
                 </button>
               ))}
             </div>
           ))}
         </nav>
-        <div className="px-2 md:px-5 py-4 border-t flex flex-col items-center md:items-stretch gap-2.5" style={{ borderColor: "#1c4a66" }}>
-          <div className="flex items-center gap-2 text-sm" style={{ color: C.gold }} title={roleActif}><Icone n="bouclier" t={17} /><span className="hidden md:inline">{roleActif}</span></div>
+        <div className="px-5 py-4 border-t" style={{ borderColor: "#1c4a66" }}>
+          <div className="flex items-center gap-2 text-sm" style={{ color: C.gold }}><Icone n="bouclier" t={16} /> {roleActif}</div>
           <button onClick={() => { if (sb) sb.auth.signOut(); setSession(null); setPage("dashboard"); }}
-            className="text-xs text-stone-400 hover:text-white flex items-center gap-1.5" title="Se déconnecter"><Icone n="deconnexion" t={16} /><span className="hidden md:inline">Se déconnecter</span></button>
+            className="mt-2 text-xs text-stone-400 hover:text-white flex items-center gap-1.5" title="Fermer votre session"><Icone n="deconnexion" t={13} /> Se déconnecter</button>
         </div>
       </aside>
 
       {/* ---------------- ZONE PRINCIPALE ---------------- */}
       <div className="flex-1 min-w-0 flex flex-col">
         <header className="bg-white border-b border-stone-200 px-4 md:px-6 py-3.5 flex items-center justify-between gap-3 md:gap-4 sticky top-0 z-10">
+            <button onClick={() => setMenuMobile(true)} className="md:hidden text-stone-600 shrink-0" title="Ouvrir le menu">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
+            </button>
           <div className="min-w-0">
             <h1 className="text-base md:text-lg font-bold break-words">{titres[page][0]}</h1>
             <div className="text-xs text-stone-500 break-words">{titres[page][1]}</div>
