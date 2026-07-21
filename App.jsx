@@ -1101,6 +1101,20 @@ export default function MipPpaApp() {
   return (
     <div className={"min-h-screen flex bg-stone-100 text-stone-900 overflow-x-hidden" + (sombre ? " sombre" : "")} style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", maxWidth: "100vw" }}>
       <style>{`
+        /* ---------- DELTA DESKTOP ≥1024px : sidebar fixe ---------- */
+        @media (min-width: 1024px) {
+          .barre-laterale {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            height: 100vh !important;
+            overflow-y: auto !important;
+            z-index: 20;
+          }
+          .zone-principale {
+            margin-left: 256px !important; /* largeur sidebar : w-64 = 16rem */
+          }
+        }
         /* ---------- MODE SOMBRE ---------- */
         .sombre{background:#0d1721!important;color:#d6d3d1!important}
         .sombre .bg-stone-100{background:#0d1721!important}
@@ -1144,7 +1158,7 @@ export default function MipPpaApp() {
       `}</style>
       {/* ---------------- SIDEBAR ---------------- */}
       {menuMobile && <div className="fixed inset-0 z-40 md:hidden" style={{ background: "rgba(10,25,38,.55)" }} onClick={() => setMenuMobile(false)} />}
-      <aside className={(menuMobile ? "flex fixed inset-y-0 left-0 z-50 " : "hidden ") + "md:flex md:sticky md:top-0 w-64 shrink-0 flex-col text-stone-300 h-screen overflow-y-auto overflow-x-hidden"} style={{ background: C.sidebar }}>
+      <aside className={(menuMobile ? "flex fixed inset-y-0 left-0 z-50 " : "hidden ") + "md:flex md:sticky md:top-0 barre-laterale w-64 shrink-0 flex-col text-stone-300 h-screen overflow-y-auto overflow-x-hidden"} style={{ background: C.sidebar }}>
         <div className="flex items-center gap-3 px-5 py-5">
           <div className="bg-white rounded-xl px-2 py-1.5 flex items-center justify-center shrink-0">
             <LogoFDFP h={30} />
@@ -1175,7 +1189,7 @@ export default function MipPpaApp() {
       </aside>
 
       {/* ---------------- ZONE PRINCIPALE ---------------- */}
-      <div className="flex-1 min-w-0 flex flex-col">
+      <div className="zone-principale flex-1 min-w-0 flex flex-col">
         <header className="bg-white border-b border-stone-200 px-4 md:px-6 py-3.5 flex items-center justify-between gap-3 md:gap-4 sticky top-0 z-10">
           <div className="flex items-center gap-3 min-w-0">
             <button onClick={() => setMenuMobile(true)} className="md:hidden text-stone-600 shrink-0" title="Ouvrir le menu">
