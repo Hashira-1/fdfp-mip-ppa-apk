@@ -1078,7 +1078,7 @@ export default function MipPpaApp() {
 
   // =================== RENDU =====================================
   return (
-    <div className={"min-h-screen flex bg-stone-100 text-stone-900" + (sombre ? " sombre" : "")} style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
+    <div className={"min-h-screen flex bg-stone-100 text-stone-900 overflow-x-hidden" + (sombre ? " sombre" : "")} style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", maxWidth: "100vw" }}>
       <style>{`
         /* ---------- MODE SOMBRE ---------- */
         .sombre{background:#0d1721!important;color:#d6d3d1!important}
@@ -1163,9 +1163,9 @@ export default function MipPpaApp() {
             <h1 className="text-base md:text-lg font-bold break-words">{titres[page][0]}</h1>
             <div className="text-xs text-stone-500 break-words">{titres[page][1]}</div>
           </div>
-          <div className="flex items-center gap-5 shrink-0">
-            <button onClick={() => setPage("guide")} className="text-sm text-stone-600 hover:text-stone-900 flex items-center gap-1.5" title="Ouvrir le guide d'utilisation"><Icone n="livre" t={16} /> Guide</button>
-            <button onClick={basculerTheme} className="text-stone-500 hover:text-stone-800 shrink-0" title={sombre ? "Passer en mode éclairé" : "Passer en mode sombre"}>
+          <div className="flex items-center gap-3 sm:gap-5 shrink-0">
+            <button onClick={() => setPage("guide")} className="hidden sm:flex text-sm text-stone-600 hover:text-stone-900 items-center gap-1.5" title="Ouvrir le guide d'utilisation"><Icone n="livre" t={16} /> Guide</button>
+            <button onClick={basculerTheme} className="hidden sm:block text-stone-500 hover:text-stone-800 shrink-0" title={sombre ? "Passer en mode éclairé" : "Passer en mode sombre"}>
               <Icone n={sombre ? "soleil" : "lune"} t={19} />
             </button>
             <div className="relative">
@@ -1186,7 +1186,10 @@ export default function MipPpaApp() {
                   {P.users && <button onClick={() => { setPage("users"); setMenuCompte(false); }}
                     className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-stone-50 flex items-center gap-2"><Icone n="utilisateurs" t={15} /> Utilisateurs & rôles</button>}
                   <button onClick={() => { setPage("guide"); setMenuCompte(false); }}
-                    className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-stone-50 flex items-center gap-2"><Icone n="livre" t={15} /> Guide d'utilisation</button>
+                    className="sm:hidden w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-stone-50 flex items-center gap-2"><Icone n="livre" t={15} /> Guide d'utilisation</button>
+                  <button onClick={() => { basculerTheme(); }}
+                    className="sm:hidden w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-stone-50 flex items-center gap-2"><Icone n={sombre ? "soleil" : "lune"} t={15} /> {sombre ? "Mode éclairé" : "Mode sombre"}</button>
+                  <div className="my-1 border-t border-stone-100" />
                   <button onClick={() => { if (sb) sb.auth.signOut(); setSession(null); setMenuCompte(false); }}
                     className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-red-50 text-red-600 flex items-center gap-2"><Icone n="deconnexion" t={15} /> Déconnexion</button>
                 </div>
@@ -1195,7 +1198,7 @@ export default function MipPpaApp() {
           </div>
         </header>
 
-        <main key={page + (evalId || "")} className="page-anim flex-1 p-4 md:p-6 space-y-5 max-w-5xl w-full mx-auto">
+        <main key={page + (evalId || "")} className="page-anim flex-1 p-4 md:p-6 space-y-5 max-w-5xl w-full mx-auto min-w-0 overflow-x-hidden">
           {P.lectureSeule && <div className="rounded-xl px-4 py-2.5 text-sm flex items-center gap-2" style={{ background: "#e0f0fb", color: "#0d3b57" }}><Icone n="oeil" t={16} /> Mode consultation — votre profil ({roleActif}) donne un accès en lecture seule.</div>}
 
           {/* =========== TABLEAU DE BORD =========== */}
@@ -1363,17 +1366,18 @@ export default function MipPpaApp() {
             )}
 
             <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden">
-              <div className="grid grid-cols-12 px-5 py-3 text-sm font-semibold text-stone-600 border-b border-stone-100 min-w-[680px]">
+              {/* Vue tableau — ordinateur / tablette large */}
+              <div className="hidden md:grid grid-cols-12 px-5 py-3 text-sm font-semibold text-stone-600 border-b border-stone-100">
                 <div className="col-span-6">Projet de formation de type apprentissage</div><div className="col-span-2">Secteur</div><div className="col-span-2">Score MIP</div><div className="col-span-2 text-right">Actions</div>
               </div>
               {formationsVisibles.filter((f) => (f.titre + f.entreprise + f.filiere + (f.secteurGrand || "") + (f.domaine || "")).toLowerCase().includes(recherche.toLowerCase())).map((f) => (
-                <div key={f.id} className="grid grid-cols-12 items-center px-5 py-4 border-b border-stone-50 hover:bg-stone-50 min-w-[680px]">
-                  <div className="col-span-6 pr-3">
-                    <div className="font-semibold">{f.titre}</div>
-                    <div className="text-sm text-stone-500">Promoteur : {f.entreprise}{f.operateur ? ` · Opérateur : ${f.operateur}` : ""} · {f.region}</div>
-                    {f.beneficiaire && <div className="text-xs text-stone-400">Bénéficiaire : {f.beneficiaire}</div>}
+                <div key={f.id} className="hidden md:grid grid-cols-12 items-center px-5 py-4 border-b border-stone-50 hover:bg-stone-50">
+                  <div className="col-span-6 pr-3 min-w-0">
+                    <div className="font-semibold break-words">{f.titre}</div>
+                    <div className="text-sm text-stone-500 break-words">Promoteur : {f.entreprise}{f.operateur ? ` · Opérateur : ${f.operateur}` : ""} · {f.region}</div>
+                    {f.beneficiaire && <div className="text-xs text-stone-400 break-words">Bénéficiaire : {f.beneficiaire}</div>}
                   </div>
-                  <div className="col-span-2 text-sm"><div className="font-medium">{f.secteurGrand || grandSecteurDe(secteurs, f.filiere)}</div><div className="text-stone-500 text-xs">{f.filiere}{f.domaine ? " · " + f.domaine : ""}</div></div>
+                  <div className="col-span-2 text-sm min-w-0"><div className="font-medium break-words">{f.secteurGrand || grandSecteurDe(secteurs, f.filiere)}</div><div className="text-stone-500 text-xs break-words">{f.filiere}{f.domaine ? " · " + f.domaine : ""}</div></div>
                   <div className="col-span-2"><Badge score={scoreGlobal(referentiel, f.notes)} /></div>
                   <div className="col-span-2 flex justify-end items-center gap-3">
                     <button onClick={() => { setEvalId(f.id); setPage("evaluation"); }} className="text-sm font-medium hover:underline" style={{ color: C.vert }}>Évaluer</button>
@@ -1382,6 +1386,27 @@ export default function MipPpaApp() {
                   </div>
                 </div>
               ))}
+              {/* Vue cartes — mobile : chaque projet entièrement visible, sans défilement horizontal */}
+              <div className="md:hidden divide-y divide-stone-100">
+                {formationsVisibles.filter((f) => (f.titre + f.entreprise + f.filiere + (f.secteurGrand || "") + (f.domaine || "")).toLowerCase().includes(recherche.toLowerCase())).map((f) => (
+                  <div key={f.id} className="p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="font-semibold break-words min-w-0">{f.titre}</div>
+                      <div className="shrink-0"><Badge score={scoreGlobal(referentiel, f.notes)} /></div>
+                    </div>
+                    <div className="text-sm text-stone-500 break-words mt-1">Promoteur : {f.entreprise}{f.operateur ? ` · Opérateur : ${f.operateur}` : ""} · {f.region}</div>
+                    {f.beneficiaire && <div className="text-xs text-stone-400 break-words mt-0.5">Bénéficiaire : {f.beneficiaire}</div>}
+                    <div className="text-xs text-stone-500 break-words mt-1.5">
+                      <span className="font-medium">{f.secteurGrand || grandSecteurDe(secteurs, f.filiere)}</span>{f.filiere ? " · " + f.filiere : ""}{f.domaine ? " · " + f.domaine : ""}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3">
+                      <button onClick={() => { setEvalId(f.id); setPage("evaluation"); }} className="text-sm font-medium hover:underline" style={{ color: C.vert }}>Évaluer</button>
+                      {P.editerFormation && <button title="Modifier la formation" onClick={() => editerFormation(f)} className="text-stone-500 hover:text-stone-800"><Icone n="crayon" t={16} /></button>}
+                      {P.supprimerFormation && <button onClick={() => { if (window.confirm(`Supprimer « ${f.titre} » et ses suivis ?`)) { setFormations((fs) => fs.filter((x) => x.id !== f.id)); setSuivis((ss) => ss.filter((x) => x.formationId !== f.id)); } }} className="text-red-500 hover:text-red-700" ><Icone n="poubelle" t={16} /></button>}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </>)}
 
@@ -1392,7 +1417,7 @@ export default function MipPpaApp() {
               <div className="flex flex-col gap-2 max-w-xl mx-auto">
                 {formationsVisibles.map((f) => (
                   <button key={f.id} onClick={() => setEvalId(f.id)} className="flex items-center justify-between gap-3 border border-stone-200 rounded-xl px-4 py-3 hover:bg-stone-50 text-left">
-                    <span className="font-medium">{f.titre}</span><Badge score={scoreGlobal(referentiel, f.notes)} />
+                    <span className="font-medium break-words min-w-0">{f.titre}</span><span className="shrink-0"><Badge score={scoreGlobal(referentiel, f.notes)} /></span>
                   </button>
                 ))}
               </div>
@@ -1736,7 +1761,7 @@ export default function MipPpaApp() {
           {/* =========== UTILISATEURS & RÔLES =========== */}
           {page === "users" && (P.users ? (<>
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
                 <h3 className="font-bold">Comptes ({comptes.length})</h3>
                 <div className="flex items-center gap-2">
                   <button onClick={chargerComptes} title="Recharger la liste depuis la base"
@@ -1757,8 +1782,8 @@ export default function MipPpaApp() {
                         {u.nom.split(" ").map((m) => m[0]).slice(0, 2).join("").toUpperCase()}
                       </div>
                       <div>
-                        <div className="font-semibold">{u.nom} {session?.id === u.id && <span className="text-xs font-normal text-stone-400">(vous)</span>}</div>
-                        <div className="text-sm text-stone-500">{u.email} · {u.org}</div>
+                        <div className="font-semibold break-words">{u.nom} {session?.id === u.id && <span className="text-xs font-normal text-stone-400">(vous)</span>}</div>
+                        <div className="text-sm text-stone-500 break-words">{u.email} · {u.org}</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -1856,7 +1881,7 @@ export default function MipPpaApp() {
               <h3 className="text-xl font-bold">Modifier la dimension</h3>
               <button onClick={() => setDimEdit(null)} className="text-stone-400 hover:text-stone-700" title="Fermer"><Icone n="fermer" t={18} /></button>
             </div>
-            <div className="grid grid-cols-2 gap-4 mt-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
               <label className="text-sm font-semibold text-stone-800">Code court
                 <input value={dimEdit.id} onChange={(e) => setDimEdit({ ...dimEdit, id: e.target.value.toUpperCase().slice(0, 4) })}
                   className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
@@ -1896,7 +1921,7 @@ export default function MipPpaApp() {
               <h3 className="text-xl font-bold">Modifier l'indicateur</h3>
               <button onClick={() => setIndEdit(null)} className="text-stone-400 hover:text-stone-700" title="Fermer"><Icone n="fermer" t={18} /></button>
             </div>
-            <div className="grid grid-cols-2 gap-4 mt-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
               <label className="text-sm font-semibold text-stone-800">Code
                 <input value={indEdit.id} onChange={(e) => setIndEdit({ ...indEdit, id: e.target.value.toUpperCase().slice(0, 5) })}
                   className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
