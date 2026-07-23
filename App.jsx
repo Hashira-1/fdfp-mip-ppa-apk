@@ -1068,7 +1068,7 @@ export default function MipPpaApp() {
     ...(P.users ? [{ section: "Administration", items: [["users", "utilisateurs", "Utilisateurs & rôles"]] }] : []),
   ];
   const titres = {
-    dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des projets de formation de type Apprentissage (Enploi-qualification) dans l'agro-industrie"],
+    dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des projets de formation de type Apprentissage (Emploi-qualification) dans les agro-industries"],
     formations: ["Projets de formation de type apprentissage", "Portefeuille des projets de formation financés par le FDFP"],
     evaluation: ["Évaluation", fEval ? fEval.titre : "Sélectionnez une formation à évaluer"],
     suivi: ["Suivi niveau de performance", "Évaluations à 3, 6 et 12 mois — impact et durabilité"],
