@@ -1236,7 +1236,7 @@ export default function MipPpaApp() {
         </header>
 
         <main key={page + (evalId || "")} className="page-anim flex-1 p-4 md:p-6 space-y-5 max-w-5xl w-full mx-auto min-w-0 overflow-x-hidden">
-          {P.lectureSeule && <div className="rounded-xl px-4 py-2.5 text-sm flex items-center gap-2" style={{ background: "#e0f0fb", color: "#0d3b57" }}><Icone n="oeil" t={16} /> Mode consultation — votre profil ({roleActif}) donne un accès en lecture seule.</div>}
+          {P.lectureSeule && <div className="rounded-xl px-4 py-2.5 text-sm flex items-center gap-2" style={{ background: "#e0f0fb", color: "#0d3b57" }}><Icone n="oeil" t={16} /> Mode consultation</div>}
 
           {/* =========== TABLEAU DE BORD =========== */}
           {page === "dashboard" && (<>
