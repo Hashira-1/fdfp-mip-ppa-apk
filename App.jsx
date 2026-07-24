@@ -1245,7 +1245,7 @@ export default function MipPpaApp() {
               <h2 className="text-2xl md:text-4xl font-bold mt-4 leading-tight">Mesurer la vraie valeur<br />des projets de formation de type apprentissage</h2>
               <p className="mt-3 text-sky-100 max-w-2xl">
                 Le modèle MIP-PPA évalue chaque projet de formation de type apprentissage sur {referentiel.length} dimensions et {referentiel.reduce((a, d) => a + d.indicateurs.length, 0)} indicateurs,
-                de la conception jusqu'à 12 mois après — pour des décisions éclairées au service de l'agro-industrie ivoirienne.
+                de la conception jusqu'à 12 mois après pour des décisions éclairées au service de l'agro-industrie ivoirienne.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <button onClick={() => setPage("formations")} className="bg-white text-stone-900 font-semibold px-5 py-2.5 rounded-xl hover:bg-stone-100">Évaluer un projet →</button>
