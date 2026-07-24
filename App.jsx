@@ -284,7 +284,7 @@ function niveau(score) {
   if (score === null) return { txt: "Non évalué", bg: "#e7e5e4", fg: "#57534e" };
   if (score >= 80) return { txt: "Excellent", bg: C.excellent, fg: "#fff" };
   if (score >= 60) return { txt: "Satisfaisant", bg: C.satisfaisant, fg: "#fff" };
-  if (score >= 40) return { txt: "En développement", bg: C.dev, fg: "#fff" };
+  if (score >= 40) return { txt: "Moyen", bg: C.dev, fg: "#fff" };
   return { txt: "Insuffisant", bg: C.insuffisant, fg: "#fff" };
 }
 const fmtPct = (v) => (v === null ? "—" : `${Math.round(v)} %`);
