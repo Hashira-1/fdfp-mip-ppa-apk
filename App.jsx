@@ -1598,7 +1598,7 @@ export default function MipPpaApp() {
                 </div>
               )}
               <div className="flex flex-wrap gap-2 mt-4">
-                {[["Insuffisant (0–40 %)", C.insuffisant], ["En développement (40–60 %)", C.dev], ["Satisfaisant (60–80 %)", C.satisfaisant], ["Excellent (80–100 %)", C.excellent]].map(([t, c]) => (
+                {[["Insuffisant (0–40 %)", C.insuffisant], ["Moyen (40–60 %)", C.dev], ["Satisfaisant (60–80 %)", C.satisfaisant], ["Excellent (80–100 %)", C.excellent]].map(([t, c]) => (
                   <span key={t} className="text-xs font-semibold text-white px-3 py-1.5 rounded-full" style={{ background: c }}>{t}</span>
                 ))}
               </div>
