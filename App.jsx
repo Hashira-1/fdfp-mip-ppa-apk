@@ -1071,7 +1071,7 @@ export default function MipPpaApp() {
     dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des projets de formation de type Apprentissage (Emploi-qualification) dans les agro-industries"],
     formations: ["Projets de formation de type apprentissage", "Portefeuille des projets de formation financés par le FDFP"],
     evaluation: ["Évaluation", fEval ? fEval.titre : "Sélectionnez une formation à évaluer"],
-    suivi: ["Suivi niveau de performance", "Évaluations à 3, 6 et 12 mois"],
+    suivi: ["Suivi du niveau de performance", "Évaluations à 3, 6 et 12 mois"],
     indicateurs: ["Référentiel des indicateurs", "Modèle MIP-PPA (dimensions, pondérations, indicateurs)"],
     alertes: ["Alertes & risques", "Formations sous-performantes et suivis en retard"],
     exports: ["Exports", "Fiches PDF et tableaux Excel pour les rapports FDFP"],
