@@ -352,7 +352,7 @@ function CadreAccueil({ enfants }) {
         <LogoFDFP h={34} />
         <div>
           <div className="text-white font-bold text-lg leading-tight">FDFP · MIP-PPA</div>
-          <div className="text-sky-200 text-sm">Suivi des projets de formation de type apprentissage (emploi-qualification) dans les agro-industries</div>
+          <div className="text-sky-200 text-sm">Suivi des projets de formation de type apprentissage (emploi-qualification) dans les industries agroalimentaires</div>
         </div>
       </div>
       {enfants}
@@ -1068,7 +1068,7 @@ export default function MipPpaApp() {
     ...(P.users ? [{ section: "Administration", items: [["users", "utilisateurs", "Utilisateurs & rôles"]] }] : []),
   ];
   const titres = {
-    dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des projets de formation de type Apprentissage (Emploi-qualification) dans les agro-industries"],
+    dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des projets de formation de type Apprentissage (emploi-qualification) dans les industries agroalimentaires"],
     formations: ["Projets de formation de type apprentissage", "Portefeuille des projets de formation financés par le FDFP"],
     evaluation: ["Évaluation", fEval ? fEval.titre : "Sélectionnez une formation à évaluer"],
     suivi: ["Suivi du niveau de performance", "Évaluations à 3, 6 et 12 mois"],
@@ -1245,7 +1245,7 @@ export default function MipPpaApp() {
               <h2 className="text-2xl md:text-4xl font-bold mt-4 leading-tight">Mesurer la vraie valeur<br />des projets de formation de type apprentissage</h2>
               <p className="mt-3 text-sky-100 max-w-2xl">
                 Le modèle MIP-PPA évalue chaque projet de formation de type apprentissage sur {referentiel.length} dimensions et {referentiel.reduce((a, d) => a + d.indicateurs.length, 0)} indicateurs,
-                de la conception jusqu'à 12 mois après pour des décisions éclairées au service de l'agro-industrie ivoirienne.
+                de la conception jusqu'à 12 mois après pour des décisions éclairées au service de l'industrie agroalimentaire ivoirienne.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <button onClick={() => setPage("formations")} className="bg-white text-stone-900 font-semibold px-5 py-2.5 rounded-xl hover:bg-stone-100">Évaluer un projet →</button>
