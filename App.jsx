@@ -344,13 +344,17 @@ function Badge({ score }) {
     </span>
   );
 }
-// Statut du projet, présenté au même format que le niveau de performance
+// Statut du projet : même format que le niveau de performance, mais gamme de
+// couleurs volontairement disjointe. Le niveau de performance occupe le vert,
+// le bleu, l'orange, le rouge et le gris ; le statut reste donc dans les
+// violets, qui n'apparaissent nulle part ailleurs. Deux informations
+// différentes, deux familles chromatiques : aucune confusion possible.
 const STATUTS_PROJET = ["Planifiée", "En cours", "Terminée"];
 const teinteStatut = (statut) => {
-  if (statut === "Terminée") return { bg: C.gold, fg: "#000" };
-  if (statut === "En cours") return { bg: C.gold, fg: "#3a2503" };
-  if (statut === "Planifiée") return { bg: "#dbeafe", fg: "#1e3a5f" };
-  return { bg: "#e7e5e4", fg: "#57534e" };
+  if (statut === "Terminée") return { bg: "#a78bfa", fg: "#000000" };
+  if (statut === "En cours") return { bg: "#6d28d9", fg: "#ffffff" };
+  if (statut === "Planifiée") return { bg: "#ede9fe", fg: "#5b21b6" };
+  return { bg: "#efedf7", fg: "#5c5470" };
 };
 function PuceStatut({ statut }) {
   const t = teinteStatut(statut);
