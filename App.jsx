@@ -326,21 +326,51 @@ function telecharger(nomFichier, contenu, type = "text/csv;charset=utf-8") {
 /* ================================================================
    CHEMINS DES IMAGES — À LIRE AVANT DE DÉPLOYER
    ----------------------------------------------------------------
-   Déposez les deux fichiers dans un dossier « public » créé à la
-   racine du projet (à côté de index.html). Vite sert ce dossier
-   directement à la racine du site : aucun import ni réglage requis.
+   Déposez vos fichiers dans le dossier « public » situé à la racine du
+   projet (à côté de index.html). Vite le sert directement à la racine
+   du site : aucun import ni réglage requis.
 
-     public/logo-fdfp.png  →  logo du bandeau supérieur, de la barre
-                              latérale et des écrans de connexion.
+     public/logo-fdfp.png  →  bandeau institutionnel affiché en haut de
+                              chaque page, sur les écrans de connexion
+                              et dans l'en-tête des fiches PDF.
      public/fond-page.jpg  →  image d'arrière-plan de la page. Elle
                               défile avec le contenu et se devine,
                               floutée, derrière le bandeau supérieur.
 
-   Pour changer de fichier ou d'extension, modifiez uniquement ces
-   deux constantes : rien d'autre dans le code ne désigne les images.
+   L'application n'attend PAS que ces fichiers existent pour démarrer :
+    · logo absent  →  le logo vectoriel de repli ci-dessous s'affiche ;
+    · fond absent  →  la couleur #e8edf2 remplace l'image.
+
+   Plusieurs extensions sont essayées dans l'ordre, ce qui évite d'avoir
+   à convertir le fichier : déposez-le en .png, .jpg, .jpeg ou .svg.
    ================================================================ */
-const CHEMIN_LOGO = "/logo-fdfp.png";
+const CHEMINS_LOGO = ["/logo-fdfp.png", "/logo-fdfp.jpg", "/logo-fdfp.jpeg", "/logo-fdfp.svg"];
 const CHEMIN_FOND = "/fond-page.jpg";
+
+/* Logo de repli, dessiné en vectoriel : sigle FDFP, vague orange et
+   baseline sur deux lignes. Il garantit que l'application n'est jamais
+   sans identité visuelle, y compris au tout premier démarrage.
+   Ce n'est qu'une approximation du logo officiel — il lui manque le QR
+   code et le macaron ISO 9001, qui ne peuvent pas être redessinés. Dès
+   que le vrai fichier est déposé dans public/, il prend le dessus. */
+function LogoFDFPVectoriel() {
+  return (
+    <svg viewBox="0 0 300 104" role="img"
+      aria-label="FDFP — Fonds de Développement de la Formation Professionnelle"
+      style={{ width: "100%", height: "auto", display: "block" }}>
+      <text x="150" y="53" textAnchor="middle" fill="#1b6ca8"
+        fontFamily="'Segoe UI', system-ui, sans-serif" fontSize="54" fontWeight="800"
+        fontStyle="italic" letterSpacing="2">FDFP</text>
+      <path d="M12 68 C 92 55, 208 55, 290 63 C 208 77, 92 81, 12 68 Z" fill="#efa13c" />
+      <text x="150" y="88" textAnchor="middle" fill="#1b6ca8"
+        fontFamily="'Segoe UI', system-ui, sans-serif" fontSize="12" fontWeight="600"
+        fontStyle="italic" letterSpacing=".7">FONDS DE DÉVELOPPEMENT</text>
+      <text x="150" y="101" textAnchor="middle" fill="#1b6ca8"
+        fontFamily="'Segoe UI', system-ui, sans-serif" fontSize="12" fontWeight="600"
+        fontStyle="italic" letterSpacing=".7">DE LA FORMATION PROFESSIONNELLE</text>
+    </svg>
+  );
+}
 
 /* Emplacement du logo, dimensionné en largeur.
    Le bandeau institutionnel (sigle + baseline + QR + macaron ISO) est très
@@ -348,37 +378,49 @@ const CHEMIN_FOND = "/fond-page.jpg";
    lui-même. Le cadre s'adapte donc à n'importe quelles proportions, sans
    recadrage ni déformation.
    Le fond blanc est permanent — imposé même en mode sombre — pour que le
-   logo reste lisible quelle que soit la teinte derrière lui. */
-function LogoFDFP({ largeur }) {
+   logo reste lisible quelle que soit la teinte derrière lui.
+   Les extensions sont essayées l'une après l'autre ; si aucune ne répond,
+   on bascule sur le logo vectoriel plutôt que d'afficher une image cassée. */
+function LogoFDFP({ largeur, hauteurMax }) {
+  const [essai, setEssai] = useState(0);
+  const style = {};
+  if (largeur) style.width = largeur;
+  if (hauteurMax) style["--logo-h-max"] = hauteurMax;
   return (
-    <div className="logo-bandeau" style={largeur ? { width: largeur } : undefined}>
-      <img src={CHEMIN_LOGO} alt="FDFP — Fonds de Développement de la Formation Professionnelle" />
+    <div className="logo-bandeau" style={style}>
+      {essai >= CHEMINS_LOGO.length ? <LogoFDFPVectoriel /> : (
+        <img key={CHEMINS_LOGO[essai]} src={CHEMINS_LOGO[essai]}
+          alt="FDFP — Fonds de Développement de la Formation Professionnelle"
+          onError={() => setEssai((v) => v + 1)} />
+      )}
     </div>
   );
 }
 
 /* jsPDF ne sait pas charger une URL : le logo est converti une fois en
    image matricielle, puis mémorisé pour toutes les fiches suivantes.
-   Si le fichier manque, la fiche est produite sans logo plutôt que de
-   faire échouer l'export. */
+   Si aucun fichier n'est trouvé, la fiche reçoit un sigle textuel plutôt
+   qu'un en-tête vide (voir fichePDF). */
 let cacheLogoPdf;
 const logoPourPdf = async () => {
   if (cacheLogoPdf !== undefined) return cacheLogoPdf;
-  try {
-    const img = await new Promise((ok, ko) => {
-      const i = new Image();
-      i.onload = () => ok(i);
-      i.onerror = ko;
-      i.src = CHEMIN_LOGO;
-    });
-    const cv = document.createElement("canvas");
-    cv.width = img.naturalWidth;
-    cv.height = img.naturalHeight;
-    cv.getContext("2d").drawImage(img, 0, 0);
-    cacheLogoPdf = { donnees: cv.toDataURL("image/png"), l: img.naturalWidth, h: img.naturalHeight };
-  } catch (e) {
-    cacheLogoPdf = null;
+  for (const chemin of CHEMINS_LOGO) {
+    try {
+      const img = await new Promise((ok, ko) => {
+        const i = new Image();
+        i.onload = () => ok(i);
+        i.onerror = ko;
+        i.src = chemin;
+      });
+      const cv = document.createElement("canvas");
+      cv.width = img.naturalWidth;
+      cv.height = img.naturalHeight;
+      cv.getContext("2d").drawImage(img, 0, 0);
+      cacheLogoPdf = { donnees: cv.toDataURL("image/png"), l: img.naturalWidth, h: img.naturalHeight };
+      return cacheLogoPdf;
+    } catch (e) { /* extension suivante */ }
   }
+  cacheLogoPdf = null;
   return cacheLogoPdf;
 };
 
@@ -388,18 +430,24 @@ const logoPourPdf = async () => {
 const CSS_LOGO = `
   .logo-bandeau{
     background:#FFFFFF;                       /* permanent, y compris en mode sombre */
-    width:clamp(132px,25vw,304px);            /* seule contrainte : la largeur */
+    width:clamp(180px,40vw,300px);            /* seule contrainte : la largeur */
     flex:0 0 auto;
     display:flex;align-items:center;justify-content:center;
-    padding:clamp(4px,.7vw,9px) clamp(6px,1vw,13px);
+    padding:clamp(3px,.5vw,7px) clamp(6px,1vw,12px);
     border-radius:12px;
     box-shadow:0 2px 8px rgba(13,34,51,.22);
   }
   /* Le fond blanc ne doit jamais être repeint par le thème sombre. */
   .sombre .logo-bandeau{ background:#FFFFFF!important; }
-  .logo-bandeau img{
-    width:100%;                               /* la hauteur suit le ratio réel */
+  /* La hauteur suit le ratio réel du fichier (4,24:1 pour le bandeau
+     officiel), mais reste plafonnée : un logo carré ou très haut ne doit
+     pas faire enfler le bandeau. Au-delà du plafond, le logo est
+     simplement centré sur sa plaque blanche. */
+  .logo-bandeau img, .logo-bandeau svg{
+    width:100%;
     height:auto;
+    max-height:var(--logo-h-max, 72px);
+    object-fit:contain;
     display:block;
   }
 `;
@@ -496,7 +544,7 @@ function CadreAccueil({ enfants }) {
       {/* Écran d'accès : le bandeau institutionnel est présenté en grand,
           au-dessus du titre, là où rien ne lui dispute la largeur. */}
       <div className="flex flex-col items-center gap-4 mb-6 max-w-2xl text-center">
-        <LogoFDFP largeur="min(420px, 82vw)" />
+        <LogoFDFP largeur="min(420px, 82vw)" hauteurMax="min(150px, 30vw)" />
         <div>
           <div className="text-white font-bold text-lg leading-tight">FDFP · MIP-PPA</div>
           <div className="text-sky-200 text-sm">Suivi des projets de formation de type apprentissage (emploi-qualification) dans les industries agroalimentaires</div>
@@ -1043,6 +1091,13 @@ export default function MipPpaApp() {
       doc.setFillColor(255, 255, 255);
       doc.roundedRect(M - 2, 5.5 - 1.5, lImg + 4, hImg + 3, 1.5, 1.5, "F");
       try { doc.addImage(lg.donnees, "PNG", M, 5.5, lImg, hImg); } catch (e) {}
+    } else {
+      // Aucun fichier logo trouvé : sigle textuel, pour ne pas laisser le
+      // bandeau de l'en-tête vide sur un document officiel.
+      doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(20);
+      doc.text("FDFP", M, 16);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(7);
+      doc.text(nettoyerPdf("Fonds de Developpement de la Formation Professionnelle"), M, 21.5);
     }
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(14);
     doc.text(nettoyerPdf("FICHE D'EVALUATION MIP-PPA"), W - M, 13, { align: "right" });
