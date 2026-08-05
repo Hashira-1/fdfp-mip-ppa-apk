@@ -221,7 +221,16 @@ const PERMS = {
   "Opérateur":               { pages: ["dashboard", "formations", "evaluation", "suivi", "guide"],                                     evalDims: "aucune", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, exports: false, suivisJalons: "tous", suiviValider: false, portee: "entreprise", lectureSeule: true },
   "En attente d'activation": { pages: ["guide"], evalDims: null, creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, exports: false, suivisJalons: "aucun", suiviValider: false, portee: "aucune" },
 };
-const AUJOURDHUI = new Date("2026-07-13");
+// ----------------- TEMPS DE RÉFÉRENCE ---------------------------
+// Toute la plateforme raisonne en temps universel (UTC / GMT+0), et non dans
+// le fuseau du poste : le FDFP et ses antennes doivent voir le même « en
+// retard » au même moment, et une échéance ne doit pas changer de jour selon
+// l'appareil qui la consulte. L'heure affichée dans l'en-tête est celle-ci.
+// Minuit UTC du jour courant, en millisecondes.
+const aujourdhuiUTC = () => {
+  const n = new Date();
+  return Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate());
+};
 
 
 // ----------------- ICÔNES VECTORIELLES (traits, style lucide) ----
@@ -313,7 +322,14 @@ function niveau(score) {
 }
 const fmtPct = (v) => (v === null ? "—" : `${Math.round(v)} %`);
 const fmtFCFA = (v) => `${Number(v).toLocaleString("fr-FR")} FCFA`;
-const joursRestants = (dateStr) => Math.ceil((new Date(dateStr) - AUJOURDHUI) / 86400000);
+// Jours pleins entre aujourd'hui et une échéance « AAAA-MM-JJ ». Les deux
+// bornes sont ramenées à minuit UTC : l'écart est donc un multiple exact de
+// 24 h, sans dérive liée à l'heure de consultation ni au changement d'heure.
+const joursRestants = (dateStr) => {
+  if (!dateStr) return 0;
+  const cible = Date.parse(String(dateStr).slice(0, 10) + "T00:00:00Z");
+  return Number.isNaN(cible) ? 0 : Math.round((cible - aujourdhuiUTC()) / 86400000);
+};
 
 function telecharger(nomFichier, contenu, type = "text/csv;charset=utf-8") {
   const blob = new Blob(["\ufeff" + contenu], { type });
@@ -401,6 +417,30 @@ function ChampEditable({ valeur, surValider, className = "", largeurAuto = false
         if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
         else if (e.key === "Escape") { annule.current = true; e.currentTarget.blur(); }
       }} />
+  );
+}
+
+/* Date et heure de référence de la plateforme, en temps universel (GMT+0).
+   Affichée en permanence dans le bandeau supérieur : c'est cette horloge qui
+   détermine les retards et les échéances, elle doit donc être vérifiable d'un
+   coup d'œil plutôt que déduite de l'heure du poste. */
+function HorlogeUTC() {
+  const [maintenant, setMaintenant] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setMaintenant(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const jour = maintenant.toLocaleDateString("fr-FR", {
+    timeZone: "UTC", weekday: "short", day: "numeric", month: "long", year: "numeric",
+  });
+  const heure = maintenant.toLocaleTimeString("fr-FR", {
+    timeZone: "UTC", hour: "2-digit", minute: "2-digit", second: "2-digit",
+  });
+  return (
+    <div className="horloge-utc" title="Date et heure de référence de la plateforme — temps universel (GMT+0). C'est sur cette base que sont calculés les retards et les échéances.">
+      <div className="horloge-date">{jour}</div>
+      <div className="horloge-heure">{heure}<span>GMT+0</span></div>
+    </div>
   );
 }
 
@@ -889,6 +929,37 @@ export default function MipPpaApp() {
   }, [formationsVisibles, referentiel]);
 
   // ---------- Actions ----------
+  /* Répercussion d'un renommage du référentiel sur les données déjà saisies.
+     Les projets désignent leur secteur, leur branche et leur domaine par le
+     libellé, pas par un identifiant : sans cette propagation, renommer une
+     branche laissait les projets existants accrochés à l'ancien nom — ils
+     disparaissaient des regroupements sectoriels et des graphiques.
+     Renvoie le nombre de projets mis à jour, pour le message de confirmation. */
+  const propagerRenommage = (champ, ancien, nouveau, concerne = () => true) => {
+    const touches = formations.filter((f) => f[champ] === ancien && concerne(f));
+    if (touches.length) {
+      const ids = new Set(touches.map((f) => f.id));
+      setFormations((fs) => fs.map((f) => (ids.has(f.id) ? { ...f, [champ]: nouveau } : f)));
+    }
+    return touches.length;
+  };
+  // Même principe pour les phases de mesure, référencées par libellé dans
+  // chaque indicateur du référentiel.
+  const propagerRenommagePhase = (ancien, nouveau) => {
+    let touches = 0;
+    referentiel.forEach((d) => d.indicateurs.forEach((i) => { if (i.phase === ancien) touches++; }));
+    if (touches) {
+      setReferentiel((r) => r.map((d) => ({
+        ...d,
+        indicateurs: d.indicateurs.map((i) => (i.phase === ancien ? { ...i, phase: nouveau } : i)),
+      })));
+    }
+    return touches;
+  };
+  // « 3 projets mis à jour » / « aucun projet concerné »
+  const messagePropagation = (n, mot = "projet") =>
+    n ? ` — ${n} ${mot}${n > 1 ? "s" : ""} mis à jour` : "";
+
   const noter = (fid, indId, note) => {
     setFormations((fs) => fs.map((f) => {
       if (f.id !== fid) return f;
@@ -908,7 +979,8 @@ export default function MipPpaApp() {
     const id = "f" + Date.now();
     setFormations((fs) => [...fs, { id, ...nouvelle, notes: {} }]);
     ["M+3", "M+6", "M+12"].forEach((j, i) => {
-      const d = new Date(AUJOURDHUI); d.setMonth(d.getMonth() + [3, 6, 12][i]);
+      // Échéances calculées à partir de la date réelle du jour, en UTC.
+      const d = new Date(aujourdhuiUTC()); d.setUTCMonth(d.getUTCMonth() + [3, 6, 12][i]);
       setSuivis((ss) => [...ss, { id: "s" + Date.now() + i, formationId: id, jalon: j, echeance: d.toISOString().slice(0, 10), statut: "programmé", note: "", docs: [] }]);
     });
     setFormOuvert(false);
@@ -1280,6 +1352,23 @@ export default function MipPpaApp() {
           overflow-wrap:anywhere; margin-top:.1rem;
         }
         .sombre .bandeau-sous-titre{ color:#a9b4bf; }
+        /* Horloge de référence (GMT+0). Chiffres tabulaires : la largeur ne
+           bouge pas au défilement des secondes, le bandeau reste stable.     */
+        .horloge-utc{
+          text-align:right; line-height:1.2; white-space:nowrap;
+          padding-right:clamp(.6rem,1.4vw,1rem);
+          border-right:1px solid rgba(13,34,51,.15);
+        }
+        .sombre .horloge-utc{ border-right-color:rgba(255,255,255,.14); }
+        .horloge-date{ font-size:.7rem; color:#57534e; text-transform:capitalize; }
+        .horloge-heure{
+          font-size:.92rem; font-weight:700; letter-spacing:.02em;
+          font-variant-numeric:tabular-nums;
+        }
+        .horloge-heure span{ font-size:.6rem; font-weight:600; color:#57534e; margin-left:.3rem; }
+        .sombre .horloge-date, .sombre .horloge-heure span{ color:#a9b4bf; }
+        /* Sous 820 px, le bandeau n'a plus la place : l'horloge s'efface. */
+        @media (max-width:820px){ .horloge-utc{ display:none; } }
         /* Sur mobile le sous-titre mange toute la hauteur : on le limite. */
         @media (max-width:560px){
           .bandeau-sous-titre{
@@ -1428,6 +1517,7 @@ export default function MipPpaApp() {
             </div>
           </div>
           <div className="bandeau-droite">
+            <HorlogeUTC />
             <button onClick={() => setPage("guide")} className="hidden sm:flex text-sm text-stone-600 hover:text-stone-900 items-center gap-1.5" title="Ouvrir le guide d'utilisation"><Icone n="livre" t={16} /> Guide</button>
             <button onClick={basculerTheme} className="hidden sm:block text-stone-500 hover:text-stone-800 shrink-0" title={sombre ? "Passer en mode éclairé" : "Passer en mode sombre"}>
               <Icone n={sombre ? "soleil" : "lune"} t={19} />
@@ -1856,6 +1946,7 @@ export default function MipPpaApp() {
                           surValider={(nom) => {
                             if (normaliserSecteurs(secteurs)[nom]) { notif("Un secteur porte déjà ce nom"); return false; }
                             setSecteurs((s) => { const n = normaliserSecteurs(s), o = {}; Object.entries(n).forEach(([k, v]) => { o[k === grand ? nom : k] = v; }); return o; });
+                            notif(`Secteur renommé${messagePropagation(propagerRenommage("secteurGrand", grand, nom))}`);
                           }}
                           className="font-semibold bg-transparent outline-none border-b border-transparent focus:border-stone-300 flex-1" />
                         <span className="text-xs text-stone-400">{Object.keys(branches || {}).length} branches</span>
@@ -1870,6 +1961,11 @@ export default function MipPpaApp() {
                                 surValider={(nom) => {
                                   if ((normaliserSecteurs(secteurs)[grand] || {})[nom]) { notif("Une branche porte déjà ce nom dans ce secteur"); return false; }
                                   setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; const bo = {}; Object.entries(n[grand] || {}).forEach(([k, v]) => { bo[k === branche ? nom : k] = v; }); n[grand] = bo; return n; });
+                                  // Seuls les projets rattachés à CE secteur : deux secteurs
+                                  // peuvent héberger une branche de même nom.
+                                  const n2 = propagerRenommage("filiere", branche, nom,
+                                    (f) => (f.secteurGrand || grandSecteurDe(secteurs, f.filiere)) === grand);
+                                  notif(`Branche renommée${messagePropagation(n2)}`);
                                 }}
                                 className="text-sm font-medium bg-transparent outline-none border-b border-transparent focus:border-stone-300 flex-1" />
                               <button onClick={() => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; const bo = { ...n[grand] }; delete bo[branche]; n[grand] = bo; return n; })}
@@ -1883,6 +1979,8 @@ export default function MipPpaApp() {
                                       const liste = (normaliserSecteurs(secteurs)[grand] || {})[branche] || [];
                                       if (liste.some((x, j) => j !== i && x === nom)) { notif("Ce domaine existe déjà dans la branche"); return false; }
                                       setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; n[grand] = { ...n[grand], [branche]: (n[grand][branche] || []).map((x, j) => j === i ? nom : x) }; return n; });
+                                      const n3 = propagerRenommage("domaine", d, nom, (f) => f.filiere === branche);
+                                      notif(`Domaine renommé${messagePropagation(n3)}`);
                                     }}
                                     className="bg-transparent outline-none" />
                                   <button onClick={() => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; n[grand] = { ...n[grand], [branche]: n[grand][branche].filter((_, j) => j !== i) }; return n; })}
@@ -1911,6 +2009,8 @@ export default function MipPpaApp() {
                         surValider={(nom) => {
                           if (phases.some((x, j) => j !== i && x === nom)) { notif("Cette phase existe déjà"); return false; }
                           setPhases((ss) => ss.map((x, j) => j === i ? nom : x));
+                          // Les indicateurs désignent leur phase par le libellé.
+                          notif(`Phase renommée${messagePropagation(propagerRenommagePhase(s, nom), "indicateur")}`);
                         }}
                         className="bg-transparent outline-none" />
                       <button onClick={() => setPhases((ss) => ss.filter((_, j) => j !== i))}
