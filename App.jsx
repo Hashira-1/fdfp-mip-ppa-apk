@@ -196,7 +196,8 @@ const nomLibre = (base, existants) => {
   return `${base} ${k}`;
 };
 
-// ----------------- IMPLANTATIONS FDFP (champ « Région ») ---------
+// ----------------- IMPLANTATIONS FDFP (champ « Zone ») -----------
+// Note : le champ reste stocké sous le nom « region » (colonne Supabase).
 const ANTENNES_FDFP = ["Abengourou", "Bouaké", "Daloa", "Korhogo", "Man", "San-Pédro", "Yamoussoukro"];
 const IMPLANTATIONS = ["Siège Abidjan", ...ANTENNES_FDFP.map((a) => `Antenne ${a}`)];
 // Convertit les valeurs historiques (« Abidjan », « San-Pédro », « antenne de Bouaké »…)
@@ -346,7 +347,7 @@ function Badge({ score }) {
 // Statut du projet, présenté au même format que le niveau de performance
 const STATUTS_PROJET = ["Planifiée", "En cours", "Terminée"];
 const teinteStatut = (statut) => {
-  if (statut === "Terminée") return { bg: C.vertFonce, fg: "#fff" };
+  if (statut === "Terminée") return { bg: C.gold, fg: "#000" };
   if (statut === "En cours") return { bg: C.gold, fg: "#3a2503" };
   if (statut === "Planifiée") return { bg: "#dbeafe", fg: "#1e3a5f" };
   return { bg: "#e7e5e4", fg: "#57534e" };
@@ -908,7 +909,7 @@ export default function MipPpaApp() {
   };
 
   const exportExcel = () => {
-    const entetes = ["Projet", "Promoteur", "Secteur", "Branche", "Domaine", "Région", "Apprenants", "Budget FCFA", "Statut",
+    const entetes = ["Projet", "Promoteur", "Secteur", "Branche", "Domaine", "Zone", "Apprenants", "Budget FCFA", "Statut",
       ...referentiel.map((d) => `${d.nom} (%)`), "Score global (%)", "Niveau"];
     const lignes = formationsVisibles.map((f) => {
       const g = scoreGlobal(referentiel, f.notes);
@@ -1496,7 +1497,7 @@ export default function MipPpaApp() {
                     {((normaliserSecteurs(secteurs)[nouvelle.secteurGrand] || {})[nouvelle.filiere] || []).map((d) => <option key={d}>{d}</option>)}
                   </select>
                 </label>
-                <label className="text-sm">Région <span className="text-stone-400">(implantation FDFP)</span>
+                <label className="text-sm">Zone <span className="text-stone-400">(implantation FDFP)</span>
                   <select value={normaliserRegion(nouvelle.region)} onChange={(e) => setNouvelle({ ...nouvelle, region: e.target.value })}
                     className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
                     {IMPLANTATIONS.map((r) => <option key={r}>{r}</option>)}
@@ -1934,7 +1935,7 @@ export default function MipPpaApp() {
             ] : [
               ["1. Démarrer", "Créez votre compte (nom, organisation, email, mot de passe), attendez l'activation par l'administrateur lead qui vous attribue un rôle, puis connectez-vous. Le tout premier compte créé devient automatiquement Administrateur lead."],
               ["2. Comptes & rôles", "Cinq niveaux d'accès : Administrateur lead (tous les droits, distribue les accès) ; Administrateur FDFP (pilotage global, validation, configuration) ; Agent FDFP (évaluation MIP-PPA, suivis, exports) ; Promoteur (consultation en lecture seule de l'ensemble du portefeuille) ; Opérateur (saisie des indicateurs pédagogiques et suivi des apprenants). Les rôles sont protégés côté serveur : aucun utilisateur ne peut s'auto-attribuer un accès."],
-              ["3. Gérer les projets", "Créez un projet de formation de type apprentissage (intitulé, entreprise bénéficiaire, secteur, région, apprenants, budget FCFA), suivez son statut (Planifiée / En cours / Terminée), puis cliquez dessus pour ouvrir sa fiche d'évaluation."],
+              ["3. Gérer les projets", "Créez un projet de formation de type apprentissage (intitulé, entreprise bénéficiaire, secteur, zone, apprenants, budget FCFA), suivez son statut (Planifiée / En cours / Terminée), puis cliquez dessus pour ouvrir sa fiche d'évaluation."],
               ["4. Évaluer (modèle MIP-PPA)", "Le modèle mesure la valeur réelle d'une formation à travers 5 dimensions et 23 indicateurs notés de 0 à 4. Les indicateurs non encore mesurables peuvent rester vides ; le score se calcule automatiquement et l'enregistrement est instantané."],
               ["5. Suivi à 3, 6 et 12 mois", "Chaque formation déclenche automatiquement 3 points de suivi : à 3 mois (transfert des acquis au poste), 6 mois (effets organisationnels mesurables) et 12 mois (pérennité et retour sur investissement). Les jalons sont regroupés en 4 piles : En retard, À faire sous 14 j, Programmés, Effectués. Ces suivis alimentent directement les dimensions Impact organisationnel et Durabilité des compétences."],
               ["6. Tableaux de bord & référentiel", "Le tableau de bord offre la vision consolidée (formations, apprenants, score moyen, radar des 5 dimensions, comparaison par secteur). L'administrateur lead peut ajouter, modifier ou supprimer dimensions et indicateurs ; la somme des pondérations doit rester à 100 %. Un bouton permet de restaurer le référentiel MIP-PPA d'origine."],
