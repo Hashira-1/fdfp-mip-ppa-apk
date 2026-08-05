@@ -337,7 +337,7 @@ const LOGO_FDFP = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBA
 
 function LogoFDFP({ h = 32 }) {
   return (
-    <div className="bg-white rounded-lg px-2 py-1 flex items-center justify-center shadow-sm" style={{ height: h + 10 }}>
+    <div className="cadre-logo bg-white rounded-lg px-2 py-1 flex items-center justify-center shadow-sm" style={{ height: h + 10 }}>
       <img src={LOGO_FDFP} alt="FDFP — Fonds de Développement de la Formation Professionnelle" style={{ height: h, width: "auto" }} />
     </div>
   );
@@ -1306,6 +1306,12 @@ export default function MipPpaApp() {
         .sombre{background:#0d1721!important;color:#d6d3d1!important}
         .sombre .bg-stone-100{background:#0d1721!important}
         .sombre .bg-white{background:#152230!important;color:#d6d3d1}
+        /* Exception : le rectangle du logo reste blanc en mode nuit. Le logo
+           FDFP est une image à fond blanc — sur une plaque sombre, il
+           découperait un rectangle blanc disgracieux au milieu du cadre.
+           Règle placée APRÈS « .sombre .bg-white » : à spécificité égale,
+           c'est la dernière déclarée qui l'emporte.                        */
+        .sombre .cadre-logo{background:#FFFFFF!important}
         .sombre .bg-stone-50{background:#1a2a3a!important}
         .sombre .hover\:bg-stone-50:hover{background:#1f3245!important}
         .sombre .hover\:bg-stone-100:hover{background:#1f3245!important}
@@ -1347,7 +1353,7 @@ export default function MipPpaApp() {
       {menuMobile && <div className="fixed inset-0 z-40 md:hidden" style={{ background: "rgba(10,25,38,.55)" }} onClick={() => setMenuMobile(false)} />}
       <aside className={(menuMobile ? "flex fixed inset-y-0 left-0 z-50 " : "hidden ") + "md:flex md:sticky md:top-0 barre-laterale w-64 shrink-0 flex-col text-stone-300 h-screen overflow-y-auto overflow-x-hidden"} style={{ background: C.sidebar }}>
         <div className="flex items-center gap-3 px-5 py-5">
-          <div className="bg-white rounded-xl px-2 py-1.5 flex items-center justify-center shrink-0">
+          <div className="cadre-logo bg-white rounded-xl px-2 py-1.5 flex items-center justify-center shrink-0">
             <LogoFDFP h={30} />
           </div>
           <div className="min-w-0">
