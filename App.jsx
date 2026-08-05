@@ -1313,8 +1313,16 @@ export default function MipPpaApp() {
            c'est la dernière déclarée qui l'emporte.                        */
         .sombre .cadre-logo{background:#FFFFFF!important}
         .sombre .bg-stone-50{background:#1a2a3a!important}
-        .sombre .hover\:bg-stone-50:hover{background:#1f3245!important}
-        .sombre .hover\:bg-stone-100:hover{background:#1f3245!important}
+        /* Survol des lignes de tableau et des boutons en mode nuit.
+           ATTENTION à la double barre oblique inverse : cette feuille est un
+           littéral de gabarit JavaScript, où « \\: » ne serait pas reconnu
+           comme échappement et deviendrait « : ». Le sélecteur émis serait
+           alors « .hover:bg-stone-50 », une pseudo-classe inconnue, donc une
+           règle entière invalidée et ignorée — le survol repassait au gris
+           très clair de Tailwind, éblouissant sur fond sombre.
+           « \\\\: » dans la source produit bien « \\: » dans la feuille.       */
+        .sombre .hover\\:bg-stone-50:hover{background:#263b50!important}
+        .sombre .hover\\:bg-stone-100:hover{background:#263b50!important}
         .sombre .border-stone-200,.sombre .border-stone-100,.sombre .border-stone-300{border-color:#2b3d50!important}
         .sombre .border-stone-50{border-color:#223446!important}
         .sombre .text-stone-900,.sombre .text-stone-800{color:#e7e5e4!important}
@@ -1325,7 +1333,7 @@ export default function MipPpaApp() {
         .sombre input::placeholder,.sombre textarea::placeholder{color:#64748b}
         .sombre .bg-sky-50{background:rgba(56,130,190,.16)!important}
         .sombre .bg-red-50{background:rgba(220,60,60,.14)!important}
-        .sombre .hover\:bg-red-50:hover{background:rgba(220,60,60,.2)!important}
+        .sombre .hover\\:bg-red-50:hover{background:rgba(220,60,60,.28)!important}
         .sombre .bg-amber-50{background:rgba(217,160,40,.14)!important}
         .sombre .bg-emerald-50{background:rgba(30,160,110,.15)!important}
         .sombre .text-stone-300{color:#a8b3bd!important}
