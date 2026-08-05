@@ -1339,8 +1339,34 @@ export default function MipPpaApp() {
         .sombre .text-stone-300{color:#a8b3bd!important}
         .sombre .shadow-xl,.sombre .shadow-2xl{box-shadow:0 18px 45px rgba(0,0,0,.55)!important}
         .sombre svg text{fill:#b8c0c9}
+
+        /* ---------- GRAPHIQUES EN MODE NUIT ----------
+           Même problème que sur les lignes de tableau : au survol, Recharts
+           dessine un « curseur » (bande sur l'histogramme, rayon sur le
+           radar) rempli de gris clair, qui éblouit sur fond sombre. On le
+           repasse en bleu nuit translucide.
+           Les couleurs des grilles sont posées en attribut de présentation
+           dans le JSX (stroke="#e7e5e4") : ces attributs ont la priorité la
+           plus faible, donc n'importe quelle règle CSS les emporte — inutile
+           de toucher au balisage.                                          */
+        .sombre .recharts-tooltip-cursor{fill:rgba(56,130,190,.22)!important;stroke:rgba(56,130,190,.45)!important}
         .sombre .recharts-cartesian-grid line{stroke:#2b3d50!important}
+        .sombre .recharts-polar-grid line,
+        .sombre .recharts-polar-grid path,
+        .sombre .recharts-polar-grid polygon,
+        .sombre .recharts-polar-grid circle{stroke:#2b3d50!important}
+        .sombre .recharts-cartesian-axis-line,
+        .sombre .recharts-cartesian-axis-tick-line,
+        .sombre .recharts-polar-angle-axis-tick-line,
+        .sombre .recharts-polar-radius-axis-line{stroke:#3a4d61!important}
+        /* Infobulle : le cadre était déjà traité, mais Recharts fixe la
+           couleur de chaque série en style en ligne — d'où le !important. */
         .sombre .recharts-default-tooltip{background:#152230!important;border-color:#2b3d50!important;color:#e7e5e4!important}
+        .sombre .recharts-tooltip-label,
+        .sombre .recharts-tooltip-item,
+        .sombre .recharts-tooltip-item-name,
+        .sombre .recharts-tooltip-item-value,
+        .sombre .recharts-tooltip-item-separator{color:#e7e5e4!important}
 
         @keyframes pageIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
         @keyframes toastIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
