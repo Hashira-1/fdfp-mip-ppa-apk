@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { jsPDF } from "jspdf";
 import { createClient } from "@supabase/supabase-js";
 import {
@@ -73,19 +73,19 @@ const REFERENTIEL_DEFAUT = [
 const FORMATIONS_DEMO = [
   {
     id: "f1", titre: "Maîtrise HACCP en ligne de conditionnement cacao",
-    entreprise: "SACO", operateur: "A.C.A", beneficiaire: "SCINPA", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "Abidjan",
+    entreprise: "SACO", operateur: "A.C.A", beneficiaire: "SCINPA", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "Siège Abidjan",
     apprenants: 18, budget: 12500000, statut: "Terminée",
     notes: { P1: 4, P2: 3, P3: 4, P4: 4, EP1: 3, EP2: 3, EP3: 4, EP4: 4, EP5: 3, EP6: 4, IE1: 3, IE2: 3, IE3: 4, IE4: 3, IO1: 3, IO2: 3, IO3: 4, IO4: 3, IO5: 3, DC1: 3, DC2: 2, DC3: 3, DC4: 3 },
   },
   {
     id: "f2", titre: "Conduite de séchoir industriel (fruits tropicaux)",
-    entreprise: "AGROCI", operateur: "Emergence", beneficiaire: "AGROCI", secteurGrand: "Secteur secondaire", filiere: "Transformation des fruits et légumes", domaine: "Jus et concentrés", region: "Yamoussoukro",
+    entreprise: "AGROCI", operateur: "Emergence", beneficiaire: "AGROCI", secteurGrand: "Secteur secondaire", filiere: "Transformation des fruits et légumes", domaine: "Jus et concentrés", region: "Antenne Yamoussoukro",
     apprenants: 9, budget: 6800000, statut: "Terminée",
     notes: { P1: 3, P2: 2, P3: 3, P4: 2, EP1: 2, EP2: 2, EP3: 3, EP4: 4, EP5: 2, EP6: 2, IE1: 2, IE2: 3, IE3: 2, IE4: 2, IO1: 2, IO2: 2, IO3: 3, IO4: 2, IO5: 2, DC1: 3, DC2: 2, DC3: 2, DC4: 2 },
   },
   {
     id: "f3", titre: "Sécurité alimentaire & traçabilité ISO 22000",
-    entreprise: "FrieslandCampina", operateur: "Domny", beneficiaire: "FrieslandCampina", secteurGrand: "Secteur secondaire", filiere: "Industrie laitière", domaine: "Lait et yaourts", region: "San-Pédro",
+    entreprise: "FrieslandCampina", operateur: "Domny", beneficiaire: "FrieslandCampina", secteurGrand: "Secteur secondaire", filiere: "Industrie laitière", domaine: "Lait et yaourts", region: "Antenne San-Pédro",
     apprenants: 24, budget: 15200000, statut: "Terminée",
     notes: { P1: 4, P2: 4, P3: 4, P4: 4, EP1: 4, EP2: 3, EP3: 4, EP4: 4, EP5: 4, EP6: 4, IE1: 3, IE2: 3, IE3: 4, IE4: 3, IO1: 4, IO2: 3, IO3: 4, IO4: 4, IO5: 3, DC1: 3, DC2: 3, DC3: 4, DC4: 3 },
   },
@@ -187,6 +187,29 @@ const libelleSecteur = (f, secteurs) => {
   return morceaux.join(" · ");
 };
 const listeSecteursPlate = (s) => Object.values(normaliserSecteurs(s)).map((b) => Object.keys(b)).flat();
+
+// Libellé « Base », puis « Base 2 », « Base 3 »… sans collision avec l'existant.
+// Sans cela, un ajout pouvait réutiliser une clé déjà prise et écraser la ligne.
+const nomLibre = (base, existants) => {
+  if (!existants.includes(base)) return base;
+  let k = 2; while (existants.includes(`${base} ${k}`)) k++;
+  return `${base} ${k}`;
+};
+
+// ----------------- IMPLANTATIONS FDFP (champ « Région ») ---------
+const ANTENNES_FDFP = ["Abengourou", "Bouaké", "Daloa", "Korhogo", "Man", "San-Pédro", "Yamoussoukro"];
+const IMPLANTATIONS = ["Siège Abidjan", ...ANTENNES_FDFP.map((a) => `Antenne ${a}`)];
+// Convertit les valeurs historiques (« Abidjan », « San-Pédro », « antenne de Bouaké »…)
+// vers la nomenclature officielle ; laisse la valeur intacte si elle est inconnue.
+const normaliserRegion = (r) => {
+  const v = String(r || "").trim();
+  if (!v || IMPLANTATIONS.includes(v)) return v;
+  const nu = v.replace(/^(si[eè]ge|antenne)\s*(d[eu']\s*)?/i, "").trim();
+  const memeMot = (a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }) === 0;
+  if (memeMot(nu, "Abidjan")) return "Siège Abidjan";
+  const antenne = ANTENNES_FDFP.find((a) => memeMot(a, nu));
+  return antenne ? `Antenne ${antenne}` : v;
+};
 
 // ----------------- MATRICE DES PERMISSIONS PAR RÔLE -------------
 const PERMS = {
@@ -320,6 +343,54 @@ function Badge({ score }) {
     </span>
   );
 }
+// Statut du projet, présenté au même format que le niveau de performance
+const STATUTS_PROJET = ["Planifiée", "En cours", "Terminée"];
+const teinteStatut = (statut) => {
+  if (statut === "Terminée") return { bg: C.vertFonce, fg: "#fff" };
+  if (statut === "En cours") return { bg: C.gold, fg: "#3a2503" };
+  if (statut === "Planifiée") return { bg: "#dbeafe", fg: "#1e3a5f" };
+  return { bg: "#e7e5e4", fg: "#57534e" };
+};
+function PuceStatut({ statut }) {
+  const t = teinteStatut(statut);
+  return (
+    <span className="text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: t.bg, color: t.fg }}>
+      {statut || "Statut non défini"}
+    </span>
+  );
+}
+
+/* Champ texte à validation différée.
+   Les éditeurs de secteurs / branches / domaines réécrivaient la hiérarchie
+   à chaque frappe : la clé de l'objet changeait en cours de saisie, les lignes
+   se réordonnaient et le texte partait sur une autre ligne. Ici la saisie reste
+   locale et n'est propagée qu'au blur ou sur Entrée (Échap annule). */
+function ChampEditable({ valeur, surValider, className = "", largeurAuto = false, largeurMin = 6, titre, placeholder }) {
+  const [txt, setTxt] = useState(valeur ?? "");
+  const [enEdition, setEnEdition] = useState(false);
+  const annule = useRef(false);
+  useEffect(() => { if (!enEdition) setTxt(valeur ?? ""); }, [valeur, enEdition]);
+  const valider = () => {
+    const v = txt.trim();
+    if (!v || v === valeur || surValider(v) === false) setTxt(valeur ?? "");
+  };
+  return (
+    <input value={txt} title={titre} placeholder={placeholder} className={className}
+      style={largeurAuto ? { width: Math.max(largeurMin, txt.length) + "ch" } : undefined}
+      onChange={(e) => setTxt(e.target.value)}
+      onFocus={() => setEnEdition(true)}
+      onBlur={() => {
+        setEnEdition(false);
+        if (annule.current) { annule.current = false; setTxt(valeur ?? ""); return; }
+        valider();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
+        else if (e.key === "Escape") { annule.current = true; e.currentTarget.blur(); }
+      }} />
+  );
+}
+
 function StatCard({ icone, titre, valeur, sous, teinte = "#e3eef7", fg = C.vert }) {
   return (
     <div className="carte-hover bg-white rounded-2xl border border-stone-200 p-5 flex items-start gap-4">
@@ -547,14 +618,26 @@ export default function MipPpaApp() {
 
   // --- Ecriture Supabase : projets (upsert individuel) ---
   const projetVersRow = (f) => ({ id: f.id, titre: f.titre || "", promoteur: f.entreprise || f.promoteur || "", operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", secteur: f.filiere || f.secteur || "", secteur_grand: f.secteurGrand || "", domaine: f.domaine || "", region: f.region || "", apprenants: Number(f.apprenants) || 0, budget: Number(f.budget) || 0, statut: f.statut || "Planifiée", notes: f.notes || {}, maj_le: new Date().toISOString() });
-  const rowVersProjet = (r) => ({ id: r.id, titre: r.titre, entreprise: r.promoteur, operateur: r.operateur, beneficiaire: r.beneficiaire, filiere: r.secteur, secteurGrand: r.secteur_grand || "", domaine: r.domaine || "", region: r.region, apprenants: r.apprenants, budget: r.budget, statut: r.statut, notes: r.notes || {} });
+  const rowVersProjet = (r) => ({ id: r.id, titre: r.titre, entreprise: r.promoteur, operateur: r.operateur, beneficiaire: r.beneficiaire, filiere: r.secteur, secteurGrand: r.secteur_grand || "", domaine: r.domaine || "", region: normaliserRegion(r.region), apprenants: r.apprenants, budget: r.budget, statut: r.statut, notes: r.notes || {} });
   const suiviVersRow = (s) => ({ id: s.id, projet_id: s.formationId, jalon: s.jalon, echeance: s.echeance || null, statut: s.statut || "programmé", note: s.note || "", docs: s.docs || [], maj_le: new Date().toISOString() });
   const rowVersSuivi = (r) => ({ id: r.id, formationId: r.projet_id, jalon: r.jalon, echeance: r.echeance, statut: r.statut, note: r.note || "", docs: r.docs || [] });
+
+  // --- Anti-echo temps reel ---
+  // Chaque ecriture locale declenche un evenement postgres_changes qui nous revient.
+  // Sans garde, le rechargement qui suit ecrase l'etat local (note qui saute sur une
+  // autre valeur, ligne de secteur en cours de saisie qui repart en arriere).
+  // On note l'instant de la derniere ecriture locale et on repousse tout
+  // rechargement tant qu'on est dans la fenetre de retour d'echo.
+  const derniereEcritureLocale = useRef(0);
+  const rechargeTimer = useRef(null);
+  const DELAI_ECHO = 2500;
+  const marquerEcritureLocale = () => { derniereEcritureLocale.current = Date.now(); };
 
   // Les setters gardent la meme signature qu'avant, mais propagent vers Supabase
   const setFormations = (fn) => setFormationsBrut((v) => {
     const n = typeof fn === "function" ? fn(v) : fn;
     if (sb) {
+      marquerEcritureLocale();
       const avantIds = new Set(v.map((x) => x.id)), apresIds = new Set(n.map((x) => x.id));
       n.forEach((f) => { const a = v.find((x) => x.id === f.id); if (!a || JSON.stringify(a) !== JSON.stringify(f)) sb.from("projets").upsert(projetVersRow(f)).then(({ error }) => error && console.warn(error.message)); });
       v.forEach((f) => { if (!apresIds.has(f.id)) sb.from("projets").delete().eq("id", f.id).then(() => {}); });
@@ -564,13 +647,14 @@ export default function MipPpaApp() {
   const setSuivis = (fn) => setSuivisBrut((v) => {
     const n = typeof fn === "function" ? fn(v) : fn;
     if (sb) {
+      marquerEcritureLocale();
       const apresIds = new Set(n.map((x) => x.id));
       n.forEach((s) => { const a = v.find((x) => x.id === s.id); if (!a || JSON.stringify(a) !== JSON.stringify(s)) sb.from("suivis").upsert(suiviVersRow(s)).then(({ error }) => error && console.warn(error.message)); });
       v.forEach((s) => { if (!apresIds.has(s.id)) sb.from("suivis").delete().eq("id", s.id).then(() => {}); });
     }
     return n;
   });
-  const sauverConfig = (champ, valeur) => { if (sb) sb.from("configuration").update({ [champ]: valeur, maj_le: new Date().toISOString() }).eq("id", 1).then(({ error }) => error && console.warn(error.message)); };
+  const sauverConfig = (champ, valeur) => { if (sb) { marquerEcritureLocale(); sb.from("configuration").update({ [champ]: valeur, maj_le: new Date().toISOString() }).eq("id", 1).then(({ error }) => error && console.warn(error.message)); } };
   const setReferentiel = (fn) => setReferentielBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; sauverConfig("referentiel", n); return n; });
   const setSecteurs = (fn) => setSecteursBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; sauverConfig("secteurs", n); return n; });
   const setPhases = (fn) => setPhasesBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; sauverConfig("phases", n); return n; });
@@ -674,23 +758,35 @@ export default function MipPpaApp() {
     return () => { sb.removeChannel(canal); };
   }, [session, roleActif]);
 
-  // Rechargement silencieux (declenche par le temps reel des autres utilisateurs)
-  let rechargeEnCours = false;
-  const rechargerLeger = async () => {
-    if (!sb || rechargeEnCours) return; rechargeEnCours = true;
-    setTimeout(async () => {
+  // Rechargement silencieux (declenche par le temps reel des autres utilisateurs).
+  // Le minuteur vit dans une ref : l'ancienne variable locale etait recreee a chaque
+  // rendu, donc la protection anti-rafale ne fonctionnait jamais.
+  const rechargerLeger = () => {
+    if (!sb) return;
+    if (rechargeTimer.current) clearTimeout(rechargeTimer.current);
+    const executer = async () => {
+      rechargeTimer.current = null;
+      // Ecriture locale recente : c'est notre propre echo, ou l'utilisateur est en
+      // train de saisir. On repousse plutot que d'ecraser ce qu'il vient de faire.
+      const depuis = Date.now() - derniereEcritureLocale.current;
+      if (depuis < DELAI_ECHO) { rechargeTimer.current = setTimeout(executer, DELAI_ECHO - depuis); return; }
       try {
+        // On lit tout d'abord, puis on applique en bloc : appliquer la configuration
+        // avant la fin des autres requetes rouvrait la fenetre d'ecrasement.
         const { data: cfg } = await sb.from("configuration").select("*").eq("id", 1).maybeSingle();
-        if (cfg) { if (Array.isArray(cfg.referentiel) && cfg.referentiel.length) setReferentielBrut(cfg.referentiel); if (cfg.secteurs) setSecteursBrut(normaliserSecteurs(cfg.secteurs)); if (Array.isArray(cfg.phases)) setPhasesBrut(cfg.phases); }
         const { data: projs } = await sb.from("projets").select("*").order("cree_le");
         const { data: suivs } = await sb.from("suivis").select("*");
+        // Une ecriture locale a pu partir pendant les requetes : on abandonne ce lot.
+        if (Date.now() - derniereEcritureLocale.current < DELAI_ECHO) { rechargerLeger(); return; }
+        if (cfg) { if (Array.isArray(cfg.referentiel) && cfg.referentiel.length) setReferentielBrut(cfg.referentiel); if (cfg.secteurs) setSecteursBrut(normaliserSecteurs(cfg.secteurs)); if (Array.isArray(cfg.phases)) setPhasesBrut(cfg.phases); }
         setFormationsBrut((projs || []).map(rowVersProjet));
         setSuivisBrut((suivs || []).map(rowVersSuivi));
       } catch (e) {}
-      rechargeEnCours = false;
-    }, 400);
+    };
+    rechargeTimer.current = setTimeout(executer, 600);
   };
-  const [nouvelle, setNouvelle] = useState({ titre: "", entreprise: "", operateur: "", beneficiaire: "", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
+  useEffect(() => () => { if (rechargeTimer.current) clearTimeout(rechargeTimer.current); }, []);
+  const [nouvelle, setNouvelle] = useState({ titre: "", entreprise: "", operateur: "", beneficiaire: "", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "Siège Abidjan", apprenants: 10, budget: 5000000, statut: "Planifiée" });
   const [toast, setToast] = useState("");
   const notif = (m) => { setToast(m); setTimeout(() => setToast(""), 2500); };
   const [emailInvite, setEmailInvite] = useState("");
@@ -781,14 +877,19 @@ export default function MipPpaApp() {
 
   // ---------- Actions ----------
   const noter = (fid, indId, note) => {
-    setFormations((fs) => fs.map((f) => f.id === fid ? { ...f, notes: { ...f.notes, [indId]: f.notes[indId] === note ? undefined : note } } : f));
+    setFormations((fs) => fs.map((f) => {
+      if (f.id !== fid) return f;
+      const notes = { ...f.notes };
+      if (notes[indId] === note) delete notes[indId]; else notes[indId] = note;
+      return { ...f, notes };
+    }));
   };
   const ajouterFormation = () => {
     if (!nouvelle.titre.trim() || !nouvelle.entreprise.trim()) { notif("Renseignez au minimum l'intitulé et le promoteur"); return; }
     if (editionId) {
       setFormations((fs) => fs.map((f) => f.id === editionId ? { ...f, ...nouvelle } : f));
       setEditionId(null); setFormOuvert(false);
-      setNouvelle({ titre: "", entreprise: "", operateur: "", beneficiaire: "", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
+      setNouvelle({ titre: "", entreprise: "", operateur: "", beneficiaire: "", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "Siège Abidjan", apprenants: 10, budget: 5000000, statut: "Planifiée" });
       notif("Formation mise à jour"); return;
     }
     const id = "f" + Date.now();
@@ -798,11 +899,11 @@ export default function MipPpaApp() {
       setSuivis((ss) => [...ss, { id: "s" + Date.now() + i, formationId: id, jalon: j, echeance: d.toISOString().slice(0, 10), statut: "programmé", note: "", docs: [] }]);
     });
     setFormOuvert(false);
-    setNouvelle({ titre: "", entreprise: "", operateur: "", beneficiaire: "", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" });
+    setNouvelle({ titre: "", entreprise: "", operateur: "", beneficiaire: "", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "Siège Abidjan", apprenants: 10, budget: 5000000, statut: "Planifiée" });
     notif("Formation créée — 3 suivis (M+3/M+6/M+12) planifiés");
   };
   const editerFormation = (f) => {
-    setNouvelle({ titre: f.titre, entreprise: f.entreprise, operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", secteurGrand: f.secteurGrand || grandSecteurDe(secteurs, f.filiere), filiere: f.filiere, domaine: f.domaine || "", region: f.region, apprenants: f.apprenants, budget: f.budget, statut: f.statut });
+    setNouvelle({ titre: f.titre, entreprise: f.entreprise, operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", secteurGrand: f.secteurGrand || grandSecteurDe(secteurs, f.filiere), filiere: f.filiere, domaine: f.domaine || "", region: normaliserRegion(f.region), apprenants: f.apprenants, budget: f.budget, statut: f.statut });
     setEditionId(f.id); setFormOuvert(true); setPage("formations");
   };
 
@@ -1099,8 +1200,22 @@ export default function MipPpaApp() {
 
   // =================== RENDU =====================================
   return (
-    <div className={"min-h-screen flex bg-stone-100 text-stone-900 overflow-x-hidden" + (sombre ? " sombre" : "")} style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", maxWidth: "100vw" }}>
+    <div className={"cadre-app min-h-screen flex bg-stone-100 text-stone-900" + (sombre ? " sombre" : "")} style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", maxWidth: "100vw" }}>
       <style>{`
+        /* ---------- BANDE BLANCHE SUPÉRIEURE FIXE AU DÉFILEMENT ----------
+           Ces conteneurs utilisaient « overflow-x: hidden » : le navigateur en
+           faisait des conteneurs de défilement, ce qui neutralisait le
+           « position: sticky » de l'en-tête, qui repartait donc vers le haut.
+           « overflow-x: clip » masque le débordement horizontal sans créer de
+           conteneur de défilement — l'en-tête reste alors collé en haut.        */
+        .cadre-app, .zone-contenu { overflow-x: clip; }
+        .bandeau-haut { position: sticky; top: 0; z-index: 30; }
+        /* Repli pour les navigateurs sans « overflow: clip » : on renonce au
+           masquage horizontal plutôt qu'à l'en-tête fixe.                       */
+        @supports not (overflow-x: clip) {
+          .cadre-app, .zone-contenu { overflow-x: visible; }
+        }
+
         /* ---------- DELTA DESKTOP ≥1024px : sidebar fixe ---------- */
         @media (min-width: 1024px) {
           .barre-laterale {
@@ -1190,7 +1305,7 @@ export default function MipPpaApp() {
 
       {/* ---------------- ZONE PRINCIPALE ---------------- */}
       <div className="zone-principale flex-1 min-w-0 flex flex-col">
-        <header className="bg-white border-b border-stone-200 px-4 md:px-6 py-3.5 flex items-center justify-between gap-3 md:gap-4 sticky top-0 z-10">
+        <header className="bandeau-haut bg-white border-b border-stone-200 px-4 md:px-6 py-3.5 flex items-center justify-between gap-3 md:gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <button onClick={() => setMenuMobile(true)} className="md:hidden text-stone-600 shrink-0" title="Ouvrir le menu">
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
@@ -1235,7 +1350,7 @@ export default function MipPpaApp() {
           </div>
         </header>
 
-        <main key={page + (evalId || "")} className="page-anim flex-1 p-4 md:p-6 space-y-5 max-w-5xl w-full mx-auto min-w-0 overflow-x-hidden">
+        <main key={page + (evalId || "")} className="zone-contenu page-anim flex-1 p-4 md:p-6 space-y-5 max-w-5xl w-full mx-auto min-w-0">
           {P.lectureSeule && <div className="rounded-xl px-4 py-2.5 text-sm flex items-center gap-2" style={{ background: "#e0f0fb", color: "#0d3b57" }}><Icone n="oeil" t={16} /> Mode consultation</div>}
 
           {/* =========== TABLEAU DE BORD =========== */}
@@ -1344,7 +1459,7 @@ export default function MipPpaApp() {
               <button onClick={() => { setFormations(FORMATIONS_DEMO); setSuivis(SUIVIS_DEMO); notif("Données démo restaurées"); }}
                 className="text-sm text-stone-600 hover:text-stone-900" title="Restaurer les 3 projets de démonstration"><Icone n="rotation" t={14} /> Données démo</button>
             </div>
-            {P.creerFormation && <button onClick={() => { setEditionId(null); setNouvelle({ titre: "", entreprise: "", operateur: "", beneficiaire: "", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "", apprenants: 10, budget: 5000000, statut: "Planifiée" }); setFormOuvert(!formOuvert); }}
+            {P.creerFormation && <button onClick={() => { setEditionId(null); setNouvelle({ titre: "", entreprise: "", operateur: "", beneficiaire: "", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "Siège Abidjan", apprenants: 10, budget: 5000000, statut: "Planifiée" }); setFormOuvert(!formOuvert); }}
               className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm" style={{ background: C.vertFonce }}>
               + Nouveau projet
             </button>}
@@ -1381,8 +1496,13 @@ export default function MipPpaApp() {
                     {((normaliserSecteurs(secteurs)[nouvelle.secteurGrand] || {})[nouvelle.filiere] || []).map((d) => <option key={d}>{d}</option>)}
                   </select>
                 </label>
-                <label className="text-sm">Région
-                  <input value={nouvelle.region} onChange={(e) => setNouvelle({ ...nouvelle, region: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" placeholder="Ex. Bouaké" />
+                <label className="text-sm">Région <span className="text-stone-400">(implantation FDFP)</span>
+                  <select value={normaliserRegion(nouvelle.region)} onChange={(e) => setNouvelle({ ...nouvelle, region: e.target.value })}
+                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
+                    {IMPLANTATIONS.map((r) => <option key={r}>{r}</option>)}
+                    {/* Valeur historique hors nomenclature : conservée tant qu'elle n'est pas remplacée */}
+                    {nouvelle.region && !IMPLANTATIONS.includes(normaliserRegion(nouvelle.region)) && <option>{normaliserRegion(nouvelle.region)}</option>}
+                  </select>
                 </label>
                 <label className="text-sm">Nombre d'apprenants
                   <input type="number" value={nouvelle.apprenants} onChange={(e) => setNouvelle({ ...nouvelle, apprenants: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" />
@@ -1392,7 +1512,7 @@ export default function MipPpaApp() {
                 </label>
                 <label className="text-sm">Statut
                   <select value={nouvelle.statut} onChange={(e) => setNouvelle({ ...nouvelle, statut: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
-                    {["Planifiée", "En cours", "Terminée"].map((s) => <option key={s}>{s}</option>)}
+                    {STATUTS_PROJET.map((s) => <option key={s}>{s}</option>)}
                   </select>
                 </label>
                 <div className="md:col-span-2 flex gap-3">
@@ -1405,7 +1525,7 @@ export default function MipPpaApp() {
             <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden">
               {/* Vue tableau — ordinateur / tablette large */}
               <div className="hidden md:grid grid-cols-12 px-5 py-3 text-sm font-semibold text-stone-600 border-b border-stone-100">
-                <div className="col-span-6">Projet de formation de type apprentissage</div><div className="col-span-2">Secteur</div><div className="col-span-2">Score MIP</div><div className="col-span-2 text-right">Actions</div>
+                <div className="col-span-6">Projet de formation de type apprentissage</div><div className="col-span-2">Secteur</div><div className="col-span-2">Score MIP &amp; statut</div><div className="col-span-2 text-right">Actions</div>
               </div>
               {formationsVisibles.filter((f) => (f.titre + f.entreprise + f.filiere + (f.secteurGrand || "") + (f.domaine || "")).toLowerCase().includes(recherche.toLowerCase())).map((f) => (
                 <div key={f.id} className="hidden md:grid grid-cols-12 items-center px-5 py-4 border-b border-stone-50 hover:bg-stone-50">
@@ -1415,7 +1535,7 @@ export default function MipPpaApp() {
                     {f.beneficiaire && <div className="text-xs text-stone-400 break-words">Bénéficiaire : {f.beneficiaire}</div>}
                   </div>
                   <div className="col-span-2 text-sm min-w-0"><div className="font-medium break-words">{f.secteurGrand || grandSecteurDe(secteurs, f.filiere)}</div><div className="text-stone-500 text-xs break-words">{f.filiere}{f.domaine ? " · " + f.domaine : ""}</div></div>
-                  <div className="col-span-2"><Badge score={scoreGlobal(referentiel, f.notes)} /></div>
+                  <div className="col-span-2 flex flex-wrap items-center gap-1.5"><Badge score={scoreGlobal(referentiel, f.notes)} /><PuceStatut statut={f.statut} /></div>
                   <div className="col-span-2 flex justify-end items-center gap-3">
                     <button onClick={() => { setEvalId(f.id); setPage("evaluation"); }} className="text-sm font-medium hover:underline" style={{ color: C.vert }}>Évaluer</button>
                     {P.editerFormation && <button title="Modifier la formation" onClick={() => editerFormation(f)} className="text-stone-500 hover:text-stone-800"><Icone n="crayon" t={16} /></button>}
@@ -1429,7 +1549,7 @@ export default function MipPpaApp() {
                   <div key={f.id} className="p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="font-semibold break-words min-w-0">{f.titre}</div>
-                      <div className="shrink-0"><Badge score={scoreGlobal(referentiel, f.notes)} /></div>
+                      <div className="shrink-0 flex flex-col items-end gap-1"><Badge score={scoreGlobal(referentiel, f.notes)} /><PuceStatut statut={f.statut} /></div>
                     </div>
                     <div className="text-sm text-stone-500 break-words mt-1">Promoteur : {f.entreprise}{f.operateur ? ` · Opérateur : ${f.operateur}` : ""} · {f.region}</div>
                     {f.beneficiaire && <div className="text-xs text-stone-400 break-words mt-0.5">Bénéficiaire : {f.beneficiaire}</div>}
@@ -1478,7 +1598,10 @@ export default function MipPpaApp() {
               <div className="text-right">
                 <div className="text-xs uppercase tracking-wider text-sky-200">Score global MIP-PPA</div>
                 <div className="text-5xl font-bold">{fmtPct(scoreGlobal(referentiel, fEval.notes))}</div>
-                <div className="mt-1"><Badge score={scoreGlobal(referentiel, fEval.notes)} /></div>
+                <div className="mt-1.5 flex flex-wrap justify-end items-center gap-2">
+                  <Badge score={scoreGlobal(referentiel, fEval.notes)} />
+                  <PuceStatut statut={fEval.statut} />
+                </div>
               </div>
             </section>
 
@@ -1591,7 +1714,12 @@ export default function MipPpaApp() {
               <p className="text-sm text-stone-500">Quatre niveaux d'interprétation. Pondération totale actuelle : <b style={{ color: poidsTotal === 100 ? C.excellent : C.insuffisant }}>{poidsTotal} %</b>{poidsTotal !== 100 && " — ajustez pour revenir à 100 %"}</p>
               {admin && (
                 <div className="flex flex-wrap gap-3 mt-3">
-                  <button onClick={() => setReferentiel((r) => [...r, { id: "D" + (r.length + 1), nom: "Nouvelle dimension", poids: 0, desc: "Description à compléter.", indicateurs: [] }])}
+                  <button onClick={() => setReferentiel((r) => {
+                    // Code unique : deux dimensions homonymes fausseraient le score.
+                    let k = r.length + 1;
+                    while (r.some((x) => x.id === "D" + k)) k++;
+                    return [...r, { id: "D" + k, nom: "Nouvelle dimension", poids: 0, desc: "Description à compléter.", indicateurs: [] }];
+                  })}
                     className="text-white text-sm font-semibold px-4 py-2 rounded-xl" style={{ background: C.vertFonce }}>+ Nouvelle dimension</button>
                   <button onClick={() => { setReferentiel(REFERENTIEL_DEFAUT); notif("Référentiel par défaut restauré"); }}
                     className="bg-white border border-stone-200 text-sm px-4 py-2 rounded-xl hover:bg-stone-50" title="Revenir aux 5 dimensions et 23 indicateurs d'origine"><Icone n="rotation" t={14} /> Restaurer le référentiel par défaut</button>
@@ -1609,22 +1737,28 @@ export default function MipPpaApp() {
                 <h3 className="font-bold">Secteurs, branches et domaines d'activité</h3>
                 <p className="text-sm text-stone-500 mb-3">Trois niveaux : le grand secteur, ses branches, et les domaines de chaque branche. Tout est modifiable — cette hiérarchie alimente le formulaire de projet.</p>
                 <div className="space-y-4">
-                  {Object.entries(normaliserSecteurs(secteurs)).map(([grand, branches], gi) => (
-                    <div key={gi} className="border border-stone-200 rounded-xl p-4">
+                  {Object.entries(normaliserSecteurs(secteurs)).map(([grand, branches]) => (
+                    <div key={grand} className="border border-stone-200 rounded-xl p-4">
                       <div className="flex items-center justify-between gap-2">
-                        <input value={grand}
-                          onChange={(e) => setSecteurs((s) => { const n = normaliserSecteurs(s), o = {}; Object.entries(n).forEach(([k, v]) => { o[k === grand ? e.target.value : k] = v; }); return o; })}
+                        <ChampEditable valeur={grand} titre="Renommer ce secteur (Entrée pour valider, Échap pour annuler)"
+                          surValider={(nom) => {
+                            if (normaliserSecteurs(secteurs)[nom]) { notif("Un secteur porte déjà ce nom"); return false; }
+                            setSecteurs((s) => { const n = normaliserSecteurs(s), o = {}; Object.entries(n).forEach(([k, v]) => { o[k === grand ? nom : k] = v; }); return o; });
+                          }}
                           className="font-semibold bg-transparent outline-none border-b border-transparent focus:border-stone-300 flex-1" />
                         <span className="text-xs text-stone-400">{Object.keys(branches || {}).length} branches</span>
                         <button onClick={() => { if (window.confirm(`Supprimer « ${grand} » et tout son contenu ?`)) setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; delete n[grand]; return n; }); }}
                           className="text-red-400 hover:text-red-600" title="Supprimer ce secteur"><Icone n="poubelle" t={15} /></button>
                       </div>
                       <div className="space-y-3 mt-3">
-                        {Object.entries(branches || {}).map(([branche, domaines], bi) => (
-                          <div key={bi} className="bg-stone-50 rounded-lg p-3">
+                        {Object.entries(branches || {}).map(([branche, domaines]) => (
+                          <div key={branche} className="bg-stone-50 rounded-lg p-3">
                             <div className="flex items-center justify-between gap-2">
-                              <input value={branche}
-                                onChange={(e) => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; const bo = {}; Object.entries(n[grand]).forEach(([k, v]) => { bo[k === branche ? e.target.value : k] = v; }); n[grand] = bo; return n; })}
+                              <ChampEditable valeur={branche} titre="Renommer cette branche (Entrée pour valider, Échap pour annuler)"
+                                surValider={(nom) => {
+                                  if ((normaliserSecteurs(secteurs)[grand] || {})[nom]) { notif("Une branche porte déjà ce nom dans ce secteur"); return false; }
+                                  setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; const bo = {}; Object.entries(n[grand] || {}).forEach(([k, v]) => { bo[k === branche ? nom : k] = v; }); n[grand] = bo; return n; });
+                                }}
                                 className="text-sm font-medium bg-transparent outline-none border-b border-transparent focus:border-stone-300 flex-1" />
                               <button onClick={() => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; const bo = { ...n[grand] }; delete bo[branche]; n[grand] = bo; return n; })}
                                 className="text-red-400 hover:text-red-600" title="Supprimer cette branche"><Icone n="fermer" t={13} /></button>
@@ -1632,23 +1766,28 @@ export default function MipPpaApp() {
                             <div className="flex flex-wrap gap-1.5 mt-2">
                               {(domaines || []).map((d, i) => (
                                 <span key={i} className="flex items-center gap-1 bg-white border border-stone-200 rounded-full pl-2.5 pr-1 py-0.5 text-xs">
-                                  <input value={d} onChange={(e) => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; n[grand] = { ...n[grand], [branche]: n[grand][branche].map((x, j) => j === i ? e.target.value : x) }; return n; })}
-                                    className="bg-transparent outline-none" style={{ width: Math.max(6, d.length) + "ch" }} />
+                                  <ChampEditable valeur={d} largeurAuto titre="Renommer ce domaine (Entrée pour valider, Échap pour annuler)"
+                                    surValider={(nom) => {
+                                      const liste = (normaliserSecteurs(secteurs)[grand] || {})[branche] || [];
+                                      if (liste.some((x, j) => j !== i && x === nom)) { notif("Ce domaine existe déjà dans la branche"); return false; }
+                                      setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; n[grand] = { ...n[grand], [branche]: (n[grand][branche] || []).map((x, j) => j === i ? nom : x) }; return n; });
+                                    }}
+                                    className="bg-transparent outline-none" />
                                   <button onClick={() => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; n[grand] = { ...n[grand], [branche]: n[grand][branche].filter((_, j) => j !== i) }; return n; })}
                                     className="text-stone-300 hover:text-red-600" title="Supprimer ce domaine"><Icone n="fermer" t={10} /></button>
                                 </span>
                               ))}
-                              <button onClick={() => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; n[grand] = { ...n[grand], [branche]: [...(n[grand][branche] || []), "Nouveau domaine"] }; return n; })}
+                              <button onClick={() => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; n[grand] = { ...n[grand], [branche]: [...(n[grand][branche] || []), nomLibre("Nouveau domaine", n[grand][branche] || [])] }; return n; })}
                                 className="text-xs border border-dashed border-stone-300 rounded-full px-2.5 py-0.5 text-stone-500 hover:bg-white">+ Domaine</button>
                             </div>
                           </div>
                         ))}
-                        <button onClick={() => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; n[grand] = { ...n[grand], ["Nouvelle branche " + (Object.keys(n[grand] || {}).length + 1)]: ["Général"] }; return n; })}
+                        <button onClick={() => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; n[grand] = { ...n[grand], [nomLibre("Nouvelle branche", Object.keys(n[grand] || {}))]: ["Général"] }; return n; })}
                           className="text-sm border border-dashed border-stone-300 rounded-lg px-3 py-1.5 text-stone-500 hover:bg-stone-50 w-full">+ Ajouter une branche</button>
                       </div>
                     </div>
                   ))}
-                  <button onClick={() => setSecteurs((s) => ({ ...normaliserSecteurs(s), ["Nouveau secteur " + (Object.keys(normaliserSecteurs(s)).length + 1)]: { "Nouvelle branche": ["Général"] } }))}
+                  <button onClick={() => setSecteurs((s) => ({ ...normaliserSecteurs(s), [nomLibre("Nouveau secteur", Object.keys(normaliserSecteurs(s)))]: { "Nouvelle branche": ["Général"] } }))}
                     className="text-sm border border-dashed border-stone-300 rounded-xl px-4 py-2 text-stone-500 hover:bg-stone-50 w-full">+ Ajouter un grand secteur</button>
                 </div>
                 <h3 className="font-bold mt-6">Phases de mesure</h3>
@@ -1656,8 +1795,12 @@ export default function MipPpaApp() {
                 <div className="flex flex-wrap gap-2">
                   {phases.map((s, i) => (
                     <span key={i} className="flex items-center gap-1.5 bg-stone-100 rounded-full pl-3 pr-1.5 py-1 text-sm">
-                      <input value={s} onChange={(e) => setPhases((ss) => ss.map((x, j) => j === i ? e.target.value : x))}
-                        className="bg-transparent outline-none" style={{ width: Math.max(10, s.length) + "ch" }} />
+                      <ChampEditable valeur={s} largeurAuto largeurMin={10} titre="Renommer cette phase (Entrée pour valider, Échap pour annuler)"
+                        surValider={(nom) => {
+                          if (phases.some((x, j) => j !== i && x === nom)) { notif("Cette phase existe déjà"); return false; }
+                          setPhases((ss) => ss.map((x, j) => j === i ? nom : x));
+                        }}
+                        className="bg-transparent outline-none" />
                       <button onClick={() => setPhases((ss) => ss.filter((_, j) => j !== i))}
                         className="text-stone-400 hover:text-red-600 w-5 h-5 rounded-full flex items-center justify-center" title="Supprimer cette phase"><Icone n="fermer" t={12} /></button>
                     </span>
@@ -1699,7 +1842,17 @@ export default function MipPpaApp() {
                     </div>
                   ))}
                   {admin && (
-                    <button onClick={() => setReferentiel((r) => r.map((x) => x.id === d.id ? { ...x, indicateurs: [...x.indicateurs, { id: d.id + (x.indicateurs.length + 1), phase: "À définir", label: "Nouvel indicateur — à définir" }] } : x))}
+                    <button onClick={() => setReferentiel((r) => {
+                      // Le code doit rester unique dans tout le référentiel : deux
+                      // indicateurs de même code partagent la même note et se
+                      // sélectionnent l'un l'autre à l'évaluation.
+                      const dim = r.find((x) => x.id === d.id);
+                      if (!dim) return r;
+                      const pris = new Set(r.flatMap((x) => x.indicateurs.map((i) => i.id)));
+                      let k = dim.indicateurs.length + 1;
+                      while (pris.has(d.id + k)) k++;
+                      return r.map((x) => x.id === d.id ? { ...x, indicateurs: [...x.indicateurs, { id: d.id + k, phase: "À définir", label: "Nouvel indicateur — à définir" }] } : x);
+                    })}
                       className="w-full border border-dashed border-stone-300 rounded-xl py-2.5 text-sm text-stone-500 hover:bg-stone-50">+ Ajouter un indicateur</button>
                   )}
                 </div>
@@ -1978,6 +2131,7 @@ export default function MipPpaApp() {
               <button onClick={() => setIndEdit(null)} className="border border-stone-300 px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50">Annuler</button>
               <button onClick={() => {
                 if (!indEdit.id.trim() || !indEdit.label.trim()) { notif("Le code et l'intitulé sont obligatoires"); return; }
+                if (indEdit.id !== indEdit.ancienId && referentiel.some((x) => x.indicateurs.some((i) => i.id === indEdit.id))) { notif("Ce code est déjà utilisé par un autre indicateur"); return; }
                 setReferentiel((r) => r.map((x) => x.id !== indEdit.dimId ? x : { ...x, indicateurs: x.indicateurs.map((i) => i.id === indEdit.ancienId ? { id: indEdit.id, label: indEdit.label, phase: indEdit.phase } : i) }));
                 // conserver les notes déjà saisies si le code change
                 if (indEdit.id !== indEdit.ancienId) setFormations((fs) => fs.map((f) => { const n = { ...f.notes }; if (n[indEdit.ancienId] !== undefined) { n[indEdit.id] = n[indEdit.ancienId]; delete n[indEdit.ancienId]; } return { ...f, notes: n }; }));
