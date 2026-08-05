@@ -444,16 +444,31 @@ function HorlogeUTC() {
   );
 }
 
-function StatCard({ icone, titre, valeur, sous, teinte = "#e3eef7", fg = C.vert }) {
-  return (
-    <div className="carte-hover bg-white rounded-2xl border border-stone-200 p-5 flex items-start gap-4">
+/* Carte de statistique. Sans « surClic », c'est un simple bloc d'affichage
+   (comportement inchangé, notamment sur la page Suivi). Avec « surClic »,
+   elle devient un vrai bouton : chevron d'appel, curseur main et anneau de
+   focus au clavier. */
+function StatCard({ icone, titre, valeur, sous, teinte = "#e3eef7", fg = C.vert, surClic, indice }) {
+  const classes = "carte-hover bg-white rounded-2xl border border-stone-200 p-5 flex items-start gap-4";
+  const contenu = (
+    <>
       <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ background: teinte, color: fg }}>{icone}</div>
-      <div>
+      <div className="min-w-0 text-left">
         <div className="text-[11px] uppercase tracking-wide text-stone-500 font-medium">{titre}</div>
         <div className="text-3xl font-bold text-stone-900">{valeur}</div>
         {sous && <div className="text-xs text-stone-400 mt-0.5">{sous}</div>}
       </div>
-    </div>
+    </>
+  );
+  if (!surClic) return <div className={classes}>{contenu}</div>;
+  return (
+    <button type="button" onClick={surClic} title={indice}
+      className={classes + " stat-cliquable w-full relative"}>
+      {contenu}
+      <span className="stat-chevron" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
+      </span>
+    </button>
   );
 }
 function Toast({ msg }) {
@@ -759,6 +774,7 @@ export default function MipPpaApp() {
   const [dimEdit, setDimEdit] = useState(null);     // fenêtre Modifier la dimension
   const [indEdit, setIndEdit] = useState(null);     // fenêtre Modifier l'indicateur
   const [docVu, setDocVu] = useState(null);          // visionneuse de document
+  const [detailStat, setDetailStat] = useState(null); // "projets" | "apprenants" | "scores"
   const lead = roleActif === "Administrateur lead";
   const P = PERMS[roleActif] || PERMS["En attente d'activation"];
   const monCompte = session;
@@ -1461,6 +1477,19 @@ export default function MipPpaApp() {
         @keyframes toastIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
         .page-anim { animation: pageIn .32s ease-out both; }
         .toast-anim { animation: toastIn .25s ease-out both; }
+        /* Cartes d'indicateur cliquables du tableau de bord : le chevron
+           signale l'action, il se décale légèrement au survol. */
+        .stat-cliquable{ cursor:pointer; }
+        .stat-cliquable:focus-visible{ outline:2px solid #1d6fa8; outline-offset:2px; }
+        .stat-chevron{
+          position:absolute; top:.85rem; right:.85rem;
+          color:#a8a29e; display:flex; opacity:.75;
+          transition:transform .18s ease, opacity .18s ease, color .18s ease;
+        }
+        .stat-cliquable:hover .stat-chevron{ transform:translateX(3px); opacity:1; color:#1d6fa8; }
+        .sombre .stat-chevron{ color:#7b8896; }
+        .sombre .stat-cliquable:hover .stat-chevron{ color:#6fb3e0; }
+
         .carte-hover { transition: transform .18s ease, box-shadow .18s ease; }
         .carte-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(13,34,51,.10); }
         button { transition: background-color .15s ease, color .15s ease, border-color .15s ease, transform .12s ease, opacity .15s ease; }
@@ -1571,10 +1600,16 @@ export default function MipPpaApp() {
             </section>
 
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-              <StatCard icone={<Icone n="cap" t={20} />} titre="Projets suivis" valeur={stats.nb} />
-              <StatCard icone={<Icone n="usine" t={20} />} titre="Apprenants concernés" valeur={stats.apprenants} teinte="#fdf0da" fg="#b07515" />
-              <StatCard icone={<Icone n="cible" t={20} />} titre="Score moyen MIP" valeur={fmtPct(stats.moy)} sous="Moyenne pondérée du portefeuille" teinte="#dcebf7" fg={C.vert} />
-              <StatCard icone={<Icone n="alerte" t={20} />} titre="Alertes actives" valeur={stats.alertes} sous={stats.alertes ? "À traiter en priorité" : "Rien à signaler"} teinte="#fde8e8" fg={C.insuffisant} />
+              <StatCard icone={<Icone n="cap" t={20} />} titre="Projets suivis" valeur={stats.nb}
+                surClic={() => setDetailStat("projets")} indice="Voir l'intitulé de chaque projet" />
+              <StatCard icone={<Icone n="usine" t={20} />} titre="Apprenants concernés" valeur={stats.apprenants} teinte="#fdf0da" fg="#b07515"
+                surClic={() => setDetailStat("apprenants")} indice="Voir le nombre d'apprentis par projet" />
+              <StatCard icone={<Icone n="cible" t={20} />} titre="Score moyen MIP-PPA" valeur={fmtPct(stats.moy)} sous="Moyenne pondérée du portefeuille" teinte="#dcebf7" fg={C.vert}
+                surClic={() => setDetailStat("scores")} indice="Voir le score de chaque projet" />
+              {/* La feuille Alertes n'est pas ouverte à tous les rôles : sans
+                  l'autorisation, la carte reste un simple indicateur. */}
+              <StatCard icone={<Icone n="alerte" t={20} />} titre="Alertes actives" valeur={stats.alertes} sous={stats.alertes ? "À traiter en priorité" : "Rien à signaler"} teinte="#fde8e8" fg={C.insuffisant}
+                surClic={P.pages.includes("alertes") ? () => setPage("alertes") : undefined} indice="Ouvrir la feuille Alertes & risques" />
             </section>
 
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
@@ -2273,6 +2308,65 @@ export default function MipPpaApp() {
           </div>
         </div>
       )}
+
+      {/* ---------- FENÊTRE : DÉTAIL D'UN INDICATEUR DU TABLEAU DE BORD ----------
+          Ouverte depuis les cartes « Projets suivis », « Apprenants concernés »
+          et « Score moyen MIP-PPA ». Chaque ligne renvoie vers la fiche
+          d'évaluation du projet concerné. */}
+      {detailStat && (() => {
+        const entetes = {
+          projets:    ["Projets suivis", "Intitulé de chaque projet du portefeuille"],
+          apprenants: ["Apprenants concernés", "Nombre d'apprentis par projet"],
+          scores:     ["Score moyen MIP-PPA", "Score global de chaque projet"],
+        }[detailStat];
+        // Tri par la grandeur affichée : la lecture est immédiate.
+        const liste = [...formationsVisibles];
+        if (detailStat === "apprenants") liste.sort((a, b) => (Number(b.apprenants) || 0) - (Number(a.apprenants) || 0));
+        if (detailStat === "scores") liste.sort((a, b) => (scoreGlobal(referentiel, b.notes) ?? -1) - (scoreGlobal(referentiel, a.notes) ?? -1));
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(10,25,38,.55)" }}
+            onClick={(e) => e.target === e.currentTarget && setDetailStat(null)}>
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl p-5 md:p-7 page-anim max-h-[92vh] overflow-y-auto">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-bold break-words">{entetes[0]}</h3>
+                  <p className="text-sm text-stone-500 break-words">{entetes[1]}</p>
+                </div>
+                <button onClick={() => setDetailStat(null)} className="text-stone-400 hover:text-stone-700 shrink-0" title="Fermer"><Icone n="fermer" t={18} /></button>
+              </div>
+
+              {!liste.length ? (
+                <p className="text-sm text-stone-500 mt-6">Aucun projet dans votre portefeuille pour le moment.</p>
+              ) : (<>
+                <div className="mt-5 border-t border-stone-100">
+                  {liste.map((f, i) => (
+                    <button key={f.id} onClick={() => { setDetailStat(null); setEvalId(f.id); setPage("evaluation"); }}
+                      title="Ouvrir la fiche d'évaluation de ce projet"
+                      className="w-full text-left flex items-center justify-between gap-3 py-3 px-2 rounded-lg border-b border-stone-50 hover:bg-stone-50">
+                      <div className="min-w-0">
+                        <div className="font-medium break-words">{f.titre}</div>
+                        <div className="text-xs text-stone-500 break-words">
+                          {f.entreprise}{f.region ? ` · ${f.region}` : ""}{f.statut ? ` · ${f.statut}` : ""}
+                        </div>
+                      </div>
+                      <div className="shrink-0 flex items-center gap-2">
+                        {detailStat === "projets" && <span className="text-xs text-stone-400 font-mono">{i + 1}</span>}
+                        {detailStat === "apprenants" && <span className="text-lg font-bold">{Number(f.apprenants) || 0}</span>}
+                        {detailStat === "scores" && <Badge score={scoreGlobal(referentiel, f.notes)} />}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-4 pt-3 border-t border-stone-200 flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <span className="text-stone-500">{liste.length} projet{liste.length > 1 ? "s" : ""}</span>
+                  {detailStat === "apprenants" && <span className="font-semibold">Total : {stats.apprenants} apprentis</span>}
+                  {detailStat === "scores" && <span className="font-semibold">Moyenne pondérée : {fmtPct(stats.moy)}</span>}
+                </div>
+              </>)}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ---------- FENÊTRE : MODIFIER LA DIMENSION ---------- */}
       {dimEdit && (
