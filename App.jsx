@@ -323,134 +323,25 @@ function telecharger(nomFichier, contenu, type = "text/csv;charset=utf-8") {
   URL.revokeObjectURL(url);
 }
 
-/* ================================================================
-   CHEMINS DES IMAGES — À LIRE AVANT DE DÉPLOYER
-   ----------------------------------------------------------------
-   Déposez vos fichiers dans le dossier « public » situé à la racine du
-   projet (à côté de index.html). Vite le sert directement à la racine
-   du site : aucun import ni réglage requis.
-
-     public/logo-fdfp.png  →  bandeau institutionnel affiché en haut de
-                              chaque page, sur les écrans de connexion
-                              et dans l'en-tête des fiches PDF.
-     public/fond-page.jpg  →  image d'arrière-plan de la page. Elle
-                              défile avec le contenu et se devine,
-                              floutée, derrière le bandeau supérieur.
-
-   L'application n'attend PAS que ces fichiers existent pour démarrer :
-    · logo absent  →  le logo vectoriel de repli ci-dessous s'affiche ;
-    · fond absent  →  la couleur #e8edf2 remplace l'image.
-
-   Plusieurs extensions sont essayées dans l'ordre, ce qui évite d'avoir
-   à convertir le fichier : déposez-le en .png, .jpg, .jpeg ou .svg.
-   ================================================================ */
-const CHEMINS_LOGO = ["/logo-fdfp.png", "/logo-fdfp.jpg", "/logo-fdfp.jpeg", "/logo-fdfp.svg"];
+/* ----------------- IMAGE D'ARRIÈRE-PLAN DE LA PAGE --------------
+   Déposez le fichier dans le dossier « public » à la racine du projet
+   (Vite le sert alors à la racine du site). S'il est absent, la couleur
+   #e8edf2 prend le relais : rien ne casse.
+   C'est la seule image externe de l'application — le logo, lui, est
+   embarqué dans le code juste en dessous.                          */
 const CHEMIN_FOND = "/fond-page.jpg";
 
-/* Logo de repli, dessiné en vectoriel : sigle FDFP, vague orange et
-   baseline sur deux lignes. Il garantit que l'application n'est jamais
-   sans identité visuelle, y compris au tout premier démarrage.
-   Ce n'est qu'une approximation du logo officiel — il lui manque le QR
-   code et le macaron ISO 9001, qui ne peuvent pas être redessinés. Dès
-   que le vrai fichier est déposé dans public/, il prend le dessus. */
-function LogoFDFPVectoriel() {
-  return (
-    <svg viewBox="0 0 300 104" role="img"
-      aria-label="FDFP — Fonds de Développement de la Formation Professionnelle"
-      style={{ width: "100%", height: "auto", display: "block" }}>
-      <text x="150" y="53" textAnchor="middle" fill="#1b6ca8"
-        fontFamily="'Segoe UI', system-ui, sans-serif" fontSize="54" fontWeight="800"
-        fontStyle="italic" letterSpacing="2">FDFP</text>
-      <path d="M12 68 C 92 55, 208 55, 290 63 C 208 77, 92 81, 12 68 Z" fill="#efa13c" />
-      <text x="150" y="88" textAnchor="middle" fill="#1b6ca8"
-        fontFamily="'Segoe UI', system-ui, sans-serif" fontSize="12" fontWeight="600"
-        fontStyle="italic" letterSpacing=".7">FONDS DE DÉVELOPPEMENT</text>
-      <text x="150" y="101" textAnchor="middle" fill="#1b6ca8"
-        fontFamily="'Segoe UI', system-ui, sans-serif" fontSize="12" fontWeight="600"
-        fontStyle="italic" letterSpacing=".7">DE LA FORMATION PROFESSIONNELLE</text>
-    </svg>
-  );
-}
+// ----------------- LOGO FDFP (reproduction vectorielle) ---------
+// Logo officiel du FDFP (image incorporée au code — aucun fichier externe requis)
+const LOGO_FDFP = "data:image/jpeg;base64,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";
 
-/* Emplacement du logo, dimensionné en largeur.
-   Le bandeau institutionnel (sigle + baseline + QR + macaron ISO) est très
-   allongé : seule la largeur est imposée, la hauteur se déduit du fichier
-   lui-même. Le cadre s'adapte donc à n'importe quelles proportions, sans
-   recadrage ni déformation.
-   Le fond blanc est permanent — imposé même en mode sombre — pour que le
-   logo reste lisible quelle que soit la teinte derrière lui.
-   Les extensions sont essayées l'une après l'autre ; si aucune ne répond,
-   on bascule sur le logo vectoriel plutôt que d'afficher une image cassée. */
-function LogoFDFP({ largeur, hauteurMax }) {
-  const [essai, setEssai] = useState(0);
-  const style = {};
-  if (largeur) style.width = largeur;
-  if (hauteurMax) style["--logo-h-max"] = hauteurMax;
+function LogoFDFP({ h = 32 }) {
   return (
-    <div className="logo-bandeau" style={style}>
-      {essai >= CHEMINS_LOGO.length ? <LogoFDFPVectoriel /> : (
-        <img key={CHEMINS_LOGO[essai]} src={CHEMINS_LOGO[essai]}
-          alt="FDFP — Fonds de Développement de la Formation Professionnelle"
-          onError={() => setEssai((v) => v + 1)} />
-      )}
+    <div className="bg-white rounded-lg px-2 py-1 flex items-center justify-center shadow-sm" style={{ height: h + 10 }}>
+      <img src={LOGO_FDFP} alt="FDFP — Fonds de Développement de la Formation Professionnelle" style={{ height: h, width: "auto" }} />
     </div>
   );
 }
-
-/* jsPDF ne sait pas charger une URL : le logo est converti une fois en
-   image matricielle, puis mémorisé pour toutes les fiches suivantes.
-   Si aucun fichier n'est trouvé, la fiche reçoit un sigle textuel plutôt
-   qu'un en-tête vide (voir fichePDF). */
-let cacheLogoPdf;
-const logoPourPdf = async () => {
-  if (cacheLogoPdf !== undefined) return cacheLogoPdf;
-  for (const chemin of CHEMINS_LOGO) {
-    try {
-      const img = await new Promise((ok, ko) => {
-        const i = new Image();
-        i.onload = () => ok(i);
-        i.onerror = ko;
-        i.src = chemin;
-      });
-      const cv = document.createElement("canvas");
-      cv.width = img.naturalWidth;
-      cv.height = img.naturalHeight;
-      cv.getContext("2d").drawImage(img, 0, 0);
-      cacheLogoPdf = { donnees: cv.toDataURL("image/png"), l: img.naturalWidth, h: img.naturalHeight };
-      return cacheLogoPdf;
-    } catch (e) { /* extension suivante */ }
-  }
-  cacheLogoPdf = null;
-  return cacheLogoPdf;
-};
-
-/* Feuille du carré logo. Elle est partagée : les écrans d'accès sont rendus
-   hors de l'arbre principal et n'héritent donc pas de sa feuille de styles.
-   Le carré grandit avec la fenêtre (clamp) sans jamais devenir illisible. */
-const CSS_LOGO = `
-  .logo-bandeau{
-    background:#FFFFFF;                       /* permanent, y compris en mode sombre */
-    width:clamp(180px,40vw,300px);            /* seule contrainte : la largeur */
-    flex:0 0 auto;
-    display:flex;align-items:center;justify-content:center;
-    padding:clamp(3px,.5vw,7px) clamp(6px,1vw,12px);
-    border-radius:12px;
-    box-shadow:0 2px 8px rgba(13,34,51,.22);
-  }
-  /* Le fond blanc ne doit jamais être repeint par le thème sombre. */
-  .sombre .logo-bandeau{ background:#FFFFFF!important; }
-  /* La hauteur suit le ratio réel du fichier (4,24:1 pour le bandeau
-     officiel), mais reste plafonnée : un logo carré ou très haut ne doit
-     pas faire enfler le bandeau. Au-delà du plafond, le logo est
-     simplement centré sur sa plaque blanche. */
-  .logo-bandeau img, .logo-bandeau svg{
-    width:100%;
-    height:auto;
-    max-height:var(--logo-h-max, 72px);
-    object-fit:contain;
-    display:block;
-  }
-`;
 
 // ----------------- PETITS COMPOSANTS ----------------------------
 function Badge({ score }) {
@@ -540,11 +431,9 @@ function CadreAccueil({ enfants }) {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-10"
       style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", background: "radial-gradient(120% 120% at 20% 0%, #14506f 0%, #0d2637 55%, #0a1d2a 100%)" }}>
-      <style>{`@keyframes pageIn { from { opacity: 0; transform: translateY(10px);} to { opacity: 1; transform: none;} } .page-anim{animation:pageIn .32s ease-out both}` + CSS_LOGO}</style>
-      {/* Écran d'accès : le bandeau institutionnel est présenté en grand,
-          au-dessus du titre, là où rien ne lui dispute la largeur. */}
-      <div className="flex flex-col items-center gap-4 mb-6 max-w-2xl text-center">
-        <LogoFDFP largeur="min(420px, 82vw)" hauteurMax="min(150px, 30vw)" />
+      <style>{`@keyframes pageIn { from { opacity: 0; transform: translateY(10px);} to { opacity: 1; transform: none;} } .page-anim{animation:pageIn .32s ease-out both}`}</style>
+      <div className="flex items-center gap-3 mb-6">
+        <LogoFDFP h={34} />
         <div>
           <div className="text-white font-bold text-lg leading-tight">FDFP · MIP-PPA</div>
           <div className="text-sky-200 text-sm">Suivi des projets de formation de type apprentissage (emploi-qualification) dans les industries agroalimentaires</div>
@@ -1080,25 +969,7 @@ export default function MipPpaApp() {
 
     // ------ En-tête institutionnel ------
     doc.setFillColor(13, 34, 51); doc.rect(0, 0, W, 30, "F");
-    // Logo sur plaque blanche. On vise 76 mm de large — assez pour que la
-    // baseline du bandeau institutionnel reste lisible à l'impression — et on
-    // retombe sur la hauteur si le fichier fourni est plus ramassé.
-    const lg = await logoPourPdf();
-    if (lg) {
-      const hMax = 19, lMax = 76;
-      let lImg = lMax, hImg = (lMax * lg.h) / lg.l;
-      if (hImg > hMax) { hImg = hMax; lImg = (hMax * lg.l) / lg.h; }
-      doc.setFillColor(255, 255, 255);
-      doc.roundedRect(M - 2, 5.5 - 1.5, lImg + 4, hImg + 3, 1.5, 1.5, "F");
-      try { doc.addImage(lg.donnees, "PNG", M, 5.5, lImg, hImg); } catch (e) {}
-    } else {
-      // Aucun fichier logo trouvé : sigle textuel, pour ne pas laisser le
-      // bandeau de l'en-tête vide sur un document officiel.
-      doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(20);
-      doc.text("FDFP", M, 16);
-      doc.setFont("helvetica", "normal"); doc.setFontSize(7);
-      doc.text(nettoyerPdf("Fonds de Developpement de la Formation Professionnelle"), M, 21.5);
-    }
+    try { doc.addImage(LOGO_FDFP, "JPEG", M, 5.5, 42, 19); } catch (e) {}
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(14);
     doc.text(nettoyerPdf("FICHE D'EVALUATION MIP-PPA"), W - M, 13, { align: "right" });
     doc.setFont("helvetica", "normal"); doc.setFontSize(9);
@@ -1343,7 +1214,7 @@ export default function MipPpaApp() {
   // =================== RENDU =====================================
   return (
     <div className={"cadre-app min-h-screen flex text-stone-900" + (sombre ? " sombre" : "")} style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", maxWidth: "100vw" }}>
-      <style>{CSS_LOGO + `
+      <style>{`
         /* ================= ARRIÈRE-PLAN DE LA PAGE =================
            L'image est portée par l'élément body : elle défile donc
            avec le contenu (background-attachment: scroll, la valeur par
@@ -1401,22 +1272,21 @@ export default function MipPpaApp() {
         .bandeau-gauche{ display:flex; align-items:center; gap:clamp(.6rem,1.5vw,1rem); min-width:0; }
         .bandeau-droite{ display:flex; align-items:center; gap:clamp(.75rem,2vw,1.25rem); flex:0 0 auto; }
         .bandeau-titre{
-          font-size:clamp(.9rem,1.8vw,1.2rem); font-weight:700; line-height:1.2;
+          font-size:clamp(.95rem,1.9vw,1.2rem); font-weight:700; line-height:1.2;
           overflow-wrap:anywhere;
-          display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
-          overflow:hidden;
         }
         .bandeau-sous-titre{
           font-size:clamp(.68rem,1.15vw,.78rem); color:#57534e; line-height:1.35;
           overflow-wrap:anywhere; margin-top:.1rem;
-          display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
-          overflow:hidden;
         }
         .sombre .bandeau-sous-titre{ color:#a9b4bf; }
-        /* Le bandeau institutionnel est large : sous 900 px il prend le pas sur
-           le sous-titre, puis sur le titre, plutôt que de se laisser comprimer. */
-        @media (max-width:900px){ .bandeau-sous-titre{ display:none; } }
-        @media (max-width:520px){ .bandeau-texte{ display:none; } }
+        /* Sur mobile le sous-titre mange toute la hauteur : on le limite. */
+        @media (max-width:560px){
+          .bandeau-sous-titre{
+            display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+            overflow:hidden;
+          }
+        }
 
         /* ---------- DELTA DESKTOP ≥1024px : sidebar fixe ---------- */
         @media (min-width: 1024px) {
@@ -1476,12 +1346,14 @@ export default function MipPpaApp() {
       {/* ---------------- SIDEBAR ---------------- */}
       {menuMobile && <div className="fixed inset-0 z-40 md:hidden" style={{ background: "rgba(10,25,38,.55)" }} onClick={() => setMenuMobile(false)} />}
       <aside className={(menuMobile ? "flex fixed inset-y-0 left-0 z-50 " : "hidden ") + "md:flex md:sticky md:top-0 barre-laterale w-64 shrink-0 flex-col text-stone-300 h-screen overflow-y-auto overflow-x-hidden"} style={{ background: C.sidebar }}>
-        {/* Le bandeau institutionnel est porté par l'en-tête, où il dispose de
-            la largeur nécessaire pour rester lisible. L'afficher aussi ici le
-            réduirait à 216 px et ferait doublon à l'écran sur ordinateur. */}
-        <div className="px-5 py-5">
-          <div className="text-white font-bold leading-tight text-lg">MIP-PPA</div>
-          <div className="text-xs text-stone-400 break-words mt-0.5">Modèle d'Indicateurs de Performance - Produit Projet Apprentissage</div>
+        <div className="flex items-center gap-3 px-5 py-5">
+          <div className="bg-white rounded-xl px-2 py-1.5 flex items-center justify-center shrink-0">
+            <LogoFDFP h={30} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-white font-bold leading-tight">MIP-PPA</div>
+            <div className="text-xs text-stone-400 break-words">Modèle d'Indicateurs de Performance - Produit Projet Apprentissage</div>
+          </div>
         </div>
         <nav className="flex-1 px-3 space-y-5 pb-4">
           {NAV.map((g) => (
@@ -1510,8 +1382,7 @@ export default function MipPpaApp() {
             <button onClick={() => setMenuMobile(true)} className="md:hidden text-stone-600 shrink-0" title="Ouvrir le menu">
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
             </button>
-            <LogoFDFP />
-            <div className="bandeau-texte min-w-0">
+            <div className="min-w-0">
               <h1 className="bandeau-titre">{titres[page][0]}</h1>
               <div className="bandeau-sous-titre">{titres[page][1]}</div>
             </div>
