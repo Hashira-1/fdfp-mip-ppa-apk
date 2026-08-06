@@ -152,13 +152,19 @@ const SECTEURS_DEFAUT = {
     "Conditionnement et emballage": ["Emballages plastiques", "Cartons", "Étiquetage"],
     "Autres industries": ["Chimie et pharmacie", "Textile", "Métallurgie", "BTP", "Énergie"],
   },
+  // Dans le tertiaire, le service ne transforme pas la matière première : il
+  // l'accompagne. Le niveau intermédiaire désigne donc la matière première
+  // concernée par la prestation, et le domaine précise le service rendu.
+  // « Toutes matières premières » recueille les services support qui ne sont
+  // rattachés à aucun produit en particulier (banque, numérique, formation).
   "Secteur tertiaire": {
-    "Commerce et distribution": ["Grande distribution", "Commerce de gros", "Négoce agricole"],
-    "Transport et logistique": ["Transport routier", "Logistique portuaire", "Entreposage et chaîne du froid"],
-    "Hôtellerie et restauration": ["Hôtellerie", "Restauration collective", "Traiteurs"],
-    "Services aux entreprises": ["Banque et assurance", "Conseil et audit", "Numérique et télécoms"],
-    "Formation et santé": ["Éducation et formation professionnelle", "Santé et action sociale"],
-    "Administration et tourisme": ["Administration publique", "Tourisme et loisirs"],
+    "Cacao et café": ["Négoce et exportation", "Logistique portuaire", "Certification et traçabilité"],
+    "Anacarde": ["Négoce et exportation", "Entreposage et contrôle qualité"],
+    "Fruits et légumes": ["Chaîne du froid", "Distribution et grande surface", "Exportation"],
+    "Produits halieutiques": ["Chaîne du froid", "Distribution et mareyage"],
+    "Céréales et vivriers": ["Stockage et conservation", "Commerce de gros", "Distribution de détail"],
+    "Produits laitiers et carnés": ["Chaîne du froid", "Restauration collective", "Distribution"],
+    "Toutes matières premières": ["Transport routier", "Banque et assurance agricoles", "Conseil et audit", "Numérique et traçabilité", "Formation professionnelle", "Administration et appui public"],
   },
 };
 // Accepte les anciens formats et les convertit vers {secteur: {branche: [domaines]}}
@@ -174,7 +180,7 @@ const normaliserSecteurs = (s) => {
   }
   return SECTEURS_DEFAUT;
 };
-// Retrouve le grand secteur d'une branche donnee
+// Retrouve le grand secteur d'une matiere premiere donnee
 const grandSecteurDe = (secteurs, branche) => {
   const n = normaliserSecteurs(secteurs);
   for (const [grand, branches] of Object.entries(n)) if (Object.keys(branches || {}).includes(branche)) return grand;
@@ -1021,7 +1027,7 @@ export default function MipPpaApp() {
   };
 
   const exportExcel = () => {
-    const entetes = ["Projet", "Promoteur", "Secteur", "Branche", "Domaine", "Zone", "Apprenants", "Budget FCFA", "Statut",
+    const entetes = ["Projet", "Promoteur", "Secteur", "Matière première", "Domaine", "Zone", "Apprenants", "Budget FCFA", "Statut",
       ...referentiel.map((d) => `${d.nom} (%)`), "Score global (%)", "Niveau"];
     const lignes = formationsVisibles.map((f) => {
       const g = scoreGlobal(referentiel, f.notes);
@@ -1738,7 +1744,7 @@ export default function MipPpaApp() {
                     {Object.keys(normaliserSecteurs(secteurs)).map((g) => <option key={g}>{g}</option>)}
                   </select>
                 </label>
-                <label className="text-sm">Branche d'activité
+                <label className="text-sm">Matière première
                   <select value={nouvelle.filiere} onChange={(e) => { const b = e.target.value; const doms = (normaliserSecteurs(secteurs)[nouvelle.secteurGrand] || {})[b] || []; setNouvelle({ ...nouvelle, filiere: b, domaine: doms[0] || "" }); }}
                     className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
                     {Object.keys(normaliserSecteurs(secteurs)[nouvelle.secteurGrand] || {}).map((f) => <option key={f}>{f}</option>)}
@@ -1993,8 +1999,16 @@ export default function MipPpaApp() {
 
             {P.secteurs && (
               <section className="bg-white rounded-2xl border border-stone-200 p-5">
-                <h3 className="font-bold">Secteurs, branches et domaines d'activité</h3>
-                <p className="text-sm text-stone-500 mb-3">Trois niveaux : le grand secteur, ses branches, et les domaines de chaque branche. Tout est modifiable — cette hiérarchie alimente le formulaire de projet.</p>
+                <h3 className="font-bold">Secteurs, matières premières et domaines</h3>
+                <p className="text-sm text-stone-500 mb-3">Trois niveaux : le grand secteur, ses matières premières, et les domaines de chacune. Tout est modifiable — cette hiérarchie alimente le formulaire de projet.</p>
+                {/* La hiérarchie est stockée en base : sans ce bouton, une mise
+                    à jour de la nomenclature livrée avec l'application resterait
+                    invisible sur une installation déjà en service. */}
+                <button onClick={() => {
+                  if (!window.confirm("Remplacer toute la hiérarchie actuelle par la nomenclature d'origine ?\n\nLes secteurs, matières premières et domaines que vous avez ajoutés ou renommés seront perdus. Les projets déjà saisis conservent leurs libellés actuels.")) return;
+                  setSecteurs(SECTEURS_DEFAUT); notif("Nomenclature par défaut restaurée");
+                }}
+                  className="bg-white border border-stone-200 text-sm px-4 py-2 rounded-xl hover:bg-stone-50 mb-4" title="Revenir aux secteurs, matières premières et domaines d'origine"><Icone n="rotation" t={14} /> Restaurer la nomenclature par défaut</button>
                 <div className="space-y-4">
                   {Object.entries(normaliserSecteurs(secteurs)).map(([grand, branches]) => (
                     <div key={grand} className="border border-stone-200 rounded-xl p-4">
@@ -2006,7 +2020,7 @@ export default function MipPpaApp() {
                             notif(`Secteur renommé${messagePropagation(propagerRenommage("secteurGrand", grand, nom))}`);
                           }}
                           className="font-semibold bg-transparent outline-none border-b border-transparent focus:border-stone-300 flex-1" />
-                        <span className="text-xs text-stone-400">{Object.keys(branches || {}).length} branches</span>
+                        <span className="text-xs text-stone-400">{Object.keys(branches || {}).length} matières premières</span>
                         <button onClick={() => { if (window.confirm(`Supprimer « ${grand} » et tout son contenu ?`)) setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; delete n[grand]; return n; }); }}
                           className="text-red-400 hover:text-red-600" title="Supprimer ce secteur"><Icone n="poubelle" t={15} /></button>
                       </div>
@@ -2014,19 +2028,19 @@ export default function MipPpaApp() {
                         {Object.entries(branches || {}).map(([branche, domaines]) => (
                           <div key={branche} className="bg-stone-50 rounded-lg p-3">
                             <div className="flex items-center justify-between gap-2">
-                              <ChampEditable valeur={branche} titre="Renommer cette branche (Entrée pour valider, Échap pour annuler)"
+                              <ChampEditable valeur={branche} titre="Renommer cette matière première (Entrée pour valider, Échap pour annuler)"
                                 surValider={(nom) => {
-                                  if ((normaliserSecteurs(secteurs)[grand] || {})[nom]) { notif("Une branche porte déjà ce nom dans ce secteur"); return false; }
+                                  if ((normaliserSecteurs(secteurs)[grand] || {})[nom]) { notif("Une matière première porte déjà ce nom dans ce secteur"); return false; }
                                   setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; const bo = {}; Object.entries(n[grand] || {}).forEach(([k, v]) => { bo[k === branche ? nom : k] = v; }); n[grand] = bo; return n; });
                                   // Seuls les projets rattachés à CE secteur : deux secteurs
-                                  // peuvent héberger une branche de même nom.
+                                  // peuvent héberger une matière première de même nom.
                                   const n2 = propagerRenommage("filiere", branche, nom,
                                     (f) => (f.secteurGrand || grandSecteurDe(secteurs, f.filiere)) === grand);
-                                  notif(`Branche renommée${messagePropagation(n2)}`);
+                                  notif(`Matière première renommée${messagePropagation(n2)}`);
                                 }}
                                 className="text-sm font-medium bg-transparent outline-none border-b border-transparent focus:border-stone-300 flex-1" />
                               <button onClick={() => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; const bo = { ...n[grand] }; delete bo[branche]; n[grand] = bo; return n; })}
-                                className="text-red-400 hover:text-red-600" title="Supprimer cette branche"><Icone n="fermer" t={13} /></button>
+                                className="text-red-400 hover:text-red-600" title="Supprimer cette matière première"><Icone n="fermer" t={13} /></button>
                             </div>
                             <div className="flex flex-wrap gap-1.5 mt-2">
                               {(domaines || []).map((d, i) => (
@@ -2049,12 +2063,12 @@ export default function MipPpaApp() {
                             </div>
                           </div>
                         ))}
-                        <button onClick={() => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; n[grand] = { ...n[grand], [nomLibre("Nouvelle branche", Object.keys(n[grand] || {}))]: ["Général"] }; return n; })}
-                          className="text-sm border border-dashed border-stone-300 rounded-lg px-3 py-1.5 text-stone-500 hover:bg-stone-50 w-full">+ Ajouter une branche</button>
+                        <button onClick={() => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; n[grand] = { ...n[grand], [nomLibre("Nouvelle matière première", Object.keys(n[grand] || {}))]: ["Général"] }; return n; })}
+                          className="text-sm border border-dashed border-stone-300 rounded-lg px-3 py-1.5 text-stone-500 hover:bg-stone-50 w-full">+ Ajouter une matière première</button>
                       </div>
                     </div>
                   ))}
-                  <button onClick={() => setSecteurs((s) => ({ ...normaliserSecteurs(s), [nomLibre("Nouveau secteur", Object.keys(normaliserSecteurs(s)))]: { "Nouvelle branche": ["Général"] } }))}
+                  <button onClick={() => setSecteurs((s) => ({ ...normaliserSecteurs(s), [nomLibre("Nouveau secteur", Object.keys(normaliserSecteurs(s)))]: { "Nouvelle matière première": ["Général"] } }))}
                     className="text-sm border border-dashed border-stone-300 rounded-xl px-4 py-2 text-stone-500 hover:bg-stone-50 w-full">+ Ajouter un grand secteur</button>
                 </div>
                 <h3 className="font-bold mt-6">Phases de mesure</h3>
