@@ -1085,11 +1085,16 @@ export default function MipPpaApp() {
     timeZone: "UTC", dateStyle: "long", timeStyle: "short",
   });
 
-  const MENTIONS_FDFP = [
+  /* Mentions institutionnelles condensées sur une seule ligne : organisme,
+     certification et horodatage de l'export. Une ligne au lieu de quatre —
+     les en-têtes de colonnes remontent d'autant, et le tableau commence
+     presque en haut du fichier. */
+  const mentionsFDFP = () => [
     "FDFP - Fonds de Développement de la Formation Professionnelle",
-    "Certifié ISO 9001 version 2015 par Bureau Norme Audit - BNA/SMQ-FDCS03112513",
+    "Certifié ISO 9001 v2015 par Bureau Norme Audit - BNA/SMQ-FDCS03112513",
     "Sur tous nos processus et tous nos sites",
-  ];
+    `Export du ${horodatageExport()} (GMT+0)`,
+  ].join("  ·  ");
 
   /* ---------- EXPORT XLSX (classeur mis en forme, avec le bandeau) ----------
      ExcelJS est chargé à la demande : Vite en fait un fragment séparé, il
@@ -1107,7 +1112,7 @@ export default function MipPpaApp() {
 
       const entetes = colonnesExport();
       const donnees = lignesExport();
-      const LIGNE_ENTETES = 6;                       // 1 image + 3 mentions + 1 vide
+      const LIGNE_ENTETES = 4;                       // 1 image + 1 mentions + 1 vide
 
       const ws = wb.addWorksheet("Portefeuille MIP-PPA", {
         views: [{ state: "frozen", ySplit: LIGNE_ENTETES }],
@@ -1119,15 +1124,11 @@ export default function MipPpaApp() {
       ws.addImage(idImage, { tl: { col: 0, row: 0 }, ext: { width: 384, height: 90 } });
       ws.getRow(1).height = 72;
 
-      // -- Mentions institutionnelles --
-      MENTIONS_FDFP.forEach((texte, i) => {
-        const c = ws.getCell(i + 2, 1);
-        c.value = texte;
-        c.font = { bold: i === 0, size: i === 0 ? 12 : 9, color: { argb: "FF0E3C60" } };
-      });
-      const cDate = ws.getCell(5, 1);
-      cDate.value = `Export consolidé du ${horodatageExport()} (GMT+0) — ${donnees.length} projet${donnees.length > 1 ? "s" : ""}`;
-      cDate.font = { size: 9, italic: true, color: { argb: "FF5A5A5A" } };
+      // -- Mentions institutionnelles, sur une seule ligne (ligne 2) --
+      const cMentions = ws.getCell(2, 1);
+      cMentions.value = `${mentionsFDFP()}  ·  ${donnees.length} projet${donnees.length > 1 ? "s" : ""}`;
+      cMentions.font = { size: 9, color: { argb: "FF0E3C60" } };
+      cMentions.alignment = { vertical: "middle" };
 
       // -- Ligne d'en-têtes --
       const ligneE = ws.getRow(LIGNE_ENTETES);
@@ -1187,11 +1188,9 @@ export default function MipPpaApp() {
      certification y figure en toutes lettres. Les libellés sont entre
      guillemets, sinon un point-virgule les découperait en colonnes.     */
   const exportCsv = () => {
-    const enTete = [...MENTIONS_FDFP, `Export consolidé du ${horodatageExport()} (GMT+0)`]
-      .map((t) => `"${t}"`);
     const lignes = lignesExport().map((l) => l.map((v) => (v === null ? "" : v)).join(";"));
     telecharger("MIP-PPA_portefeuille.csv",
-      [...enTete, "", colonnesExport().join(";"), ...lignes].join("\n"));
+      [`"${mentionsFDFP()}"`, "", colonnesExport().join(";"), ...lignes].join("\n"));
     notif("Données CSV téléchargées");
   };
 
@@ -1913,7 +1912,12 @@ export default function MipPpaApp() {
             <div className="flex flex-wrap items-center gap-3">
               <input value={recherche} onChange={(e) => setRecherche(e.target.value)} placeholder="Rechercher entreprise, formation, secteur…"
                 className="flex-1 min-w-[240px] bg-white border border-stone-200 rounded-full px-5 py-2.5 text-sm outline-none focus:border-stone-400" />
-              {P.exports && <button onClick={exportXlsx} className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50" title="Télécharger le classeur Excel mis en forme"><Icone n="telecharger" t={15} /> Exporter Excel</button>}
+              {P.exports && (
+                <div className="flex items-center gap-2">
+                  <button onClick={exportXlsx} className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50" title="Classeur Excel mis en forme, avec le bandeau de certification"><Icone n="telecharger" t={15} /> Excel</button>
+                  <button onClick={exportCsv} className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50" title="Données brutes séparées par des points-virgules, pour un outil d'analyse"><Icone n="fichier" t={15} /> CSV</button>
+                </div>
+              )}
               <button onClick={() => { setFormations(FORMATIONS_DEMO); setSuivis(SUIVIS_DEMO); notif("Données démo restaurées"); }}
                 className="text-sm text-stone-600 hover:text-stone-900" title="Restaurer les 3 projets de démonstration"><Icone n="rotation" t={14} /> Données démo</button>
             </div>
