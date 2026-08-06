@@ -357,13 +357,15 @@ function telecharger(nomFichier, contenu, type = "text/csv;charset=utf-8") {
   URL.revokeObjectURL(url);
 }
 
-/* ----------------- IMAGE D'ARRIÈRE-PLAN DE LA PAGE --------------
-   Déposez le fichier dans le dossier « public » à la racine du projet
-   (Vite le sert alors à la racine du site). S'il est absent, la couleur
-   #e8edf2 prend le relais : rien ne casse.
-   C'est la seule image externe de l'application — le logo, lui, est
-   embarqué dans le code juste en dessous.                          */
+/* ----------------- IMAGES EXTERNES ------------------------------
+   Déposez ces fichiers dans le dossier « public » à la racine du projet
+   (Vite les sert alors à la racine du site). Absents, rien ne casse :
+   l'arrière-plan retombe sur la couleur #e8edf2 et le pied de page
+   n'affiche pas le bandeau de certification.
+   Le logo FDFP de la barre latérale, lui, est embarqué dans le code
+   plus bas (constante LOGO_FDFP) et ne dépend d'aucun fichier.    */
 const CHEMIN_FOND = "/fond-page.jpg";
+const CHEMIN_CERTIFICATION = "/certification-fdfp.png";
 
 // ----------------- LOGO FDFP (reproduction vectorielle) ---------
 // Logo officiel du FDFP (image incorporée au code — aucun fichier externe requis)
@@ -435,6 +437,25 @@ function ChampEditable({ valeur, surValider, className = "", largeurAuto = false
         if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
         else if (e.key === "Escape") { annule.current = true; e.currentTarget.blur(); }
       }} />
+  );
+}
+
+/* Pied de page institutionnel : bandeau FDFP complet — sigle, QR code de
+   vérification et macaron ISO 9001. C'est une marque de certification, pas
+   un élément de navigation : elle se place donc en bas, présente sur toutes
+   les feuilles sans jamais disputer la place au contenu.
+   Fond blanc permanent (le bandeau est fourni sur fond blanc) et texte de
+   remplacement détaillé, car l'image porte une information écrite.
+   Si le fichier est absent, le pied de page s'efface au lieu d'afficher
+   une image cassée. */
+function PiedCertification() {
+  const [absent, setAbsent] = useState(false);
+  if (absent) return null;
+  return (
+    <footer className="pied-certification">
+      <img src={CHEMIN_CERTIFICATION} onError={() => setAbsent(true)}
+        alt="FDFP — Fonds de Développement de la Formation Professionnelle. Certifié ISO 9001 version 2015 par Bureau Norme Audit, référence BNA/SMQ-FDCS03112513, sur tous nos processus et tous nos sites." />
+    </footer>
   );
 }
 
@@ -1499,6 +1520,33 @@ export default function MipPpaApp() {
         @keyframes toastIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
         .page-anim { animation: pageIn .32s ease-out both; }
         .toast-anim { animation: toastIn .25s ease-out both; }
+        /* Pied de page institutionnel : bandeau de certification FDFP.
+           Fond blanc permanent — l'image est fournie sur fond blanc, une
+           plaque sombre y découperait un rectangle disgracieux. */
+        .pied-certification{
+          max-width:64rem;                  /* aligné sur la largeur du contenu */
+          width:100%;
+          margin:0 auto clamp(1rem,2.5vw,1.75rem);
+          padding:clamp(.7rem,1.6vw,1.1rem);
+          background:#FFFFFF;
+          border:1px solid rgba(13,34,51,.10);
+          border-radius:16px;
+          box-shadow:0 2px 10px rgba(13,34,51,.07);
+          display:flex; justify-content:center;
+        }
+        .sombre .pied-certification{
+          background:#FFFFFF!important;
+          border-color:rgba(255,255,255,.20);
+        }
+        .pied-certification img{
+          width:100%; max-width:30rem; height:auto; display:block;
+        }
+        /* Sur mobile, le bandeau colle aux bords de l'écran : on lui rend
+           une gouttière équivalente à celle du contenu. */
+        @media (max-width:640px){
+          .pied-certification{ width:calc(100% - 2rem); }
+        }
+
         /* Cartes d'indicateur cliquables du tableau de bord : le chevron
            signale l'action, il se décale légèrement au survol. */
         .stat-cliquable{ cursor:pointer; }
@@ -2305,6 +2353,7 @@ export default function MipPpaApp() {
           ))}
 
         </main>
+        <PiedCertification />
         <footer className="text-center text-[11px] text-stone-400 pb-5">
           Prototype MIP-PPA — PFE ESA / INP-HB × FDFP · EHOUNI Luc-Emmanuel Behira Levy · Données de démonstration
         </footer>
