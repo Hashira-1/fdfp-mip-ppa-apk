@@ -488,13 +488,28 @@ function HorlogeUTC() {
   const jour = maintenant.toLocaleDateString("fr-FR", {
     timeZone: "UTC", weekday: "short", day: "numeric", month: "long", year: "numeric",
   });
-  const heure = maintenant.toLocaleTimeString("fr-FR", {
-    timeZone: "UTC", hour: "2-digit", minute: "2-digit", second: "2-digit",
+  /* Date abrégée pour les écrans étroits : « mer. 6 août 2026 » ne tient pas
+     dans le bandeau d'un téléphone, « 06/08 » oui. Les deux formes sont
+     rendues, c'est le CSS qui choisit — pas d'écouteur de redimensionnement. */
+  const jourCourt = maintenant.toLocaleDateString("fr-FR", {
+    timeZone: "UTC", day: "2-digit", month: "2-digit",
   });
+  /* Heure construite à partir des accesseurs UTC : les secondes doivent être
+     isolées dans leur propre élément pour pouvoir s'effacer sous 400 px. */
+  const p2 = (n) => String(n).padStart(2, "0");
+  const heureMinute = p2(maintenant.getUTCHours()) + ":" + p2(maintenant.getUTCMinutes());
+  const secondes = p2(maintenant.getUTCSeconds());
+  const legende = "Date et heure de référence de la plateforme — temps universel (GMT+0). C'est sur cette base que sont calculés les retards et les échéances.";
   return (
-    <div className="horloge-utc" title="Date et heure de référence de la plateforme — temps universel (GMT+0). C'est sur cette base que sont calculés les retards et les échéances.">
-      <div className="horloge-date">{jour}</div>
-      <div className="horloge-heure">{heure}<span>GMT+0</span></div>
+    <div className="horloge-utc" title={legende} aria-label={legende + " Il est " + heureMinute + " GMT+0, le " + jour + "."}>
+      <div className="horloge-date">
+        <span className="horloge-date-longue">{jour}</span>
+        <span className="horloge-date-courte">{jourCourt}</span>
+      </div>
+      <div className="horloge-heure">
+        {heureMinute}<span className="horloge-secondes">:{secondes}</span>
+        <span className="horloge-fuseau">GMT+0</span>
+      </div>
     </div>
   );
 }
@@ -1576,10 +1591,29 @@ export default function MipPpaApp() {
           font-size:.92rem; font-weight:700; letter-spacing:.02em;
           font-variant-numeric:tabular-nums;
         }
-        .horloge-heure span{ font-size:.6rem; font-weight:600; color:#57534e; margin-left:.3rem; }
-        .sombre .horloge-date, .sombre .horloge-heure span{ color:#a9b4bf; }
-        /* Sous 820 px, le bandeau n'a plus la place : l'horloge s'efface. */
-        @media (max-width:820px){ .horloge-utc{ display:none; } }
+        .horloge-fuseau{ font-size:.6rem; font-weight:600; color:#57534e; margin-left:.3rem; }
+        .sombre .horloge-date, .sombre .horloge-fuseau{ color:#a9b4bf; }
+        /* L'horloge fait foi pour les échéances et sert aussi de témoin de
+           déploiement : elle doit rester visible sur téléphone. Plutôt que de
+           l'effacer faute de place, on la comprime par paliers — d'abord la
+           date en JJ/MM, puis les secondes, puis le trait de séparation. */
+        .horloge-date-courte{ display:none; }
+        @media (max-width:820px){
+          .horloge-date-longue{ display:none; }
+          .horloge-date-courte{ display:inline; }
+          .horloge-utc{ padding-right:.55rem; }
+          .horloge-heure{ font-size:.85rem; }
+        }
+        @media (max-width:400px){
+          .horloge-utc{ padding-right:.4rem; border-right:none; }
+          .horloge-date{ font-size:.62rem; }
+          .horloge-heure{ font-size:.8rem; }
+          .horloge-fuseau{ font-size:.55rem; margin-left:.2rem; }
+        }
+        /* Les secondes défilent : c'est la preuve visible que l'horloge tourne,
+           on les garde donc sur les téléphones courants (360 px et plus). Sous
+           340 px seulement, elles coûtent une ligne de titre : on les retire. */
+        @media (max-width:340px){ .horloge-secondes{ display:none; } }
         /* Sur mobile le sous-titre mange toute la hauteur : on le limite. */
         @media (max-width:560px){
           .bandeau-sous-titre{
