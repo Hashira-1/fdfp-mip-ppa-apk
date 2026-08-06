@@ -1749,7 +1749,7 @@ export default function MipPpaApp() {
                     {((normaliserSecteurs(secteurs)[nouvelle.secteurGrand] || {})[nouvelle.filiere] || []).map((d) => <option key={d}>{d}</option>)}
                   </select>
                 </label>
-                <label className="text-sm">Zone <span className="text-stone-400">(implantation FDFP)</span>
+                <label className="text-sm">Zone <span className="text-stone-400">(couverture FDFP)</span>
                   <select value={normaliserRegion(nouvelle.region)} onChange={(e) => setNouvelle({ ...nouvelle, region: e.target.value })}
                     className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
                     {IMPLANTATIONS.map((r) => <option key={r}>{r}</option>)}
