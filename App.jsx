@@ -321,7 +321,19 @@ function niveau(score) {
   return { txt: "Insuffisant", bg: C.insuffisant, fg: "#fff" };
 }
 const fmtPct = (v) => (v === null ? "—" : `${Math.round(v)} %`);
-const fmtFCFA = (v) => `${Number(v).toLocaleString("fr-FR")} FCFA`;
+/* Montants : regroupement par tranches de trois chiffres — milliers, millions,
+   milliards… — pour que l'ordre de grandeur se lise d'un coup d'œil.
+   Le séparateur produit par Intl varie selon le moteur (espace fine insécable
+   U+202F sur les versions récentes, insécable U+00A0 sur les plus anciennes) :
+   on le normalise vers un caractère unique, pour que l'affichage soit
+   identique partout et que l'export PDF n'ait qu'un seul cas à traiter. */
+const ESPACE_MILLIERS = "\u00A0";   // espace insecable
+const grouperNombre = (v) => {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "0";
+  return Math.round(n).toLocaleString("fr-FR").replace(/[\u202F\u00A0\u2009 ]/g, ESPACE_MILLIERS);
+};
+const fmtFCFA = (v) => `${grouperNombre(v)} FCFA`;
 // Jours pleins entre aujourd'hui et une échéance « AAAA-MM-JJ ». Les deux
 // bornes sont ramenées à minuit UTC : l'écart est donc un multiple exact de
 // 24 h, sans dérive liée à l'heure de consultation ni au changement d'heure.
@@ -1041,7 +1053,11 @@ export default function MipPpaApp() {
       "Ò":"O","Ô":"O","Ö":"O",
       "Ù":"U","Û":"U","Ü":"U",
       "Ç":"C","Ñ":"N",
-      "œ":"oe","Œ":"OE","æ":"ae","Æ":"AE"
+      "œ":"oe","Œ":"OE","æ":"ae","Æ":"AE",
+      // Espaces non ASCII : sans cette conversion, le séparateur de milliers
+      // des montants était purement et simplement supprimé et le budget
+      // s'imprimait d'un seul bloc (« 12500000 » au lieu de « 12 500 000 »).
+      "\u00A0":" ","\u202F":" ","\u2009":" ","\u2007":" "
     };
     s = s.replace(/[^\x00-\x7F]/g, (c) => map[c] || "");
     return s;
@@ -1071,7 +1087,7 @@ export default function MipPpaApp() {
     doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(...gris);
     doc.text(nettoyerPdf(`Promoteur : ${f.entreprise}  -  ${f.filiere}  -  ${f.region}`), M, y); y += 5.5;
     if (f.operateur || f.beneficiaire) { doc.text(nettoyerPdf(`${f.operateur ? "Operateur : " + f.operateur : ""}${f.operateur && f.beneficiaire ? "  -  " : ""}${f.beneficiaire ? "Beneficiaire : " + f.beneficiaire : ""}`), M, y); y += 5.5; }
-    doc.text(nettoyerPdf(`${f.apprenants} apprenants  -  Budget : ${Number(f.budget).toLocaleString("fr-FR")} FCFA  -  Statut : ${f.statut}`), M, y); y += 9;
+    doc.text(nettoyerPdf(`${f.apprenants} apprenants  -  Budget : ${fmtFCFA(f.budget)}  -  Statut : ${f.statut}`), M, y); y += 9;
 
     // ------ Score global ------
     doc.setFillColor(...hexRgb(nv.bg === "#e7e5e4" ? "#a8a29e" : nv.bg)); doc.roundedRect(M, y, W - 2 * M, 16, 2.5, 2.5, "F");
@@ -1745,7 +1761,13 @@ export default function MipPpaApp() {
                   <input type="number" value={nouvelle.apprenants} onChange={(e) => setNouvelle({ ...nouvelle, apprenants: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" />
                 </label>
                 <label className="text-sm">Budget (FCFA)
-                  <input type="number" value={nouvelle.budget} onChange={(e) => setNouvelle({ ...nouvelle, budget: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" />
+                  <input type="number" min="0" step="1000" value={nouvelle.budget} onChange={(e) => setNouvelle({ ...nouvelle, budget: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" />
+                  {/* Un champ numérique ne peut pas afficher de séparateurs :
+                      on rappelle le montant groupé sous la saisie, pour repérer
+                      un zéro de trop avant d'enregistrer. */}
+                  <div className="text-xs mt-1 font-medium" style={{ color: C.vert }}>
+                    {String(nouvelle.budget).trim() === "" ? "—" : fmtFCFA(nouvelle.budget)}
+                  </div>
                 </label>
                 <label className="text-sm">Statut
                   <select value={nouvelle.statut} onChange={(e) => setNouvelle({ ...nouvelle, statut: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
@@ -1829,7 +1851,7 @@ export default function MipPpaApp() {
               <div>
                 <div className="text-xs uppercase tracking-wider text-sky-200">Promoteur : {fEval.entreprise}</div>
                 <h2 className="text-2xl font-bold mt-1">{fEval.titre}</h2>
-                <div className="text-sm text-sky-100 mt-1">{libelleSecteur(fEval, secteurs)} · {fEval.region} · {fEval.apprenants} apprenants</div>
+                <div className="text-sm text-sky-100 mt-1">{libelleSecteur(fEval, secteurs)} · {fEval.region} · {fEval.apprenants} apprenants · {fmtFCFA(fEval.budget)}</div>
                 {(fEval.operateur || fEval.beneficiaire) && <div className="text-xs text-sky-200 mt-1">{[fEval.operateur ? `Opérateur : ${fEval.operateur}` : "", fEval.beneficiaire ? `Bénéficiaire : ${fEval.beneficiaire}` : ""].filter(Boolean).join(" · ")}</div>}
               </div>
               <div className="text-right">
