@@ -349,6 +349,16 @@ const joursRestants = (dateStr) => {
   return Number.isNaN(cible) ? 0 : Math.round((cible - aujourdhuiUTC()) / 86400000);
 };
 
+/* Téléchargement d'un contenu binaire (classeur XLSX). Distinct de
+   telecharger(), qui préfixe le texte d'un BOM UTF-8 — indispensable au CSV,
+   mais qui corromprait un fichier binaire. */
+function telechargerBinaire(nomFichier, donnees, type) {
+  const url = URL.createObjectURL(new Blob([donnees], { type }));
+  const a = document.createElement("a");
+  a.href = url; a.download = nomFichier; a.click();
+  URL.revokeObjectURL(url);
+}
+
 function telecharger(nomFichier, contenu, type = "text/csv;charset=utf-8") {
   const blob = new Blob(["\ufeff" + contenu], { type });
   const url = URL.createObjectURL(blob);
@@ -1053,18 +1063,138 @@ export default function MipPpaApp() {
     setEditionId(f.id); setFormOuvert(true); setPage("formations");
   };
 
-  const exportExcel = () => {
-    const entetes = ["Projet", "Promoteur", "Secteur", "Matière première", "Domaine", "Zone", "Apprenants", "Budget FCFA", "Statut",
-      ...referentiel.map((d) => `${d.nom} (%)`), "Score global (%)", "Niveau"];
-    const lignes = formationsVisibles.map((f) => {
-      const g = scoreGlobal(referentiel, f.notes);
-      return [f.titre, f.entreprise, f.secteurGrand || grandSecteurDe(secteurs, f.filiere), f.filiere, f.domaine || "", f.region, f.apprenants, f.budget, f.statut,
-        ...referentiel.map((d) => { const s = scoreDimension(referentiel, d.id, f.notes); return s === null ? "" : Math.round(s); }),
-        g === null ? "" : Math.round(g), niveau(g).txt].join(";");
-    });
-    telecharger("MIP-PPA_export_consolide.csv", [entetes.join(";"), ...lignes].join("\n"));
-    notif("Export Excel (CSV) téléchargé");
+  /* ---------- DONNEES COMMUNES AUX DEUX EXPORTS ---------- */
+  const colonnesExport = () => ["Projet", "Promoteur", "Secteur", "Matière première", "Domaine", "Zone",
+    "Apprenants", "Budget (FCFA)", "Statut",
+    ...referentiel.map((d) => `${d.nom} (%)`), "Score global (%)", "Niveau"];
+
+  // Valeurs typées : les nombres restent des nombres, pour que le tableur
+  // puisse trier, filtrer et sommer sans réinterprétation.
+  const lignesExport = () => formationsVisibles.map((f) => {
+    const g = scoreGlobal(referentiel, f.notes);
+    return [
+      f.titre, f.entreprise,
+      f.secteurGrand || grandSecteurDe(secteurs, f.filiere), f.filiere, f.domaine || "", f.region,
+      Number(f.apprenants) || 0, Number(f.budget) || 0, f.statut,
+      ...referentiel.map((d) => { const sc = scoreDimension(referentiel, d.id, f.notes); return sc === null ? null : Math.round(sc); }),
+      g === null ? null : Math.round(g), niveau(g).txt,
+    ];
+  });
+
+  const horodatageExport = () => new Date().toLocaleString("fr-FR", {
+    timeZone: "UTC", dateStyle: "long", timeStyle: "short",
+  });
+
+  const MENTIONS_FDFP = [
+    "FDFP - Fonds de Développement de la Formation Professionnelle",
+    "Certifié ISO 9001 version 2015 par Bureau Norme Audit - BNA/SMQ-FDCS03112513",
+    "Sur tous nos processus et tous nos sites",
+  ];
+
+  /* ---------- EXPORT XLSX (classeur mis en forme, avec le bandeau) ----------
+     ExcelJS est chargé à la demande : Vite en fait un fragment séparé, il
+     n'alourdit donc pas le premier affichage de l'application.
+     En cas d'échec (bibliothèque absente, navigateur ancien), on retombe
+     sur le CSV plutôt que de laisser l'utilisateur sans export.          */
+  const exportXlsx = async () => {
+    try {
+      const mod = await import("exceljs");
+      const ExcelJS = mod.default || mod;
+
+      const wb = new ExcelJS.Workbook();
+      wb.creator = "Plateforme FDFP MIP-PPA";
+      wb.created = new Date();
+
+      const entetes = colonnesExport();
+      const donnees = lignesExport();
+      const LIGNE_ENTETES = 6;                       // 1 image + 3 mentions + 1 vide
+
+      const ws = wb.addWorksheet("Portefeuille MIP-PPA", {
+        views: [{ state: "frozen", ySplit: LIGNE_ENTETES }],
+        pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
+      });
+
+      // -- Bandeau de certification, en tête de feuille --
+      const idImage = wb.addImage({ base64: CERTIFICATION_FDFP.split(",")[1], extension: "png" });
+      ws.addImage(idImage, { tl: { col: 0, row: 0 }, ext: { width: 384, height: 90 } });
+      ws.getRow(1).height = 72;
+
+      // -- Mentions institutionnelles --
+      MENTIONS_FDFP.forEach((texte, i) => {
+        const c = ws.getCell(i + 2, 1);
+        c.value = texte;
+        c.font = { bold: i === 0, size: i === 0 ? 12 : 9, color: { argb: "FF0E3C60" } };
+      });
+      const cDate = ws.getCell(5, 1);
+      cDate.value = `Export consolidé du ${horodatageExport()} (GMT+0) — ${donnees.length} projet${donnees.length > 1 ? "s" : ""}`;
+      cDate.font = { size: 9, italic: true, color: { argb: "FF5A5A5A" } };
+
+      // -- Ligne d'en-têtes --
+      const ligneE = ws.getRow(LIGNE_ENTETES);
+      ligneE.values = entetes;
+      ligneE.height = 28;
+      ligneE.eachCell((c) => {
+        c.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
+        c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0E3C60" } };
+        c.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+        c.border = { bottom: { style: "thin", color: { argb: "FFF2A33C" } } };
+      });
+
+      // -- Données --
+      const iApprenants = 6, iBudget = 7, iPremierScore = 9;   // index 0
+      donnees.forEach((ligne) => {
+        const r = ws.addRow(ligne);
+        r.eachCell({ includeEmpty: true }, (c, numCol) => {
+          const i = numCol - 1;
+          c.alignment = { vertical: "middle", wrapText: i === 0 };
+          if (i === iApprenants) c.numFmt = "#,##0";
+          else if (i === iBudget) c.numFmt = '#,##0 "FCFA"';
+          else if (i >= iPremierScore && i < entetes.length - 1) c.numFmt = '0" %"';
+        });
+        // Pastille de niveau, aux couleurs de l'application
+        const cellNiveau = r.getCell(entetes.length);
+        const nv = niveau(ligne[entetes.length - 2]);
+        cellNiveau.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF" + nv.bg.slice(1).toUpperCase() } };
+        cellNiveau.font = { bold: true, color: { argb: nv.fg === "#fff" ? "FFFFFFFF" : "FF57534E" } };
+        cellNiveau.alignment = { vertical: "middle", horizontal: "center" };
+      });
+
+      // -- Largeurs de colonnes --
+      const largeurs = [42, 20, 18, 24, 22, 20, 12, 18, 13];
+      entetes.forEach((_, i) => { ws.getColumn(i + 1).width = largeurs[i] || 14; });
+
+      if (donnees.length) {
+        ws.autoFilter = {
+          from: { row: LIGNE_ENTETES, column: 1 },
+          to: { row: LIGNE_ENTETES + donnees.length, column: entetes.length },
+        };
+      }
+
+      const buffer = await wb.xlsx.writeBuffer();
+      telechargerBinaire("MIP-PPA_portefeuille.xlsx", buffer,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      notif("Classeur Excel téléchargé");
+    } catch (e) {
+      console.warn("Export XLSX indisponible :", e && e.message);
+      notif("Classeur Excel indisponible — export CSV à la place");
+      exportCsv();
+    }
   };
+
+  /* ---------- EXPORT CSV (données brutes, pour l'analyse) ----------
+     Conservé à côté du XLSX : c'est le format le plus simple à relire dans
+     un outil statistique. Le CSV ne pouvant pas porter d'image, la
+     certification y figure en toutes lettres. Les libellés sont entre
+     guillemets, sinon un point-virgule les découperait en colonnes.     */
+  const exportCsv = () => {
+    const enTete = [...MENTIONS_FDFP, `Export consolidé du ${horodatageExport()} (GMT+0)`]
+      .map((t) => `"${t}"`);
+    const lignes = lignesExport().map((l) => l.map((v) => (v === null ? "" : v)).join(";"));
+    telecharger("MIP-PPA_portefeuille.csv",
+      [...enTete, "", colonnesExport().join(";"), ...lignes].join("\n"));
+    notif("Données CSV téléchargées");
+  };
+
   const nettoyerPdf = (t) => {
     let s = String(t == null ? "" : t);
     // Ponctuation typographique -> ASCII
@@ -1146,6 +1276,21 @@ export default function MipPpaApp() {
     y += 3;
 
     // ------ Détail des indicateurs ------
+    /* Bandeau de certification, en clôture du document. Largeur 120 mm :
+       assez grand pour que le QR code reste scannable une fois imprimé,
+       assez sobre pour ne pas concurrencer le contenu de l'évaluation.
+       Posé sur une plaque blanche, comme dans l'application. */
+    const blocCertification = () => {
+      const L = 120, H = (L * 181) / 768;   // ratio natif du bandeau (768x181)
+      if (y + H + 16 > 278) { doc.addPage(); y = 20; }
+      y += 8;
+      doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3);
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect((W - L) / 2 - 3, y - 3, L + 6, H + 6, 2, 2, "FD");
+      try { doc.addImage(CERTIFICATION_FDFP, "PNG", (W - L) / 2, y, L, H); } catch (e) {}
+      y += H + 6;
+    };
+
     const pied = () => {
       const pages = doc.getNumberOfPages();
       for (let p = 1; p <= pages; p++) {
@@ -1265,6 +1410,7 @@ export default function MipPpaApp() {
       } catch (e) { /* extraction indisponible (hors ligne) : l'encart descriptif reste */ }
     }
 
+    blocCertification();
     pied();
     // ------ Annexe : fusion des PDF joints, page a page ------
     const pdfsJoints = [];
@@ -1301,6 +1447,7 @@ export default function MipPpaApp() {
         // pdf-lib indisponible (hors ligne) : on retombe sur le PDF simple
       }
     }
+    blocCertification();
     pied();
     doc.save(`Fiche_MIP-PPA_${f.entreprise.replace(/\s+/g, "_")}.pdf`);
     notif("Fiche PDF téléchargée");
@@ -1529,10 +1676,10 @@ export default function MipPpaApp() {
         /* Pied de page institutionnel : bandeau de certification FDFP.
            Fond blanc permanent — l'image est fournie sur fond blanc, une
            plaque sombre y découperait un rectangle disgracieux. */
+        /* Rendu à l'intérieur de la zone de contenu : largeur identique à
+           celle des cartes, sans calcul de gouttière à refaire. */
         .pied-certification{
-          max-width:64rem;                  /* aligné sur la largeur du contenu */
           width:100%;
-          margin:0 auto clamp(1rem,2.5vw,1.75rem);
           padding:clamp(.7rem,1.6vw,1.1rem);
           background:#FFFFFF;
           border:1px solid rgba(13,34,51,.10);
@@ -1544,13 +1691,11 @@ export default function MipPpaApp() {
           background:#FFFFFF!important;
           border-color:rgba(255,255,255,.20);
         }
+        /* Plafond à 48 rem = 768 px, la largeur native de l'image : elle
+           occupe le bandeau sans jamais être agrandie, ce qui garderait
+           le QR code net mais flou à l'agrandissement. */
         .pied-certification img{
-          width:100%; max-width:30rem; height:auto; display:block;
-        }
-        /* Sur mobile, le bandeau colle aux bords de l'écran : on lui rend
-           une gouttière équivalente à celle du contenu. */
-        @media (max-width:640px){
-          .pied-certification{ width:calc(100% - 2rem); }
+          width:100%; max-width:48rem; height:auto; display:block;
         }
 
         /* Cartes d'indicateur cliquables du tableau de bord : le chevron
@@ -1768,7 +1913,7 @@ export default function MipPpaApp() {
             <div className="flex flex-wrap items-center gap-3">
               <input value={recherche} onChange={(e) => setRecherche(e.target.value)} placeholder="Rechercher entreprise, formation, secteur…"
                 className="flex-1 min-w-[240px] bg-white border border-stone-200 rounded-full px-5 py-2.5 text-sm outline-none focus:border-stone-400" />
-              {P.exports && <button onClick={exportExcel} className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50" title="Télécharger le tableau Excel consolidé"><Icone n="telecharger" t={15} /> Exporter Excel</button>}
+              {P.exports && <button onClick={exportXlsx} className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50" title="Télécharger le classeur Excel mis en forme"><Icone n="telecharger" t={15} /> Exporter Excel</button>}
               <button onClick={() => { setFormations(FORMATIONS_DEMO); setSuivis(SUIVIS_DEMO); notif("Données démo restaurées"); }}
                 className="text-sm text-stone-600 hover:text-stone-900" title="Restaurer les 3 projets de démonstration"><Icone n="rotation" t={14} /> Données démo</button>
             </div>
@@ -2232,10 +2377,19 @@ export default function MipPpaApp() {
           {page === "exports" && (<>
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <h3 className="font-bold">Export consolidé</h3>
-              <p className="text-sm text-stone-500 mb-4">Tous les projets de formation de type apprentissage et indicateurs en une feuille Excel.</p>
-              <button onClick={exportExcel} className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm" style={{ background: C.vertFonce }} title="Toutes les formations et indicateurs en une feuille">
-                <Icone n="telecharger" t={15} /> Télécharger l'Excel ({formationsVisibles.length} formations)
-              </button>
+              <p className="text-sm text-stone-500 mb-4">Tous les projets de formation de type apprentissage et leurs indicateurs, en une feuille.</p>
+              <div className="flex flex-wrap items-center gap-3">
+                <button onClick={exportXlsx} className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm" style={{ background: C.vertFonce }} title="Classeur mis en forme : bandeau de certification, colonnes figées, filtres et niveaux en couleur">
+                  <Icone n="telecharger" t={15} /> Classeur Excel ({formationsVisibles.length} projet{formationsVisibles.length > 1 ? "s" : ""})
+                </button>
+                <button onClick={exportCsv} className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50" title="Données brutes, séparées par des points-virgules — pour une relecture dans un outil statistique">
+                  <Icone n="fichier" t={15} /> Données brutes (CSV)
+                </button>
+              </div>
+              <p className="text-xs text-stone-400 mt-3">
+                Le classeur <b>.xlsx</b> porte le bandeau de certification et conserve les nombres comme nombres (tri, filtres et sommes immédiats).
+                Le <b>.csv</b> ne contient que les données, au format le plus simple à relire dans un logiciel d'analyse.
+              </p>
             </section>
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <h3 className="font-bold">Fiches d'évaluation PDF</h3>
@@ -2358,8 +2512,11 @@ export default function MipPpaApp() {
             </section>
           ))}
 
+          {/* Placé à l'intérieur de la zone de contenu : le bandeau reçoit
+              ainsi la même largeur utile et les mêmes gouttières que les
+              cartes qui le précèdent. */}
+          <PiedCertification />
         </main>
-        <PiedCertification />
         <footer className="text-center text-[11px] text-stone-400 pb-5">
           Prototype MIP-PPA — PFE ESA / INP-HB × FDFP · EHOUNI Luc-Emmanuel Behira Levy · Données de démonstration
         </footer>
