@@ -401,7 +401,7 @@ function LogoFDFP({ h = 32 }) {
 function Badge({ score }) {
   const n = niveau(score);
   return (
-    <span className="text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: n.bg, color: n.fg }}>
+    <span className="text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap shrink-0" style={{ background: n.bg, color: n.fg }}>
       {n.txt}{score !== null ? ` · ${Math.round(score)}%` : ""}
     </span>
   );
@@ -421,7 +421,7 @@ const teinteStatut = (statut) => {
 function PuceStatut({ statut }) {
   const t = teinteStatut(statut);
   return (
-    <span className="text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: t.bg, color: t.fg }}>
+    <span className="text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap shrink-0" style={{ background: t.bg, color: t.fg }}>
       {statut || "Statut non défini"}
     </span>
   );
@@ -511,6 +511,73 @@ function HorlogeUTC() {
         <span className="horloge-fuseau">GMT+0</span>
       </div>
     </div>
+  );
+}
+
+/* Découpe un libellé en lignes d'au plus « largeurMax » caractères, sans
+   jamais couper un mot : un mot plus long que la limite occupe sa ligne
+   entière. Sert aux libellés des graphiques, où le texte doit tenir dans une
+   place mesurée d'avance plutôt que déborder du cadre SVG. */
+function decouperLibelle(texte, largeurMax) {
+  const lignes = [];
+  let courante = "";
+  String(texte).split(" ").forEach((mot) => {
+    if ((courante + " " + mot).trim().length > largeurMax) {
+      if (courante) lignes.push(courante);
+      courante = mot;
+    } else courante = (courante + " " + mot).trim();
+  });
+  if (courante) lignes.push(courante);
+  return lignes.length ? lignes : [""];
+}
+
+/* Largeur réelle d'un texte, mesurée par le navigateur au lieu d'être estimée
+   au nombre de caractères. L'estimation se trompe de 25 % selon les lettres
+   (« Transformation » et « semi-finie » n'occupent pas la même place à nombre
+   de caractères égal) : trop large, elle laisse du vide ; trop étroite, elle
+   coupe le texte. Le contexte de mesure est créé une fois pour toutes. */
+let contexteMesure = null;
+function largeurTexte(texte, police) {
+  if (typeof document === "undefined") return String(texte).length * police * 0.55;
+  if (!contexteMesure) contexteMesure = document.createElement("canvas").getContext("2d");
+  contexteMesure.font = police + "px " + (getComputedStyle(document.body).fontFamily || "sans-serif");
+  return contexteMesure.measureText(String(texte)).width;
+}
+
+/* Libellé d'un axe du radar. Recharts pose le texte sur une seule ligne et ne
+   réserve aucune marge autour du cercle : sur un écran de 375 px, quatre des
+   cinq dimensions débordaient du cadre et se retrouvaient coupées net —
+   « Durabilité des compétences » commençait 101 px avant le bord gauche.
+   On découpe donc le libellé en lignes et on l'ancre selon sa position autour
+   du cercle : le texte de droite part vers la droite, celui de gauche vers la
+   gauche, celui du sommet remonte et celui du bas descend. */
+function TickRadar({ x, y, cx, cy, payload, mobile }) {
+  const taille = mobile ? 9 : 11;
+  const hauteurLigne = taille * 1.18;
+  const ecart = x - cx;
+  const ancre = Math.abs(ecart) < 12 ? "middle" : ecart > 0 ? "start" : "end";
+  /* Place réellement disponible entre le point d'ancrage et le bord du cadre.
+     Le radar étant centré, « cx » vaut la moitié de la largeur : on en déduit
+     le bord droit sans avoir à connaître les dimensions du conteneur. Le
+     découpage suit cette mesure plutôt qu'un seuil mobile / bureau, sinon un
+     grand écran coupe des libellés alors qu'il lui reste 300 px de libres. */
+  const dispo = 0.9 * (ancre === "start" ? 2 * cx - x : ancre === "end" ? x : 2 * Math.min(x, 2 * cx - x));
+  const largeurMax = Math.max(8, Math.min(30, Math.floor(dispo / (taille * 0.58))));
+  const lignes = decouperLibelle(payload.value, largeurMax);
+  /* Rayon du point d'ancrage : sert à distinguer un libellé de sommet (bloc
+     remonté) d'un libellé de flanc (bloc centré), sans dépendre d'une
+     propriété interne de Recharts. */
+  const rayon = Math.hypot(ecart, y - cy) || 1;
+  const depart =
+    y < cy - rayon * 0.5 ? -(lignes.length - 1) * hauteurLigne
+    : y > cy + rayon * 0.5 ? taille * 0.9
+    : -((lignes.length - 1) * hauteurLigne) / 2 + taille * 0.35;
+  return (
+    <text x={x} y={y} textAnchor={ancre} fill="#57534e" fontSize={taille}>
+      {lignes.map((l, i) => (
+        <tspan key={i} x={x} dy={i === 0 ? depart : hauteurLigne}>{l}</tspan>
+      ))}
+    </text>
   );
 }
 
@@ -834,8 +901,12 @@ export default function MipPpaApp() {
   const [sombre, setSombre] = useState(() => { try { return localStorage.getItem("mip-ppa-theme") === "sombre"; } catch { return false; } });
   const basculerTheme = () => setSombre((v) => { const n = !v; try { localStorage.setItem("mip-ppa-theme", n ? "sombre" : "clair"); } catch {} return n; });
   const [estMobile, setEstMobile] = useState(typeof window !== "undefined" && window.innerWidth < 768);
+  /* La largeur exacte, et pas seulement le drapeau « mobile » : les graphiques
+     répartissent leur place au prorata. Un seuil binaire réservait la même
+     colonne de libellés à 320 px qu'à 767 px, écrasant les barres. */
+  const [largeurFenetre, setLargeurFenetre] = useState(typeof window !== "undefined" ? window.innerWidth : 1280);
   useEffect(() => {
-    const maj = () => setEstMobile(window.innerWidth < 768);
+    const maj = () => { setEstMobile(window.innerWidth < 768); setLargeurFenetre(window.innerWidth); };
     window.addEventListener("resize", maj);
     return () => window.removeEventListener("resize", maj);
   }, []);
@@ -1013,6 +1084,22 @@ export default function MipPpaApp() {
     });
     return Object.entries(map).map(([fil, arr]) => ({ filiere: fil, score: arr.reduce((a, b) => a + b, 0) / arr.length }));
   }, [formationsVisibles, referentiel]);
+
+  /* Colonne des libellés du graphique « Score moyen par secteur ».
+     On part d'un plafond — 36 % de l'écran sur mobile, entre 88 et 150 px —
+     dont on déduit le nombre de caractères par ligne (≈ 0,58 × la taille de
+     police). Puis on redescend à la largeur que les libellés occupent
+     vraiment une fois découpés : le texte étant aligné à droite dans sa
+     colonne, toute largeur réservée en trop reste en vide à gauche et fait
+     pencher le graphique vers la droite. */
+  const axeSecteur = useMemo(() => {
+    const police = estMobile ? 10 : 11;
+    const plafond = estMobile ? Math.round(Math.min(150, Math.max(88, largeurFenetre * 0.36))) : 240;
+    const caracteres = Math.max(10, Math.floor(plafond / (police * 0.58)));
+    const plusLarge = filiereData.reduce(
+      (m, d) => Math.max(m, ...decouperLibelle(d.filiere, caracteres).map((l) => largeurTexte(l, police))), 0);
+    return { caracteres, police, largeur: Math.min(plafond, Math.ceil(plusLarge) + 10) };
+  }, [estMobile, largeurFenetre, filiereData]);
 
   // ---------- Actions ----------
   /* Répercussion d'un renommage du référentiel sur les données déjà saisies.
@@ -1693,6 +1780,19 @@ export default function MipPpaApp() {
         .sombre .recharts-cartesian-axis-tick-line,
         .sombre .recharts-polar-angle-axis-tick-line,
         .sombre .recharts-polar-radius-axis-line{stroke:#3a4d61!important}
+        /* Infobulle : Recharts la dimensionne sur une seule ligne
+           (« white-space:nowrap » en style en ligne). Un libellé de secteur
+           complet — « Secteur secondaire · Cacao · Transformation semi-finie »
+           — produisait une bulle de 402 px dans un écran de 320 px, dont les
+           trois quarts hors de l'écran. On borne la largeur et on autorise le
+           retour à la ligne ; le « !important » est indispensable, le style en
+           ligne l'emporterait autrement.                                    */
+        .recharts-default-tooltip{
+          max-width:min(260px,70vw)!important;
+          white-space:normal!important;
+        }
+        .recharts-tooltip-label{ white-space:normal!important; overflow-wrap:anywhere; }
+        .recharts-tooltip-item{ white-space:normal!important; }
         /* Infobulle : le cadre était déjà traité, mais Recharts fixe la
            couleur de chaque série en style en ligne — d'où le !important. */
         .sombre .recharts-default-tooltip{background:#152230!important;border-color:#2b3d50!important;color:#e7e5e4!important}
@@ -1870,9 +1970,12 @@ export default function MipPpaApp() {
               <h3 className="font-bold">Niveau de performance moyenne par dimension</h3>
               <p className="text-sm text-stone-500 mb-2">Profil consolidé du portefeuille PPA en cours.</p>
               <ResponsiveContainer width="100%" height={300}>
-                <RadarChart data={radarData}>
+                {/* Le rayon est volontairement en retrait du cadre : c'est la
+                    couronne ainsi libérée qui accueille les libellés sur
+                    plusieurs lignes, d'autant plus étroite que l'écran l'est. */}
+                <RadarChart data={radarData} outerRadius={estMobile ? "54%" : "72%"}>
                   <PolarGrid stroke="#e7e5e4" />
-                  <PolarAngleAxis dataKey="dim" tick={{ fontSize: 11 }} />
+                  <PolarAngleAxis dataKey="dim" tick={<TickRadar mobile={estMobile} />} />
                   <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 9 }} />
                   <Radar dataKey="score" stroke={C.vert} fill={C.vert} fillOpacity={0.35} />
                   <Tooltip formatter={(v) => `${Math.round(v)} %`} />
@@ -1887,17 +1990,16 @@ export default function MipPpaApp() {
                 <BarChart data={filiereData} layout="vertical" margin={{ left: 6, right: 18 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
                   <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10 }} />
-                  <YAxis type="category" dataKey="filiere" width={estMobile ? 150 : 240} interval={0}
+                  {/* La colonne des libellés se règle au prorata de l'écran. À
+                      150 px fixes, elle mangeait 150 des 247 px disponibles sur
+                      un téléphone de 320 px : il ne restait presque rien pour
+                      les barres, seule information utile du graphique. */}
+                  <YAxis type="category" dataKey="filiere" width={axeSecteur.largeur} interval={0}
                     tick={({ x, y, payload }) => {
                       // Découpe le libellé en lignes complètes (aucune condensation)
-                      const larg = estMobile ? 22 : 36;
-                      const mots = String(payload.value).split(" ");
-                      const lignes = [];
-                      let cour = "";
-                      mots.forEach((m) => { if ((cour + " " + m).trim().length > larg) { if (cour) lignes.push(cour); cour = m; } else cour = (cour + " " + m).trim(); });
-                      if (cour) lignes.push(cour);
+                      const lignes = decouperLibelle(payload.value, axeSecteur.caracteres);
                       return (
-                        <text x={x} y={y} textAnchor="end" fill="#57534e" fontSize={estMobile ? 10 : 11}>
+                        <text x={x} y={y} textAnchor="end" fill="#57534e" fontSize={axeSecteur.police}>
                           {lignes.map((l, i) => <tspan key={i} x={x - 4} dy={i === 0 ? -((lignes.length - 1) * 5.5) + 4 : 12}>{l}</tspan>)}
                         </text>
                       );
@@ -1917,9 +2019,12 @@ export default function MipPpaApp() {
                 {formationsVisibles.slice(-4).map((f) => (
                   <button key={f.id} onClick={() => { setEvalId(f.id); setPage("evaluation"); }}
                     className="w-full flex items-center justify-between gap-4 py-3.5 text-left hover:bg-stone-50 px-2 rounded-lg">
-                    <div>
-                      <div className="font-semibold">{f.titre}</div>
-                      <div className="text-sm text-stone-500">{f.entreprise} · {libelleSecteur(f, secteurs)} · {f.apprenants} apprenants</div>
+                    {/* « min-w-0 » : sans lui, le bloc de texte refuse de
+                        descendre sous la largeur de son plus long mot et
+                        chasse la pastille hors du bouton sur petit écran. */}
+                    <div className="min-w-0">
+                      <div className="font-semibold break-words">{f.titre}</div>
+                      <div className="text-sm text-stone-500 break-words">{f.entreprise} · {libelleSecteur(f, secteurs)} · {f.apprenants} apprenants</div>
                     </div>
                     <Badge score={scoreGlobal(referentiel, f.notes)} />
                   </button>
