@@ -15,6 +15,11 @@ import {
   COULEURS_NIVEAU, scoreDimension, scoreGlobal, couvertureModele, margeSeuil,
   indicateursNonNotes, niveau, JALONS, instantane, ajouterInstantane, trajectoire,
 } from "./calculs.js";
+/* Géographie des zones de couverture, dans un fichier à part pour la même
+   raison que « calculs.js » : ce sont des données engendrées (108 contours
+   départementaux), pas du code d'interface. Voir l'en-tête du fichier pour
+   les sources et la méthode de simplification. */
+import { CARTE_LARGEUR, CARTE_HAUTEUR, DEPARTEMENTS } from "./geo-civ.js";
 
 /* ================================================================
    FDFP · MIP-PPA — Suivi des projets de formation de type apprentissage dans l'agro-industrie
@@ -83,19 +88,19 @@ const REFERENTIEL_DEFAUT = [
 const FORMATIONS_DEMO = [
   {
     id: "f1", titre: "Maîtrise HACCP en ligne de conditionnement cacao",
-    entreprise: "SACO", operateur: "A.C.A", beneficiaire: "SCINPA", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "Siège Abidjan",
+    entreprise: "SACO", operateur: "A.C.A", beneficiaire: "SCINPA", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "Siège Abidjan", localite: "Abidjan",
     apprenants: 18, budget: 12500000, statut: "Terminée",
     notes: { P1: 4, P2: 3, P3: 4, P4: 4, EP1: 3, EP2: 3, EP3: 4, EP4: 4, EP5: 3, EP6: 4, IE1: 3, IE2: 3, IE3: 4, IE4: 3, IO1: 3, IO2: 3, IO3: 4, IO4: 3, IO5: 3, DC1: 3, DC2: 2, DC3: 3, DC4: 3 },
   },
   {
     id: "f2", titre: "Conduite de séchoir industriel (fruits tropicaux)",
-    entreprise: "AGROCI", operateur: "Emergence", beneficiaire: "AGROCI", secteurGrand: "Secteur secondaire", filiere: "Transformation des fruits et légumes", domaine: "Jus et concentrés", region: "Antenne Yamoussoukro",
+    entreprise: "AGROCI", operateur: "Emergence", beneficiaire: "AGROCI", secteurGrand: "Secteur secondaire", filiere: "Transformation des fruits et légumes", domaine: "Jus et concentrés", region: "Antenne Yamoussoukro", localite: "Toumodi",
     apprenants: 9, budget: 6800000, statut: "Terminée",
     notes: { P1: 3, P2: 2, P3: 3, P4: 2, EP1: 2, EP2: 2, EP3: 3, EP4: 4, EP5: 2, EP6: 2, IE1: 2, IE2: 3, IE3: 2, IE4: 2, IO1: 2, IO2: 2, IO3: 3, IO4: 2, IO5: 2, DC1: 3, DC2: 2, DC3: 2, DC4: 2 },
   },
   {
     id: "f3", titre: "Sécurité alimentaire & traçabilité ISO 22000",
-    entreprise: "FrieslandCampina", operateur: "Domny", beneficiaire: "FrieslandCampina", secteurGrand: "Secteur secondaire", filiere: "Industrie laitière", domaine: "Lait et yaourts", region: "Antenne San-Pédro",
+    entreprise: "FrieslandCampina", operateur: "Domny", beneficiaire: "FrieslandCampina", secteurGrand: "Secteur secondaire", filiere: "Industrie laitière", domaine: "Lait et yaourts", region: "Antenne San-Pédro", localite: "San-Pédro",
     apprenants: 24, budget: 15200000, statut: "Terminée",
     notes: { P1: 4, P2: 4, P3: 4, P4: 4, EP1: 4, EP2: 3, EP3: 4, EP4: 4, EP5: 4, EP6: 4, IE1: 3, IE2: 3, IE3: 4, IE4: 3, IO1: 4, IO2: 3, IO3: 4, IO4: 4, IO5: 3, DC1: 3, DC2: 3, DC3: 4, DC4: 3 },
   },
@@ -235,6 +240,57 @@ const normaliserRegion = (r) => {
   const antenne = ANTENNES_FDFP.find((a) => memeMot(a, nu));
   return antenne ? `Antenne ${antenne}` : v;
 };
+
+// ----------------- LOCALITÉS (champ « Localité ») ----------------
+// Une zone n'est pas un point : c'est un ensemble de départements. Le champ
+// « Localité » désigne celui où le projet se déroule réellement, ce que la
+// zone seule ne dit pas — huit implantations pour 108 départements.
+// La liste proposée est donc toujours celle de la zone choisie, jamais les
+// 108 : on ne peut pas se tromper d'antenne en choisissant sa localité.
+const LOCALITES_PAR_ZONE = DEPARTEMENTS.reduce((acc, d) => {
+  (acc[d.z] = acc[d.z] || []).push(d.n);
+  return acc;
+}, {});
+Object.values(LOCALITES_PAR_ZONE).forEach((l) => l.sort((a, b) => a.localeCompare(b, "fr")));
+
+const DEP_PAR_LOCALITE = DEPARTEMENTS.reduce((acc, d) => { acc[d.n] = d; return acc; }, {});
+
+const localitesDe = (zone) => LOCALITES_PAR_ZONE[normaliserRegion(zone)] || [];
+
+// Chef-lieu de l'implantation elle-même : « Antenne Bouaké » → « Bouaké ».
+// C'est la localité la plus probable, donc celle proposée par défaut.
+const localiteParDefaut = (zone) => {
+  const z = normaliserRegion(zone);
+  const liste = localitesDe(z);
+  if (!liste.length) return "";
+  const chef = z.replace(/^(Siège|Antenne)\s+/, "");
+  return liste.find((n) => n.localeCompare(chef, "fr", { sensitivity: "base" }) === 0) || liste[0];
+};
+
+/* Ramène une localité à la nomenclature, dans le périmètre de sa zone. Une
+   valeur venue d'un import ou d'une zone modifiée depuis peut ne plus
+   appartenir à la zone : elle est alors remplacée par le chef-lieu, pour que
+   carte et liste ne se contredisent jamais. */
+const normaliserLocalite = (loc, zone) => {
+  const liste = localitesDe(zone);
+  const v = String(loc || "").trim();
+  if (!v) return localiteParDefaut(zone);
+  const exact = liste.find((n) => n.localeCompare(v, "fr", { sensitivity: "base" }) === 0);
+  return exact || localiteParDefaut(zone);
+};
+
+/* Formulaire de projet à l'état neuf. Une fonction, pas un objet partagé :
+   quatre endroits le réinitialisent (ouverture, création, modification,
+   état initial) et ils écrivaient jusqu'ici quatre copies du même littéral —
+   de quoi oublier un champ dans l'une d'elles en en ajoutant un. */
+const PROJET_VIERGE = () => ({
+  titre: "", entreprise: "", operateur: "", beneficiaire: "",
+  secteurGrand: "Secteur secondaire",
+  filiere: "Transformation du cacao et du café",
+  domaine: "Fèves et masse de cacao",
+  region: "Siège Abidjan", localite: localiteParDefaut("Siège Abidjan"),
+  apprenants: 10, budget: 5000000, statut: "Planifiée",
+});
 
 // ----------------- MATRICE DES PERMISSIONS PAR RÔLE -------------
 const PERMS = {
@@ -608,6 +664,236 @@ function TickRadar({ x, y, cx, cy, payload, mobile }) {
   );
 }
 
+// ----------------- CARTE DES ZONES DE COUVERTURE -----------------
+/* Les contours de « geo-civ.js » sont déjà projetés en coordonnées d'écran :
+   il ne reste qu'à poser un <path> par département dans un <svg>. Pas de
+   bibliothèque de cartographie, pas de tuile réseau — la carte fonctionne
+   hors ligne, comme le reste de l'application.
+   Le <svg> porte le viewBox voulu et « width: 100% » : le navigateur met à
+   l'échelle, donc rien à recalculer au redimensionnement. */
+
+// Une teinte par implantation. La même antenne garde la même couleur du
+// tableau de bord à la fiche d'évaluation : c'est ce qui rend les deux
+// cartes lisibles ensemble.
+const COULEURS_ZONE = {
+  "Siège Abidjan": "#0e3c60",
+  "Antenne Abengourou": "#1d6fa8",
+  "Antenne Bouaké": "#b5701c",
+  "Antenne Daloa": "#2c855a",
+  "Antenne Korhogo": "#75539c",
+  "Antenne Man": "#b34c3d",
+  "Antenne San-Pédro": "#0f7c85",
+  "Antenne Yamoussoukro": "#8d7011",
+};
+const couleurZone = (z) => COULEURS_ZONE[normaliserRegion(z)] || "#78716c";
+
+/* Cadre englobant d'un ensemble de départements, dilaté d'une marge.
+   Le format n'est pas imposé mais seulement borné : le <svg> conserve le
+   rapport de son viewBox, donc un cadre au plus près de la zone suffit.
+   Forcer un format unique laissait de larges bandes vides — la zone de
+   Korhogo s'étire d'ouest en est, deux fois plus large que haute, et un
+   cadre en 1,25 lui ajoutait 40 % de hauteur inutile. Les bornes servent
+   seulement aux cas extrêmes, qu'elles ramènent à des proportions
+   affichables. */
+function cadreDe(deps, marge, ratioMin, ratioMax) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  deps.forEach((d) => {
+    x0 = Math.min(x0, d.b[0]); y0 = Math.min(y0, d.b[1]);
+    x1 = Math.max(x1, d.b[2]); y1 = Math.max(y1, d.b[3]);
+  });
+  x0 -= marge; y0 -= marge; x1 += marge; y1 += marge;
+  let w = x1 - x0, h = y1 - y0;
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  if (w / h < ratioMin) w = h * ratioMin;
+  else if (w / h > ratioMax) h = w / ratioMax;
+  return { x: cx - w / 2, y: cy - h / 2, w, h, cx, cy };
+}
+
+/* Quels noms de localité afficher sans qu'ils se recouvrent.
+   Les candidats sont examinés dans l'ordre reçu — le plus digne d'être lu en
+   premier — et chacun n'est retenu que si sa boîte ne heurte aucune de celles
+   déjà retenues. Sans ce filtre, les dix-sept localités de la zone de Korhogo
+   s'écrivaient les unes sur les autres et plus rien ne se lisait, pas même
+   celle du projet.
+   Largeur mesurée par le navigateur, non estimée au nombre de caractères :
+   « M'Bengué » et « Kong » n'occupent pas la même place à longueur voisine.
+   Renvoie l'ensemble des clés retenues ; les autres gardent leur point, et
+   leur nom reste accessible au survol. */
+function etiquettesLisibles(candidats, marge = 0) {
+  const posees = [];
+  const retenues = new Set();
+  candidats.forEach((c) => {
+    const w = largeurTexte(c.texte, c.taille) + marge;
+    const h = c.taille * 1.25;
+    const b = { x0: c.x - w / 2, x1: c.x + w / 2, y0: c.y - h * 0.85, y1: c.y + h * 0.4 };
+    const heurte = posees.some((p) => b.x0 < p.x1 && b.x1 > p.x0 && b.y0 < p.y1 && b.y1 > p.y0);
+    if (c.impose || !heurte) { posees.push(b); retenues.add(c.cle); }
+  });
+  return retenues;
+}
+
+/* Carte nationale : une pastille par localité où se déroulent des projets,
+   d'aire proportionnelle à leur nombre. L'aire, et non le rayon : c'est la
+   surface que l'œil compare, et doubler le rayon quadruplerait la tache. */
+function CarteNationale({ comptes, surClic, sombre }) {
+  const [survol, setSurvol] = useState(null);
+  const total = Object.values(comptes).reduce((a, b) => a + b, 0);
+  const maxi = Math.max(1, ...Object.values(comptes));
+  const points = DEPARTEMENTS
+    .filter((d) => comptes[d.n])
+    .sort((a, b) => comptes[b.n] - comptes[a.n]);
+  const rayon = (n) => 9 + 17 * Math.sqrt(n / maxi);
+
+  // Les localités les plus chargées sont examinées d'abord : à encombrement
+  // égal, c'est le nom du gros contingent qu'il faut pouvoir lire.
+  const nommees = useMemo(() => etiquettesLisibles(points.map((d) => ({
+    cle: d.c, texte: d.n, taille: 15, x: d.x, y: d.y + rayon(comptes[d.n]) + 15,
+  })), 6), [comptes]);
+
+  return (
+    <div className="relative">
+      <svg viewBox={`0 0 ${CARTE_LARGEUR} ${CARTE_HAUTEUR}`} width="100%"
+        style={{ display: "block", maxHeight: "min(70vh, 620px)" }}
+        role="img"
+        aria-label={`Carte de Côte d'Ivoire : ${total} projet${total > 1 ? "s" : ""} répartis sur ${points.length} localité${points.length > 1 ? "s" : ""}.`}>
+        {/* Les huit zones, en aplat très clair : elles donnent le contexte
+            « quelle antenne » sans concurrencer les pastilles. */}
+        {DEPARTEMENTS.map((d) => (
+          <path key={d.c} d={d.d} fill={couleurZone(d.z)}
+            fillOpacity={survol && survol.z === d.z ? 0.34 : 0.16}
+            stroke={sombre ? "#0d1721" : "#ffffff"} strokeWidth="0.8" />
+        ))}
+        {/* Liseré autour de chaque zone : le trait blanc inter-départemental
+            ne suffit pas à faire voir les huit ensembles. */}
+        {Object.keys(LOCALITES_PAR_ZONE).map((z) => (
+          <g key={z}>
+            {DEPARTEMENTS.filter((d) => d.z === z).map((d) => (
+              <path key={d.c} d={d.d} fill="none" stroke={couleurZone(z)}
+                strokeWidth="1.6" strokeOpacity="0.5" />
+            ))}
+          </g>
+        ))}
+        {points.map((d) => {
+          const n = comptes[d.n];
+          const r = rayon(n);
+          const actif = survol && survol.c === d.c;
+          return (
+            <g key={d.c} style={{ cursor: surClic ? "pointer" : "default" }}
+              onMouseEnter={() => setSurvol(d)} onMouseLeave={() => setSurvol(null)}
+              onClick={surClic ? () => surClic(d) : undefined}>
+              <circle cx={d.x} cy={d.y} r={r} fill={couleurZone(d.z)}
+                fillOpacity={actif ? 0.95 : 0.82}
+                stroke={sombre ? "#0d1721" : "#ffffff"} strokeWidth="2.5" />
+              <text x={d.x} y={d.y} textAnchor="middle" dominantBaseline="central"
+                fontSize={Math.min(r * 1.15, 21)} fontWeight="700" fill="#ffffff">{n}</text>
+              {(nommees.has(d.c) || actif) && (
+                <text x={d.x} y={d.y + r + 15} textAnchor="middle" fontSize="15"
+                  fontWeight="600" className="carte-etiquette"
+                  stroke={sombre ? "#0d1721" : "#ffffff"} strokeWidth="3.5"
+                  paintOrder="stroke" strokeLinejoin="round">{d.n}</text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+      {survol && (
+        <div className="absolute left-0 bottom-0 pointer-events-none bg-white border border-stone-200 rounded-xl px-3 py-2 shadow-lg text-xs"
+          style={{ maxWidth: "min(260px, 70vw)" }}>
+          <div className="font-bold">{survol.n}</div>
+          <div className="text-stone-500">{survol.r}</div>
+          <div style={{ color: couleurZone(survol.z) }} className="font-semibold mt-0.5">{survol.z}</div>
+          <div className="mt-0.5">{comptes[survol.n]} projet{comptes[survol.n] > 1 ? "s" : ""}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* Carte d'une seule implantation : sa zone d'occupation, recadrée, avec la
+   localité du projet mise en exergue parmi toutes celles qu'elle couvre.
+   Le reste du pays reste dessiné en fond neutre — sans lui, on ne saurait
+   pas où la zone se situe dans le pays. */
+function CarteZone({ zone, localite, sombre }) {
+  const z = normaliserRegion(zone);
+  const dedans = DEPARTEMENTS.filter((d) => d.z === z);
+  const cible = DEP_PAR_LOCALITE[localite];
+  const teinte = couleurZone(z);
+  if (!dedans.length) return null;
+
+  const cadre = cadreDe(dedans, 26, 0.95, 2.4);
+  // L'échelle du recadrage commande la taille du texte et des traits : sans
+  // cette correction, une petite zone très zoomée afficherait des libellés
+  // démesurés et une grande zone des libellés illisibles.
+  const k = cadre.w / CARTE_LARGEUR;
+
+  /* Quelles localités voisines peuvent porter leur nom. La cible passe en
+     tête et s'impose : son nom ne cède jamais la place. Les autres suivent du
+     plus grand département au plus petit — à encombrement égal, le nom du
+     plus visible est le plus utile. */
+  const autres = dedans.filter((d) => !cible || d.c !== cible.c);
+  const nommees = useMemo(() => {
+    const aire = (d) => (d.b[2] - d.b[0]) * (d.b[3] - d.b[1]);
+    const candidats = [];
+    if (cible) candidats.push({ cle: cible.c, texte: cible.n, taille: 16 * k, x: cible.x, y: cible.y - 17 * k, impose: true });
+    [...autres].sort((a, b) => aire(b) - aire(a)).forEach((d) => {
+      candidats.push({ cle: d.c, texte: d.n, taille: 11 * k, x: d.x, y: d.y - 6 * k });
+    });
+    return etiquettesLisibles(candidats, 3 * k);
+  }, [z, localite, k]);
+
+  return (
+    <svg viewBox={`${cadre.x} ${cadre.y} ${cadre.w} ${cadre.h}`} width="100%"
+      style={{ display: "block", maxHeight: "min(56vh, 460px)" }}
+      role="img"
+      aria-label={`Zone de couverture ${z} : ${dedans.length} localités, dont ${localite || "aucune"} pour ce projet.`}>
+      {/* Le pays entier, en fond neutre */}
+      {DEPARTEMENTS.map((d) => (
+        <path key={d.c} d={d.d} className="carte-hors-zone"
+          stroke={sombre ? "#22303f" : "#e7e5e4"} strokeWidth={0.9 * k} />
+      ))}
+      {/* La zone de l'implantation */}
+      {dedans.map((d) => {
+        const estCible = cible && d.c === cible.c;
+        return (
+          <path key={d.c} d={d.d} fill={teinte}
+            fillOpacity={estCible ? 0.85 : 0.2}
+            stroke={estCible ? teinte : (sombre ? "#0d1721" : "#ffffff")}
+            strokeWidth={(estCible ? 2.6 : 1) * k} />
+        );
+      })}
+      {/* Les autres localités de la zone : présentes, mais en retrait. Le
+          point est toujours dessiné ; le nom omis faute de place reste
+          lisible au survol. */}
+      {autres.map((d) => (
+        <g key={d.c}>
+          <circle cx={d.x} cy={d.y} r={2.6 * k} fill={teinte} fillOpacity="0.75">
+            <title>{d.n}</title>
+          </circle>
+          {nommees.has(d.c) && (
+            <text x={d.x} y={d.y - 6 * k} textAnchor="middle" fontSize={11 * k}
+              className="carte-etiquette-discrete"
+              stroke={sombre ? "#0d1721" : "#ffffff"} strokeWidth={2.4 * k}
+              paintOrder="stroke" strokeLinejoin="round">{d.n}</text>
+          )}
+        </g>
+      ))}
+      {/* La localité du projet */}
+      {cible && (
+        <g>
+          <circle cx={cible.x} cy={cible.y} r={11 * k} fill="none"
+            stroke={C.gold} strokeWidth={3 * k} opacity="0.9" />
+          <circle cx={cible.x} cy={cible.y} r={4.6 * k} fill={C.gold}
+            stroke={sombre ? "#0d1721" : "#ffffff"} strokeWidth={1.6 * k} />
+          <text x={cible.x} y={cible.y - 17 * k} textAnchor="middle"
+            fontSize={16 * k} fontWeight="800" className="carte-etiquette"
+            stroke={sombre ? "#0d1721" : "#ffffff"} strokeWidth={4 * k}
+            paintOrder="stroke" strokeLinejoin="round">{cible.n}</text>
+        </g>
+      )}
+    </svg>
+  );
+}
+
 /* Carte de statistique. Sans « surClic », c'est un simple bloc d'affichage
    (comportement inchangé, notamment sur la page Suivi). Avec « surClic »,
    elle devient un vrai bouton : chevron d'appel, curseur main et anneau de
@@ -877,9 +1163,17 @@ export default function MipPpaApp() {
        qu'avant et continue de fonctionner sur une base où la migration de la
        phase 3 n'a pas encore été passée. */
     if (Array.isArray(f.historique) && f.historique.length) row.historique = f.historique;
+    /* « localite » (phase 4) suit la même règle que « historique » : la colonne
+       n'est écrite que si le projet en porte une, pour qu'une base où
+       « supabase-phase4.sql » n'a pas encore été passé continue d'accepter les
+       enregistrements. */
+    if (f.localite) row.localite = f.localite;
     return row;
   };
-  const rowVersProjet = (r) => ({ id: r.id, titre: r.titre, entreprise: r.promoteur, operateur: r.operateur, beneficiaire: r.beneficiaire, filiere: r.secteur, secteurGrand: r.secteur_grand || "", domaine: r.domaine || "", region: normaliserRegion(r.region), apprenants: r.apprenants, budget: r.budget, statut: r.statut, notes: r.notes || {}, historique: Array.isArray(r.historique) ? r.historique : [] });
+  /* La localité est ramenée au périmètre de sa zone à la lecture : une base
+     antérieure à la phase 4 ne renvoie rien, et le chef-lieu de l'implantation
+     prend alors le relais. La carte a donc toujours un point à montrer. */
+  const rowVersProjet = (r) => ({ id: r.id, titre: r.titre, entreprise: r.promoteur, operateur: r.operateur, beneficiaire: r.beneficiaire, filiere: r.secteur, secteurGrand: r.secteur_grand || "", domaine: r.domaine || "", region: normaliserRegion(r.region), localite: normaliserLocalite(r.localite, r.region), apprenants: r.apprenants, budget: r.budget, statut: r.statut, notes: r.notes || {}, historique: Array.isArray(r.historique) ? r.historique : [] });
   const suiviVersRow = (s) => ({ id: s.id, projet_id: s.formationId, jalon: s.jalon, echeance: s.echeance || null, statut: s.statut || "programmé", note: s.note || "", docs: s.docs || [], maj_le: new Date().toISOString() });
   const rowVersSuivi = (r) => ({ id: r.id, formationId: r.projet_id, jalon: r.jalon, echeance: r.echeance, statut: r.statut, note: r.note || "", docs: r.docs || [] });
 
@@ -916,6 +1210,10 @@ export default function MipPpaApp() {
        agent ; on lui dit quoi faire. */
     if (/historique/i.test(error.message || "")) {
       notif("Trajectoire indisponible : exécutez « supabase-phase3-trajectoire.sql » dans Supabase.");
+      return true;
+    }
+    if (/localite/i.test(error.message || "")) {
+      notif("Localité indisponible : exécutez « supabase-phase4.sql » dans Supabase.");
       return true;
     }
     notif(`Enregistrement impossible (${quoi}) — ${error.message}`);
@@ -1018,6 +1316,7 @@ export default function MipPpaApp() {
   const [indEdit, setIndEdit] = useState(null);     // fenêtre Modifier l'indicateur
   const [docVu, setDocVu] = useState(null);          // visionneuse de document
   const [detailStat, setDetailStat] = useState(null); // "projets" | "apprenants" | "scores"
+  const [detailLocalite, setDetailLocalite] = useState(null); // nom d'une localité de la carte
   const lead = roleActif === "Administrateur lead";
   const P = PERMS[roleActif] || PERMS["En attente d'activation"];
   const monCompte = session;
@@ -1098,7 +1397,7 @@ export default function MipPpaApp() {
     rechargeTimer.current = setTimeout(executer, 600);
   };
   useEffect(() => () => { if (rechargeTimer.current) clearTimeout(rechargeTimer.current); }, []);
-  const [nouvelle, setNouvelle] = useState({ titre: "", entreprise: "", operateur: "", beneficiaire: "", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "Siège Abidjan", apprenants: 10, budget: 5000000, statut: "Planifiée" });
+  const [nouvelle, setNouvelle] = useState(PROJET_VIERGE());
   const [toast, setToast] = useState("");
   const notif = (m) => { setToast(m); setTimeout(() => setToast(""), 2500); };
   const [emailInvite, setEmailInvite] = useState("");
@@ -1196,6 +1495,20 @@ export default function MipPpaApp() {
       return { dim: d.nom, score: vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0 };
     }), [formationsVisibles, referentiel]);
 
+  /* Nombre de projets par localité, pour la carte du tableau de bord. On
+     repasse par « normaliserLocalite » plutôt que de lire le champ brut : un
+     projet créé avant la phase 4, ou dont la zone a changé depuis, n'en a pas
+     de valable, et il compte alors pour le chef-lieu de sa zone. Aucun projet
+     n'est ainsi absent de la carte. */
+  const projetsParLocalite = useMemo(() => {
+    const map = {};
+    formationsVisibles.forEach((f) => {
+      const l = normaliserLocalite(f.localite, f.region);
+      if (l) map[l] = (map[l] || 0) + 1;
+    });
+    return map;
+  }, [formationsVisibles]);
+
   const filiereData = useMemo(() => {
     const map = {};
     formationsVisibles.forEach((f) => {
@@ -1267,7 +1580,7 @@ export default function MipPpaApp() {
     if (editionId) {
       setFormations((fs) => fs.map((f) => f.id === editionId ? { ...f, ...nouvelle } : f));
       setEditionId(null); setFormOuvert(false);
-      setNouvelle({ titre: "", entreprise: "", operateur: "", beneficiaire: "", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "Siège Abidjan", apprenants: 10, budget: 5000000, statut: "Planifiée" });
+      setNouvelle(PROJET_VIERGE());
       notif("Formation mise à jour"); return;
     }
     const id = "f" + Date.now();
@@ -1278,16 +1591,16 @@ export default function MipPpaApp() {
       setSuivis((ss) => [...ss, { id: "s" + Date.now() + i, formationId: id, jalon: j, echeance: d.toISOString().slice(0, 10), statut: "programmé", note: "", docs: [] }]);
     });
     setFormOuvert(false);
-    setNouvelle({ titre: "", entreprise: "", operateur: "", beneficiaire: "", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "Siège Abidjan", apprenants: 10, budget: 5000000, statut: "Planifiée" });
+    setNouvelle(PROJET_VIERGE());
     notif("Formation créée — 3 suivis (M+3/M+6/M+12) planifiés");
   };
   const editerFormation = (f) => {
-    setNouvelle({ titre: f.titre, entreprise: f.entreprise, operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", secteurGrand: f.secteurGrand || grandSecteurDe(secteurs, f.filiere), filiere: f.filiere, domaine: f.domaine || "", region: normaliserRegion(f.region), apprenants: f.apprenants, budget: f.budget, statut: f.statut });
+    setNouvelle({ titre: f.titre, entreprise: f.entreprise, operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", secteurGrand: f.secteurGrand || grandSecteurDe(secteurs, f.filiere), filiere: f.filiere, domaine: f.domaine || "", region: normaliserRegion(f.region), localite: normaliserLocalite(f.localite, f.region), apprenants: f.apprenants, budget: f.budget, statut: f.statut });
     setEditionId(f.id); setFormOuvert(true); setPage("formations");
   };
 
   /* ---------- DONNEES COMMUNES AUX DEUX EXPORTS ---------- */
-  const colonnesExport = () => ["Projet", "Promoteur", "Secteur", "Matière première", "Domaine", "Zone",
+  const colonnesExport = () => ["Projet", "Promoteur", "Secteur", "Matière première", "Domaine", "Zone", "Localité",
     "Apprenants", "Budget (FCFA)", "Statut",
     ...referentiel.map((d) => `${d.nom} (%)`), "Score global (%)", "Niveau"];
 
@@ -1298,6 +1611,7 @@ export default function MipPpaApp() {
     return [
       f.titre, f.entreprise,
       f.secteurGrand || grandSecteurDe(secteurs, f.filiere), f.filiere, f.domaine || "", f.region,
+      normaliserLocalite(f.localite, f.region),
       Number(f.apprenants) || 0, Number(f.budget) || 0, f.statut,
       ...referentiel.map((d) => { const sc = scoreDimension(referentiel, d.id, f.notes); return sc === null ? null : Math.round(sc); }),
       g === null ? null : Math.round(g), niveau(g).txt,
@@ -1365,7 +1679,13 @@ export default function MipPpaApp() {
       });
 
       // -- Données --
-      const iApprenants = 6, iBudget = 7, iPremierScore = 9;   // index 0
+      /* Index déduits des en-têtes, et non écrits en dur : ils étaient figés
+         à 6 / 7 / 9, si bien qu'insérer une colonne — « Localité » — décalait
+         silencieusement les formats de nombre d'une colonne vers la gauche.
+         Un budget se serait affiché en pourcentage. */
+      const iApprenants = entetes.indexOf("Apprenants");
+      const iBudget = entetes.indexOf("Budget (FCFA)");
+      const iPremierScore = entetes.indexOf("Statut") + 1;   // index 0
       donnees.forEach((ligne) => {
         const r = ws.addRow(ligne);
         r.eachCell({ includeEmpty: true }, (c, numCol) => {
@@ -1384,7 +1704,7 @@ export default function MipPpaApp() {
       });
 
       // -- Largeurs de colonnes --
-      const largeurs = [42, 20, 18, 24, 22, 20, 12, 18, 13];
+      const largeurs = [42, 20, 18, 24, 22, 20, 16, 12, 18, 13];
       entetes.forEach((_, i) => { ws.getColumn(i + 1).width = largeurs[i] || 14; });
 
       if (donnees.length) {
@@ -1510,8 +1830,24 @@ export default function MipPpaApp() {
     doc.setTextColor(20, 20, 20); doc.setFont("helvetica", "bold"); doc.setFontSize(13);
     doc.text(doc.splitTextToSize(nettoyerPdf(f.titre), W - 2 * M), M, y); y += 7 * doc.splitTextToSize(nettoyerPdf(f.titre), W - 2 * M).length;
     doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(...gris);
-    doc.text(nettoyerPdf(`Promoteur : ${f.entreprise}  -  ${f.filiere}  -  ${f.region}`), M, y); y += 5.5;
-    if (f.operateur || f.beneficiaire) { doc.text(nettoyerPdf(`${f.operateur ? "Operateur : " + f.operateur : ""}${f.operateur && f.beneficiaire ? "  -  " : ""}${f.beneficiaire ? "Beneficiaire : " + f.beneficiaire : ""}`), M, y); y += 5.5; }
+    /* La zone seule ne situe pas le projet — l'antenne de Korhogo couvre
+       dix-sept departements. La localite l'accompagne donc ici aussi : la
+       fiche circule hors de l'application, sans la carte sous les yeux.
+       Ces deux lignes d'identification sont desormais decoupees comme le
+       titre au-dessus : posees d'un bloc, elles sortaient dans la marge au
+       lieu de passer a la ligne. Mesure jsPDF sur un cas reel du
+       portefeuille — « Promoteur : FrieslandCampina - Transformation des
+       fruits et legumes - Antenne Yamoussoukro » : 151 mm pour 178 mm
+       utiles, mais 185,2 mm des que la localite s'y ajoute. C'est bien la
+       mention ajoutee ici qui fait deborder, d'ou le decoupage. */
+    const ligne = (txt) => {
+      const lignes = doc.splitTextToSize(nettoyerPdf(txt), W - 2 * M);
+      doc.text(lignes, M, y);
+      y += 5.5 * lignes.length;
+    };
+    const locPdf = normaliserLocalite(f.localite, f.region);
+    ligne(`Promoteur : ${f.entreprise}  -  ${f.filiere}  -  ${f.region}${locPdf ? ` (${locPdf})` : ""}`);
+    if (f.operateur || f.beneficiaire) ligne(`${f.operateur ? "Operateur : " + f.operateur : ""}${f.operateur && f.beneficiaire ? "  -  " : ""}${f.beneficiaire ? "Beneficiaire : " + f.beneficiaire : ""}`);
     doc.text(nettoyerPdf(`${f.apprenants} apprenants  -  Budget : ${fmtFCFA(f.budget)}  -  Statut : ${f.statut}`), M, y); y += 9;
 
     // ------ Score global ------
@@ -1978,7 +2314,17 @@ export default function MipPpaApp() {
             margin-left: 256px !important; /* largeur sidebar : w-64 = 16rem */
           }
         }
+        /* ---------- CARTE DES ZONES DE COUVERTURE ----------
+           Les textes des cartes ne sont pas des éléments Tailwind : ils sont
+           posés dans le SVG, où « fill » remplace « color ». Ils ont donc
+           leurs propres règles, ici et dans le bloc du mode sombre.       */
+        .carte-etiquette{ fill:#1c1917; }
+        .carte-etiquette-discrete{ fill:#57534e; }
+        .carte-hors-zone{ fill:#f5f5f4; }
         /* ---------- MODE SOMBRE ---------- */
+        .sombre .carte-etiquette{ fill:#e7e5e4; }
+        .sombre .carte-etiquette-discrete{ fill:#94a3b8; }
+        .sombre .carte-hors-zone{ fill:#16222f; }
         .sombre{background:#0d1721!important;color:#d6d3d1!important}
         .sombre .bg-stone-100{background:#0d1721!important}
         .sombre .bg-white{background:#152230!important;color:#d6d3d1}
@@ -2238,6 +2584,41 @@ export default function MipPpaApp() {
               </ResponsiveContainer>
             </section>
 
+            {/* ---------- CARTE DU PORTEFEUILLE ----------
+                Le radar dit sur quoi les projets sont bons, la carte dit où
+                ils sont. Le champ « Zone » ne le disait pas : huit
+                implantations pour 108 départements, un projet « Antenne
+                Korhogo » pouvait aussi bien être à Korhogo qu'à Odienné, à
+                200 km de là. */}
+            <section className="bg-white rounded-2xl border border-stone-200 p-5">
+              <h3 className="font-bold">Implantation des projets</h3>
+              <p className="text-sm text-stone-500 mb-2">
+                Nombre de projets par localité. La taille de chaque pastille suit le nombre de projets, et sa couleur l'implantation de rattachement.
+              </p>
+              {Object.keys(projetsParLocalite).length ? (
+                <>
+                  <CarteNationale comptes={projetsParLocalite} sombre={sombre}
+                    surClic={(d) => setDetailLocalite(d.n)} />
+                  {/* Légende : les huit implantations, avec leur part du
+                      portefeuille. Une couleur sans total ne se lit pas. */}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3">
+                    {IMPLANTATIONS.map((z) => {
+                      const n = formationsVisibles.filter((f) => normaliserRegion(f.region) === z).length;
+                      return (
+                        <span key={z} className={"inline-flex items-center gap-1.5 text-xs " + (n ? "" : "opacity-40")}>
+                          <span className="inline-block w-3 h-3 rounded-sm shrink-0" style={{ background: couleurZone(z) }} />
+                          <span className="font-medium">{z}</span>
+                          <span className="text-stone-500">{n}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-stone-500 py-8 text-center">Aucun projet à localiser.</p>
+              )}
+            </section>
+
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
               <h3 className="font-bold">Score moyen par secteur</h3>
               <p className="text-sm text-stone-500 mb-2">Comparaison sectorielle.</p>
@@ -2315,7 +2696,7 @@ export default function MipPpaApp() {
               <button onClick={() => { setFormations(FORMATIONS_DEMO); setSuivis(SUIVIS_DEMO); notif("Données démo restaurées"); }}
                 className="text-sm text-stone-600 hover:text-stone-900" title="Restaurer les 3 projets de démonstration."><Icone n="rotation" t={14} /> Données démo</button>
             </div>
-            {P.creerFormation && <button onClick={() => { setEditionId(null); setNouvelle({ titre: "", entreprise: "", operateur: "", beneficiaire: "", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "Siège Abidjan", apprenants: 10, budget: 5000000, statut: "Planifiée" }); setFormOuvert(!formOuvert); }}
+            {P.creerFormation && <button onClick={() => { setEditionId(null); setNouvelle(PROJET_VIERGE()); setFormOuvert(!formOuvert); }}
               className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm" style={{ background: C.vertFonce }}>
               + Nouveau projet
             </button>}
@@ -2353,12 +2734,30 @@ export default function MipPpaApp() {
                   </select>
                 </label>
                 <label className="text-sm">Zone <span className="text-stone-400">(couverture FDFP)</span>
-                  <select value={normaliserRegion(nouvelle.region)} onChange={(e) => setNouvelle({ ...nouvelle, region: e.target.value })}
+                  {/* Changer de zone change le jeu de localités : celle qui
+                      était choisie n'appartient plus forcément à la nouvelle
+                      zone. On la ramène donc au chef-lieu, plutôt que de
+                      laisser un couple zone/localité incohérent. */}
+                  <select value={normaliserRegion(nouvelle.region)}
+                    onChange={(e) => setNouvelle({ ...nouvelle, region: e.target.value, localite: localiteParDefaut(e.target.value) })}
                     className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
                     {IMPLANTATIONS.map((r) => <option key={r}>{r}</option>)}
                     {/* Valeur historique hors nomenclature : conservée tant qu'elle n'est pas remplacée */}
                     {nouvelle.region && !IMPLANTATIONS.includes(normaliserRegion(nouvelle.region)) && <option>{normaliserRegion(nouvelle.region)}</option>}
                   </select>
+                </label>
+                <label className="text-sm">Localité <span className="text-stone-400">(lieu du projet)</span>
+                  <select value={normaliserLocalite(nouvelle.localite, nouvelle.region)}
+                    onChange={(e) => setNouvelle({ ...nouvelle, localite: e.target.value })}
+                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white"
+                    disabled={!localitesDe(nouvelle.region).length}>
+                    {localitesDe(nouvelle.region).map((l) => <option key={l}>{l}</option>)}
+                  </select>
+                  <div className="text-xs text-stone-500 mt-1">
+                    {localitesDe(nouvelle.region).length
+                      ? `${localitesDe(nouvelle.region).length} localités couvertes par ${normaliserRegion(nouvelle.region)}.`
+                      : "Zone hors nomenclature : aucune localité rattachée."}
+                  </div>
                 </label>
                 <label className="text-sm">Nombre d'apprenants
                   <input type="number" value={nouvelle.apprenants} onChange={(e) => setNouvelle({ ...nouvelle, apprenants: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" />
@@ -2393,7 +2792,7 @@ export default function MipPpaApp() {
                 <div key={f.id} className="hidden md:grid grid-cols-12 items-center px-5 py-4 border-b border-stone-50 hover:bg-stone-50">
                   <div className="col-span-6 pr-3 min-w-0">
                     <div className="font-semibold break-words">{f.titre}</div>
-                    <div className="text-sm text-stone-500 break-words">Promoteur : {f.entreprise}{f.operateur ? ` · Opérateur : ${f.operateur}` : ""} · {f.region}</div>
+                    <div className="text-sm text-stone-500 break-words">Promoteur : {f.entreprise}{f.operateur ? ` · Opérateur : ${f.operateur}` : ""} · {f.region}{normaliserLocalite(f.localite, f.region) ? ` (${normaliserLocalite(f.localite, f.region)})` : ""}</div>
                     {f.beneficiaire && <div className="text-xs text-stone-400 break-words">Bénéficiaire : {f.beneficiaire}</div>}
                   </div>
                   <div className="col-span-2 text-sm min-w-0"><div className="font-medium break-words">{f.secteurGrand || grandSecteurDe(secteurs, f.filiere)}</div><div className="text-stone-500 text-xs break-words">{f.filiere}{f.domaine ? " · " + f.domaine : ""}</div></div>
@@ -2413,7 +2812,7 @@ export default function MipPpaApp() {
                       <div className="font-semibold break-words min-w-0">{f.titre}</div>
                       <div className="shrink-0 flex flex-col items-end gap-1"><Badge score={scoreGlobal(referentiel, f.notes)} /><PuceStatut statut={f.statut} /><PuceCouverture referentiel={referentiel} notes={f.notes} /></div>
                     </div>
-                    <div className="text-sm text-stone-500 break-words mt-1">Promoteur : {f.entreprise}{f.operateur ? ` · Opérateur : ${f.operateur}` : ""} · {f.region}</div>
+                    <div className="text-sm text-stone-500 break-words mt-1">Promoteur : {f.entreprise}{f.operateur ? ` · Opérateur : ${f.operateur}` : ""} · {f.region}{normaliserLocalite(f.localite, f.region) ? ` (${normaliserLocalite(f.localite, f.region)})` : ""}</div>
                     {f.beneficiaire && <div className="text-xs text-stone-400 break-words mt-0.5">Bénéficiaire : {f.beneficiaire}</div>}
                     <div className="text-xs text-stone-500 break-words mt-1.5">
                       <span className="font-medium">{f.secteurGrand || grandSecteurDe(secteurs, f.filiere)}</span>{f.filiere ? " · " + f.filiere : ""}{f.domaine ? " · " + f.domaine : ""}
@@ -2454,7 +2853,7 @@ export default function MipPpaApp() {
               <div>
                 <div className="text-xs uppercase tracking-wider text-sky-200">Promoteur : {fEval.entreprise}</div>
                 <h2 className="text-2xl font-bold mt-1">{fEval.titre}</h2>
-                <div className="text-sm text-sky-100 mt-1">{libelleSecteur(fEval, secteurs)} · {fEval.region} · {fEval.apprenants} apprenants · {fmtFCFA(fEval.budget)}</div>
+                <div className="text-sm text-sky-100 mt-1">{libelleSecteur(fEval, secteurs)} · {fEval.region}{normaliserLocalite(fEval.localite, fEval.region) ? ` (${normaliserLocalite(fEval.localite, fEval.region)})` : ""} · {fEval.apprenants} apprenants · {fmtFCFA(fEval.budget)}</div>
                 {(fEval.operateur || fEval.beneficiaire) && <div className="text-xs text-sky-200 mt-1">{[fEval.operateur ? `Opérateur : ${fEval.operateur}` : "", fEval.beneficiaire ? `Bénéficiaire : ${fEval.beneficiaire}` : ""].filter(Boolean).join(" · ")}</div>}
               </div>
               <div className="text-right">
@@ -2533,6 +2932,39 @@ export default function MipPpaApp() {
                 );
               })}
             </section>
+
+            {/* ---------- SITUATION DU PROJET DANS SA ZONE ----------
+                La fiche annonçait « Antenne Korhogo » sans dire où, dans une
+                zone de 17 départements. La carte répond à la question que
+                l'en-tête laisse ouverte : quelle localité, parmi toutes
+                celles que l'implantation couvre. */}
+            {(() => {
+              const zone = normaliserRegion(fEval.region);
+              const loc = normaliserLocalite(fEval.localite, fEval.region);
+              const dep = DEP_PAR_LOCALITE[loc];
+              const voisines = localitesDe(zone);
+              if (!voisines.length) return null;
+              return (
+                <section className="bg-white rounded-2xl border border-stone-200 p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="font-bold">Situation du projet</h3>
+                      <p className="text-sm text-stone-500 break-words">
+                        Zone d'occupation de {zone} — {voisines.length} localités couvertes.
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-xs uppercase tracking-wide text-stone-500 font-semibold">Localité</div>
+                      <div className="text-lg font-bold" style={{ color: couleurZone(zone) }}>{loc || "—"}</div>
+                      {dep && <div className="text-xs text-stone-500">{dep.r}</div>}
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <CarteZone zone={zone} localite={loc} sombre={sombre} />
+                  </div>
+                </section>
+              );
+            })()}
 
             {/* ---------- TRAJECTOIRE ENTRE JALONS ----------
                 Le modèle annonce un suivi à M+3 / M+6 / M+12, mais l'application
@@ -3168,6 +3600,50 @@ export default function MipPpaApp() {
                   {detailStat === "scores" && <span className="font-semibold">Moyenne pondérée : {fmtPct(stats.moy)}</span>}
                 </div>
               </>)}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ---------- FENÊTRE : PROJETS D'UNE LOCALITÉ ----------
+          Une pastille de la carte porte un nombre ; cliquer dessus doit dire
+          lesquels, sinon la carte ne fait que compter. */}
+      {detailLocalite && (() => {
+        const dep = DEP_PAR_LOCALITE[detailLocalite];
+        const liste = formationsVisibles
+          .filter((f) => normaliserLocalite(f.localite, f.region) === detailLocalite)
+          .sort((a, b) => (scoreGlobal(referentiel, b.notes) ?? -1) - (scoreGlobal(referentiel, a.notes) ?? -1));
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(10,25,38,.55)" }}
+            onClick={(e) => e.target === e.currentTarget && setDetailLocalite(null)}>
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl p-5 md:p-7 page-anim max-h-[92vh] overflow-y-auto">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-bold break-words">{detailLocalite}</h3>
+                  <p className="text-sm text-stone-500 break-words">
+                    {dep ? `${dep.r} · rattachée à ${dep.z}.` : "Localité hors nomenclature."}
+                  </p>
+                </div>
+                <button onClick={() => setDetailLocalite(null)} className="text-stone-400 hover:text-stone-700 shrink-0" title="Fermer"><Icone n="fermer" t={18} /></button>
+              </div>
+              <div className="mt-5 border-t border-stone-100">
+                {liste.map((f) => (
+                  <button key={f.id} onClick={() => { setDetailLocalite(null); setEvalId(f.id); setPage("evaluation"); }}
+                    title="Ouvrir la fiche d'évaluation de ce projet."
+                    className="w-full text-left flex items-center justify-between gap-3 py-3 px-2 rounded-lg border-b border-stone-50 hover:bg-stone-50">
+                    <div className="min-w-0">
+                      <div className="font-medium break-words">{f.titre}</div>
+                      <div className="text-xs text-stone-500 break-words">
+                        {f.entreprise}{f.statut ? ` · ${f.statut}` : ""}
+                      </div>
+                    </div>
+                    <span className="shrink-0"><Badge score={scoreGlobal(referentiel, f.notes)} /></span>
+                  </button>
+                ))}
+              </div>
+              <div className="mt-4 pt-3 border-t border-stone-200 text-sm text-stone-500">
+                {liste.length} projet{liste.length > 1 ? "s" : ""} dans cette localité.
+              </div>
             </div>
           </div>
         );
