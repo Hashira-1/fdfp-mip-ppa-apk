@@ -637,9 +637,15 @@ function CadreAccueil({ enfants }) {
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-10"
       style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", background: "radial-gradient(120% 120% at 20% 0%, #14506f 0%, #0d2637 55%, #0a1d2a 100%)" }}>
       <style>{`@keyframes pageIn { from { opacity: 0; transform: translateY(10px);} to { opacity: 1; transform: none;} } .page-anim{animation:pageIn .32s ease-out both}`}</style>
-      <div className="flex items-center gap-3 mb-6">
+      {/* En-tête cadré sur la même largeur que la carte et que le bandeau de
+          certification (max-w-md). Sans cette limite, le sous-titre s'étirait
+          sur une seule ligne en grand écran : l'en-tête traversait tout
+          l'écran tandis que la carte restait étroite au centre, et les deux ne
+          semblaient plus appartenir au même bloc. Le rendu du téléphone —
+          compact et centré — devient ainsi celui de tous les écrans. */}
+      <div className="w-full max-w-md flex items-center gap-3 mb-6">
         <LogoFDFP h={34} />
-        <div>
+        <div className="min-w-0">
           <div className="text-white font-bold text-lg leading-tight">FDFP · MIP-PPA</div>
           <div className="text-sky-200 text-sm">Suivi des projets de formation de type apprentissage (emploi-qualification) dans les industries agroalimentaires</div>
         </div>
