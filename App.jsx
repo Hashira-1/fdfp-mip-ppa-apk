@@ -1,5 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { jsPDF } from "jspdf";
+/* jsPDF n'est plus importé au chargement : il ne sert qu'au moment où l'on
+   génère une fiche. Le laisser en import statique le faisait télécharger par
+   tout le monde, y compris sur l'écran de connexion. Chargé à la demande dans
+   « fichePDF », comme le sont déjà ExcelJS, mammoth et pdf-lib. */
 import { createClient } from "@supabase/supabase-js";
 import {
   ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -8,7 +11,10 @@ import {
 /* Le modèle de calcul vit dans son propre fichier — à plat, sans sous-dossier —
    pour être testable sans démarrer React (voir « calculs.test.js », npm test).
    L'application et les tests partagent ainsi exactement le même code. */
-import { COULEURS_NIVEAU, scoreDimension, scoreGlobal, couvertureModele, niveau } from "./calculs.js";
+import {
+  COULEURS_NIVEAU, scoreDimension, scoreGlobal, couvertureModele, margeSeuil,
+  indicateursNonNotes, niveau, JALONS, instantane, ajouterInstantane, trajectoire,
+} from "./calculs.js";
 
 /* ================================================================
    FDFP · MIP-PPA — Suivi des projets de formation de type apprentissage dans l'agro-industrie
@@ -860,8 +866,20 @@ export default function MipPpaApp() {
   const [chargementData, setChargementData] = useState(true);
 
   // --- Ecriture Supabase : projets (upsert individuel) ---
-  const projetVersRow = (f) => ({ id: f.id, titre: f.titre || "", promoteur: f.entreprise || f.promoteur || "", operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", secteur: f.filiere || f.secteur || "", secteur_grand: f.secteurGrand || "", domaine: f.domaine || "", region: f.region || "", apprenants: Number(f.apprenants) || 0, budget: Number(f.budget) || 0, statut: f.statut || "Planifiée", notes: f.notes || {}, maj_le: new Date().toISOString() });
-  const rowVersProjet = (r) => ({ id: r.id, titre: r.titre, entreprise: r.promoteur, operateur: r.operateur, beneficiaire: r.beneficiaire, filiere: r.secteur, secteurGrand: r.secteur_grand || "", domaine: r.domaine || "", region: normaliserRegion(r.region), apprenants: r.apprenants, budget: r.budget, statut: r.statut, notes: r.notes || {} });
+  /* « historique » : instantanés datés de l'évaluation (phase 3). La colonne
+     peut ne pas exister si le script « supabase-phase3-trajectoire.sql » n'a
+     pas encore été exécuté — d'où le repli sur un tableau vide des deux côtés,
+     qui laisse l'application fonctionner sans la trajectoire. */
+  const projetVersRow = (f) => {
+    const row = { id: f.id, titre: f.titre || "", promoteur: f.entreprise || f.promoteur || "", operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", secteur: f.filiere || f.secteur || "", secteur_grand: f.secteurGrand || "", domaine: f.domaine || "", region: f.region || "", apprenants: Number(f.apprenants) || 0, budget: Number(f.budget) || 0, statut: f.statut || "Planifiée", notes: f.notes || {}, maj_le: new Date().toISOString() };
+    /* « historique » n'est envoyé que s'il contient quelque chose : tant qu'aucun
+       jalon n'est figé, l'application écrit exactement les mêmes colonnes
+       qu'avant et continue de fonctionner sur une base où la migration de la
+       phase 3 n'a pas encore été passée. */
+    if (Array.isArray(f.historique) && f.historique.length) row.historique = f.historique;
+    return row;
+  };
+  const rowVersProjet = (r) => ({ id: r.id, titre: r.titre, entreprise: r.promoteur, operateur: r.operateur, beneficiaire: r.beneficiaire, filiere: r.secteur, secteurGrand: r.secteur_grand || "", domaine: r.domaine || "", region: normaliserRegion(r.region), apprenants: r.apprenants, budget: r.budget, statut: r.statut, notes: r.notes || {}, historique: Array.isArray(r.historique) ? r.historique : [] });
   const suiviVersRow = (s) => ({ id: s.id, projet_id: s.formationId, jalon: s.jalon, echeance: s.echeance || null, statut: s.statut || "programmé", note: s.note || "", docs: s.docs || [], maj_le: new Date().toISOString() });
   const rowVersSuivi = (r) => ({ id: r.id, formationId: r.projet_id, jalon: r.jalon, echeance: r.echeance, statut: r.statut, note: r.note || "", docs: r.docs || [] });
 
@@ -893,6 +911,13 @@ export default function MipPpaApp() {
   const signalerEchec = (error, quoi) => {
     if (!error) return false;
     console.warn(quoi, error.message);
+    /* Cas particulier fréquent : la colonne « historique » (phase 3) n'existe
+       pas encore. Le message brut de PostgREST est incompréhensible pour un
+       agent ; on lui dit quoi faire. */
+    if (/historique/i.test(error.message || "")) {
+      notif("Trajectoire indisponible : exécutez « supabase-phase3-trajectoire.sql » dans Supabase.");
+      return true;
+    }
     notif(`Enregistrement impossible (${quoi}) — ${error.message}`);
     return true;
   };
@@ -970,6 +995,7 @@ export default function MipPpaApp() {
     notif("Rôle mis à jour"); chargerComptes();
   };
   const [evalId, setEvalId] = useState(null);
+  const [jalonAFiger, setJalonAFiger] = useState(JALONS[0]);   // trajectoire
   const [recherche, setRecherche] = useState("");
   const [formOuvert, setFormOuvert] = useState(false);
   const [menuCompte, setMenuCompte] = useState(false);
@@ -1137,11 +1163,30 @@ export default function MipPpaApp() {
     const moy = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
     const alertesScore = formationsVisibles.filter((f) => { const s = scoreGlobal(referentiel, f.notes); return s !== null && s < 40; });
     const enRetard = suivis.filter((s) => s.statut === "programmé" && joursRestants(s.echeance) < 0);
+    /* Trous d'évaluation : un jalon dont l'échéance est dépassée alors que des
+       indicateurs restent à noter. Distinct du suivi en retard — celui-ci
+       signale une démarche non faite, celui-là un score qui ne veut encore
+       rien dire. Un projet peut avoir tous ses suivis à jour et rester
+       inévaluable, ou l'inverse. */
+    const trousEval = formationsVisibles.map((f) => {
+      const jalonsDepasses = suivis.filter((s) => s.formationId === f.id
+        && s.statut === "programmé" && joursRestants(s.echeance) < 0);
+      if (!jalonsDepasses.length) return null;
+      const manquants = indicateursNonNotes(referentiel, f.notes);
+      if (!manquants.length) return null;
+      return {
+        formation: f,
+        manquants,
+        jalons: jalonsDepasses.map((s) => s.jalon).join(", "),
+        couverture: couvertureModele(referentiel, f.notes),
+      };
+    }).filter(Boolean);
     return {
       nb: formationsVisibles.length,
       apprenants: formationsVisibles.reduce((a, f) => a + Number(f.apprenants || 0), 0),
       budget: formationsVisibles.reduce((a, f) => a + Number(f.budget || 0), 0),
-      moy, alertes: alertesScore.length + enRetard.length, alertesScore, enRetard,
+      moy, alertes: alertesScore.length + enRetard.length + trousEval.length,
+      alertesScore, enRetard, trousEval,
     };
   }, [formationsVisibles, suivis, referentiel]);
 
@@ -1404,6 +1449,7 @@ export default function MipPpaApp() {
   };
   const fichePDF = async (f) => {
     const g = scoreGlobal(referentiel, f.notes);
+    const { jsPDF } = await import("jspdf");
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const W = 210, M = 16;
     let y = 0;
@@ -1448,7 +1494,37 @@ export default function MipPpaApp() {
             + (c.pct < 100 ? " - evaluation partielle, score non comparable a une evaluation complete." : "")
           : "Aucun indicateur note a ce jour."),
         W / 2, y, { align: "center" });
-      y += 8;
+      y += 5;
+    }
+    /* Marge au palier. Le lecteur du PDF n'a pas l'application sous les yeux :
+       il voit « 59 % - Moyen » sans savoir que 0,6 point le separe du niveau
+       superieur. La mention est donc reprise ici, avec le maillon faible, pour
+       que la fiche imprimee porte l'information d'action et pas seulement le
+       verdict. Silence au-dela de 5 points : le palier n'est plus en jeu. */
+    {
+      const m = margeSeuil(referentiel, f.notes);
+      const faible = referentiel
+        .map((d) => ({ nom: d.nom, s: scoreDimension(referentiel, d.id, f.notes) }))
+        .filter((x) => x.s !== null)
+        .sort((a, b) => a.s - b.s)[0];
+      const pts = (v) => `${v.toFixed(1).replace(".", ",")} point${v >= 2 ? "s" : ""}`;
+      let phrase = null;
+      if (m && m.versLeHaut !== null && m.versLeHaut <= 5) {
+        phrase = `A ${pts(m.versLeHaut)} du niveau ${niveau(m.seuilHaut).txt}`
+          + (m.crans ? ` - ${m.crans} cran${m.crans > 1 ? "s" : ""} sur un indicateur ${m.crans > 1 ? "suffisent" : "suffit"}.` : ".");
+      } else if (m && m.depuisLeBas !== null && m.depuisLeBas <= 5 && m.depuisLeBas > 0) {
+        phrase = `Seulement ${pts(m.depuisLeBas)} au-dessus du seuil : niveau fragile.`;
+      }
+      if (phrase) {
+        if (faible) phrase += ` Maillon faible : ${faible.nom} (${fmtPct(faible.s)}).`;
+        doc.setFont("helvetica", "bold"); doc.setFontSize(8.5); doc.setTextColor(150, 90, 10);
+        // Repli sur plusieurs lignes : un nom de dimension renomme par le FDFP
+        // peut allonger la phrase au-dela de la largeur utile.
+        const lignes = doc.splitTextToSize(nettoyerPdf(phrase), W - 2 * M);
+        lignes.forEach((l) => { doc.text(l, W / 2, y, { align: "center" }); y += 4.2; });
+        y += 0.8;
+      }
+      y += 3;
     }
 
     // ------ Tableau des dimensions ------
@@ -1477,8 +1553,15 @@ export default function MipPpaApp() {
        après. 45 mm est un compromis : discret, mais assez large pour que le QR
        code reste lisible à l'impression. */
     const BAS_CONTENU = 270;   // le pied occupe désormais les 15 derniers mm
-    const pied = () => {
+    /* « total » permet d'annoncer le bon nombre de pages quand des annexes PDF
+       seront fusionnées ensuite : jsPDF ne les connaît pas encore, et la fiche
+       affichait « Page 1 / 2 » sur un document qui en comptait cinq. */
+    let piedPose = false;   // interdit tout second passage : il se superposerait
+    const pied = (total) => {
+      if (piedPose) return;
+      piedPose = true;
       const pages = doc.getNumberOfPages();
+      const nbTotal = total || pages;
       const L = 45, H = (L * 181) / 768;   // ratio natif du bandeau (768x181)
       for (let p = 1; p <= pages; p++) {
         doc.setPage(p);
@@ -1486,7 +1569,7 @@ export default function MipPpaApp() {
         doc.setDrawColor(...orange); doc.setLineWidth(0.6); doc.line(M, 285, W - M, 285);
         doc.setFontSize(7.5); doc.setTextColor(...gris); doc.setFont("helvetica", "normal");
         doc.text(nettoyerPdf("FDFP - Fonds de Developpement de la Formation Professionnelle - Modele MIP-PPA - PFE ESA/INP-HB"), M, 290);
-        doc.text(nettoyerPdf(`Page ${p} / ${pages} - Edite le ${new Date().toLocaleDateString("fr-FR")}`), W - M, 290, { align: "right" });
+        doc.text(nettoyerPdf(`Page ${p} / ${nbTotal} - Edite le ${new Date().toLocaleDateString("fr-FR")}`), W - M, 290, { align: "right" });
       }
     };
     const sautSiBesoin = (h) => { if (y + h > BAS_CONTENU) { doc.addPage(); y = 20; } };
@@ -1600,49 +1683,90 @@ export default function MipPpaApp() {
       } catch (e) { /* extraction indisponible (hors ligne) : l'encart descriptif reste */ }
     }
 
-    /* Finalisation unique du pied de page. Elle doit avoir lieu ICI, avant que
-       « doc.output() » ne fige le document pour la fusion des annexes — et une
-       seule fois : le second appel qui suivait la bifurcation redessinait le
-       bandeau et les mentions par-dessus les premiers. */
-    pied();
     // ------ Annexe : fusion des PDF joints, page a page ------
     const pdfsJoints = [];
     suivisF.forEach((s) => (s.docs || []).forEach((d) => {
       if (((d.type || "").includes("pdf") || /\.pdf$/i.test(d.nom)) && d.data) pdfsJoints.push({ jalon: s.jalon, d });
     }));
+    const nomFichier = `Fiche_MIP-PPA_${f.entreprise.replace(/\s+/g, "_")}.pdf`;
+    const MENTION = "FDFP - Fonds de Developpement de la Formation Professionnelle - Modele MIP-PPA - PFE ESA/INP-HB";
+    const LE_JOUR = new Date().toLocaleDateString("fr-FR");
+
     if (pdfsJoints.length) {
       try {
-        // Idem : pdf-lib vient du bundle local, l'annexe PDF ne dépend plus du réseau.
-        const { PDFDocument } = await import("pdf-lib");
-        // On recupere le PDF genere par jsPDF, puis on y ajoute les pages des PDF joints
-        const base = await PDFDocument.load(doc.output("arraybuffer"));
+        // pdf-lib vient du bundle local : l'annexe ne dépend pas du réseau.
+        const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
+
+        /* Les annexes sont ouvertes AVANT que le pied ne soit posé : leur
+           nombre de pages entre dans le total. Sans cela, jsPDF numérotait sur
+           les seules pages qu'il connaissait et une fiche de cinq pages
+           annonçait « Page 1 / 2 ». */
+        const annexes = [];
         for (const { jalon, d } of pdfsJoints) {
           try {
             const octets = Uint8Array.from(atob(d.data.split(",")[1]), (c) => c.charCodeAt(0));
-            const ext = await PDFDocument.load(octets);
-            // page de garde de l'annexe
-            const garde = base.addPage();
-            const { width, height } = garde.getSize();
-            garde.drawText(nettoyerPdf(`Annexe - ${jalon} - ${d.nom}`), { x: 40, y: height - 60, size: 13 });
-            garde.drawText(nettoyerPdf("Document joint dans la plateforme MIP-PPA"), { x: 40, y: height - 80, size: 9 });
-            const pages = await base.copyPages(ext, ext.getPageIndices());
-            pages.forEach((p) => base.addPage(p));
-          } catch (e) { /* PDF joint illisible : on ignore, l'encart descriptif reste */ }
+            annexes.push({ jalon, d, ext: await PDFDocument.load(octets) });
+          } catch (e) { /* PDF joint illisible : ignoré, l'encart descriptif reste */ }
         }
+        const pagesFiche = doc.getNumberOfPages();
+        // chaque annexe ajoute sa page de garde, puis ses propres pages
+        const pagesAnnexes = annexes.reduce((n, a) => n + 1 + a.ext.getPageCount(), 0);
+        pied(pagesFiche + pagesAnnexes);
+
+        const base = await PDFDocument.load(doc.output("arraybuffer"));
+        const police = await base.embedFont(StandardFonts.Helvetica);
+        for (const { jalon, d, ext } of annexes) {
+          const garde = base.addPage();
+          const { height } = garde.getSize();
+          garde.drawText(nettoyerPdf(`Annexe - ${jalon} - ${d.nom}`), { x: 40, y: height - 60, size: 13, font: police });
+          garde.drawText(nettoyerPdf("Document joint dans la plateforme MIP-PPA"), { x: 40, y: height - 80, size: 9, font: police });
+          const pages = await base.copyPages(ext, ext.getPageIndices());
+          pages.forEach((p) => base.addPage(p));
+        }
+
+        /* Pied des pages d'annexe. Elles proviennent de documents externes :
+           jsPDF ne les a jamais vues, elles n'ont donc ni filet, ni mentions,
+           ni numéro. Les positions sont comptées depuis le BAS de page — pdf-lib
+           a son origine en bas à gauche, et une annexe peut ne pas être en A4. */
+        const MM = 2.8346;                    // 1 mm en points PDF
+        const total = base.getPageCount();
+        let bandeau = null;
+        try { bandeau = await base.embedPng(CERTIFICATION_FDFP); } catch (e) { /* sans bandeau */ }
+        base.getPages().forEach((pg, i) => {
+          if (i < pagesFiche) return;         // déjà traitées par jsPDF
+          const { width } = pg.getSize();
+          if (bandeau) {
+            const L = 45 * MM, H = (L * 181) / 768;
+            pg.drawImage(bandeau, { x: (width - L) / 2, y: 13.5 * MM, width: L, height: H });
+          }
+          pg.drawLine({
+            start: { x: M * MM, y: 12 * MM }, end: { x: width - M * MM, y: 12 * MM },
+            thickness: 0.6 * MM, color: rgb(242 / 255, 163 / 255, 60 / 255),
+          });
+          const droite = nettoyerPdf(`Page ${i + 1} / ${total} - Edite le ${LE_JOUR}`);
+          const gris01 = rgb(0.35, 0.35, 0.35);
+          pg.drawText(nettoyerPdf(MENTION), { x: M * MM, y: 7 * MM, size: 7.5, font: police, color: gris01 });
+          pg.drawText(droite, {
+            x: width - M * MM - police.widthOfTextAtSize(droite, 7.5),
+            y: 7 * MM, size: 7.5, font: police, color: gris01,
+          });
+        });
+
         const octetsFinal = await base.save();
         const blob = new Blob([octetsFinal], { type: "application/pdf" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a"); a.href = url;
-        a.download = `Fiche_MIP-PPA_${f.entreprise.replace(/\s+/g, "_")}.pdf`; a.click();
+        a.download = nomFichier; a.click();
         URL.revokeObjectURL(url);
-        notif("Fiche PDF (avec annexes) téléchargée");
+        notif(`Fiche PDF (${total} pages, annexes incluses) téléchargée`);
         return;
       } catch (e) {
-        // pdf-lib indisponible (hors ligne) : on retombe sur le PDF simple
+        // pdf-lib indisponible : on retombe sur la fiche seule, sans annexes
+        console.warn("Fusion des annexes impossible :", e && e.message);
       }
     }
-    // Le pied a déjà été posé plus haut : ne rien redessiner ici.
-    doc.save(`Fiche_MIP-PPA_${f.entreprise.replace(/\s+/g, "_")}.pdf`);
+    pied();                       // fiche seule : le total est le nombre de pages jsPDF
+    doc.save(nomFichier);
     notif("Fiche PDF téléchargée");
   };
 
@@ -2314,6 +2438,45 @@ export default function MipPpaApp() {
                     </div>
                   );
                 })()}
+                {/* Distance au palier voisin, quand elle est faible. Un score
+                    de 59,6 affiché « Moyen » et un score de 60,1 affiché
+                    « Satisfaisant » décrivent des projets presque identiques :
+                    la frontière est conventionnelle. On l'affiche donc en crans
+                    — l'unité dans laquelle l'évaluateur agit réellement — et
+                    accompagnée du maillon faible, pour que l'attention porte
+                    sur la dimension à redresser et non sur le seuil à franchir.
+                    Au-delà de 5 points, le palier n'est plus en jeu : rien. */}
+                {(() => {
+                  const m = margeSeuil(referentiel, fEval.notes);
+                  if (!m) return null;
+                  const faible = referentiel
+                    .map((d) => ({ nom: d.nom, s: scoreDimension(referentiel, d.id, fEval.notes) }))
+                    .filter((x) => x.s !== null)
+                    .sort((a, b) => a.s - b.s)[0];
+                  const rappel = faible
+                    ? <span className="text-sky-200"> · maillon faible : {faible.nom} ({fmtPct(faible.s)})</span>
+                    : null;
+                  // Pluriel à partir de 2 : « 0,6 point » mais « 3,1 points ».
+                  const pts = (v) => `${v.toFixed(1).replace(".", ",")} point${v >= 2 ? "s" : ""}`;
+                  if (m.versLeHaut !== null && m.versLeHaut <= 5) {
+                    return (
+                      <div className="text-xs mt-1.5 text-amber-200">
+                        À <strong>{pts(m.versLeHaut)}</strong> du niveau {niveau(m.seuilHaut).txt}
+                        {m.crans ? ` — ${m.crans} cran${m.crans > 1 ? "s" : ""} sur un indicateur ${m.crans > 1 ? "suffisent" : "suffit"}.` : "."}
+                        {rappel}
+                      </div>
+                    );
+                  }
+                  if (m.depuisLeBas !== null && m.depuisLeBas <= 5 && m.depuisLeBas > 0) {
+                    return (
+                      <div className="text-xs mt-1.5 text-amber-200">
+                        Seulement <strong>{pts(m.depuisLeBas)}</strong> au-dessus du seuil : niveau fragile.
+                        {rappel}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             </section>
 
@@ -2330,6 +2493,92 @@ export default function MipPpaApp() {
                   </div>
                 );
               })}
+            </section>
+
+            {/* ---------- TRAJECTOIRE ENTRE JALONS ----------
+                Le modèle annonce un suivi à M+3 / M+6 / M+12, mais l'application
+                n'a longtemps gardé qu'un seul jeu de notes : chaque notation
+                écrasait la précédente et aucune progression n'était lisible.
+                Figer un jalon en conserve une photographie datée. */}
+            <section className="bg-white rounded-2xl border border-stone-200 p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-bold">Trajectoire du score</h3>
+                  <p className="text-sm text-stone-500">Évolution de l'évaluation d'un jalon à l'autre.</p>
+                </div>
+                {!P.lectureSeule && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <select value={jalonAFiger} onChange={(e) => setJalonAFiger(e.target.value)}
+                      className="text-sm border border-stone-200 rounded-lg px-2.5 py-1.5 bg-white"
+                      title="Jalon auquel rattacher cette photographie de l'évaluation.">
+                      {JALONS.map((j) => <option key={j} value={j}>{j}</option>)}
+                    </select>
+                    <button
+                      onClick={() => {
+                        const snap = instantane(referentiel, fEval.notes, jalonAFiger);
+                        if (snap.score === null) { notif("Aucun indicateur noté : rien à figer."); return; }
+                        const deja = (fEval.historique || []).some((h) => h.jalon === jalonAFiger);
+                        if (deja && !window.confirm(`Le jalon ${jalonAFiger} est déjà figé. Le remplacer par l'évaluation actuelle ?`)) return;
+                        setFormations((fs) => fs.map((x) => x.id === fEval.id
+                          ? { ...x, historique: ajouterInstantane(x.historique, snap) } : x));
+                        notif(`Évaluation figée au jalon ${jalonAFiger}`);
+                      }}
+                      className="text-sm font-semibold text-white px-3.5 py-1.5 rounded-lg"
+                      style={{ background: C.vert }}
+                      title="Enregistrer une photographie datée du score actuel, rattachée à ce jalon.">
+                      Figer l'évaluation
+                    </button>
+                  </div>
+                )}
+              </div>
+              {(() => {
+                const t = trajectoire(fEval.historique);
+                if (!t.length) {
+                  return (
+                    <p className="text-sm text-stone-400 mt-4">
+                      Aucun jalon figé pour ce projet. Le score affiché est celui de la saisie en cours :
+                      rien n'indique encore à quelle étape du suivi il correspond.
+                    </p>
+                  );
+                }
+                return (
+                  <div className="mt-4 overflow-x-auto">
+                    <table className="w-full text-sm min-w-[30rem]">
+                      <thead>
+                        <tr className="text-xs uppercase tracking-wide text-stone-500 border-b border-stone-200">
+                          <th className="text-left font-semibold py-2">Jalon</th>
+                          <th className="text-left font-semibold py-2">Date</th>
+                          <th className="text-right font-semibold py-2">Score</th>
+                          <th className="text-right font-semibold py-2">Évolution</th>
+                          <th className="text-right font-semibold py-2">Couverture</th>
+                          <th className="text-left font-semibold py-2 pl-4">Niveau</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {t.map((p) => (
+                          <tr key={p.jalon} className="border-b border-stone-50">
+                            <td className="py-2.5 font-semibold">{p.jalon}</td>
+                            <td className="py-2.5 text-stone-500">{p.date}</td>
+                            <td className="py-2.5 text-right font-semibold">{fmtPct(p.score)}</td>
+                            <td className="py-2.5 text-right font-medium"
+                              style={{ color: p.sens === "hausse" ? C.excellent : p.sens === "baisse" ? C.insuffisant : "#78716c" }}>
+                              {p.delta === null ? "—"
+                                : `${p.delta > 0 ? "+" : p.delta < 0 ? "−" : "="} ${Math.abs(p.delta).toFixed(1).replace(".", ",")} pt`}
+                            </td>
+                            <td className="py-2.5 text-right text-stone-500">{Math.round(p.couverture)} %</td>
+                            <td className="py-2.5 pl-4"><Badge score={p.score} /></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {t.length === 1 && (
+                      <p className="text-xs text-stone-400 mt-3">
+                        Un seul jalon figé : l'évolution apparaîtra dès le suivant.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
             </section>
 
             {referentiel.map((d) => {
@@ -2618,6 +2867,27 @@ export default function MipPpaApp() {
                   </section>
                 );
               })}
+              {/* Trou d'évaluation : l'échéance est passée et le score ne
+                  repose pas encore sur tout le modèle. C'est l'alerte la plus
+                  utile au FDFP — un score partiel se lit comme un score
+                  complet tant que personne ne le signale. */}
+              {stats.trousEval.map((t) => (
+                <section key={"trou-" + t.formation.id} className="bg-white rounded-2xl border-l-4 border border-stone-200 p-5" style={{ borderLeftColor: C.gold }}>
+                  <div className="flex justify-between items-start gap-3 flex-wrap">
+                    <div className="min-w-0">
+                      <div className="font-bold break-words">Évaluation incomplète — {t.formation.titre}</div>
+                      <div className="text-sm text-stone-500 break-words">
+                        {t.formation.entreprise} · échéance {t.jalons} dépassée ·{" "}
+                        <strong>{t.manquants.length} indicateur{t.manquants.length > 1 ? "s" : ""}</strong> restant à noter sur {t.couverture.indicateurs}
+                      </div>
+                      <div className="text-xs text-stone-400 mt-1">
+                        Couverture actuelle : {Math.round(t.couverture.pct)} % du modèle — le score n'est pas comparable à celui d'un projet évalué en entier.
+                      </div>
+                    </div>
+                    <button onClick={() => { setEvalId(t.formation.id); setPage("evaluation"); }} className="text-sm font-medium hover:underline shrink-0" style={{ color: C.vert }}>Compléter l'évaluation →</button>
+                  </div>
+                </section>
+              ))}
             </>)
           )}
 
