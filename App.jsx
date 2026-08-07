@@ -5,6 +5,10 @@ import {
   ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   Radar, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
 } from "recharts";
+/* Le modèle de calcul vit dans son propre fichier — à plat, sans sous-dossier —
+   pour être testable sans démarrer React (voir « calculs.test.js », npm test).
+   L'application et les tests partagent ainsi exactement le même code. */
+import { COULEURS_NIVEAU, scoreDimension, scoreGlobal, couvertureModele, niveau } from "./calculs.js";
 
 /* ================================================================
    FDFP · MIP-PPA — Suivi des projets de formation de type apprentissage dans l'agro-industrie
@@ -299,33 +303,15 @@ const DESCR_NAV = {
 const C = {
   sidebar: "#0d2233", sidebarActive: "#1d3d57", gold: "#f2a33c",
   vert: "#1d6fa8", vertFonce: "#0e3c60", vertClair: "#2280bf",
-  excellent: "#16a34a", satisfaisant: "#1d6fa8", dev: "#ef8f1c", insuffisant: "#dc2626",
+  // Les quatre couleurs de palier viennent du modèle : une seule source.
+  ...COULEURS_NIVEAU,
 };
 
 // ----------------- CALCULS --------------------------------------
 const noteLabel = (n) => (n === 4 ? "Excellent" : n === 3 ? "Bon" : n === 2 ? "Partiel" : n === 1 ? "Faible" : n === 0 ? "Insuffisant" : "—");
 
-function scoreDimension(referentiel, dimId, notes) {
-  const dim = referentiel.find((d) => d.id === dimId);
-  const vals = dim.indicateurs.map((i) => notes[i.id]).filter((v) => v !== undefined && v !== null);
-  if (!vals.length) return null;
-  return (vals.reduce((a, b) => a + b, 0) / vals.length / 4) * 100;
-}
-function scoreGlobal(referentiel, notes) {
-  let tot = 0, poidsTot = 0;
-  referentiel.forEach((d) => {
-    const s = scoreDimension(referentiel, d.id, notes);
-    if (s !== null) { tot += s * d.poids; poidsTot += d.poids; }
-  });
-  return poidsTot ? tot / poidsTot : null;
-}
-function niveau(score) {
-  if (score === null) return { txt: "Non évalué", bg: "#e7e5e4", fg: "#57534e" };
-  if (score >= 80) return { txt: "Excellent", bg: C.excellent, fg: "#fff" };
-  if (score >= 60) return { txt: "Satisfaisant", bg: C.satisfaisant, fg: "#fff" };
-  if (score >= 40) return { txt: "Moyen", bg: C.dev, fg: "#fff" };
-  return { txt: "Insuffisant", bg: C.insuffisant, fg: "#fff" };
-}
+/* scoreDimension, scoreGlobal, couvertureModele et niveau sont importés depuis
+   « calculs.js » : le modèle est isolé pour être testé (npm test). */
 const fmtPct = (v) => (v === null ? "—" : `${Math.round(v)} %`);
 /* Montants : regroupement par tranches de trois chiffres — milliers, millions,
    milliards… — pour que l'ordre de grandeur se lise d'un coup d'œil.
@@ -389,10 +375,21 @@ const CERTIFICATION_FDFP = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAwAAAA
 // Logo officiel du FDFP (image incorporée au code — aucun fichier externe requis)
 const LOGO_FDFP = "data:image/jpeg;base64,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";
 
+/* Logo institutionnel, sur sa plaque blanche.
+   Deux protections contre l'écrasement, qui déformait le logo dès que la place
+   manquait — il est passé du ratio natif 2,22 (420 × 189) à 0,83 sur l'écran
+   de connexion, où le long sous-titre voisin comprimait le cadre :
+   — « shrink-0 » : dans un conteneur flex, le cadre ne cède plus sa largeur au
+     texte qui l'accompagne ;
+   — « maxWidth: none » : Tailwind impose « img { max-width: 100% } » via
+     Preflight. Combiné à une hauteur fixe, ce plafond écrase l'image en
+     largeur au lieu de la réduire proportionnellement. */
 function LogoFDFP({ h = 32 }) {
   return (
-    <div className="cadre-logo bg-white rounded-lg px-2 py-1 flex items-center justify-center shadow-sm" style={{ height: h + 10 }}>
-      <img src={LOGO_FDFP} alt="FDFP — Fonds de Développement de la Formation Professionnelle" style={{ height: h, width: "auto" }} />
+    <div className="cadre-logo bg-white rounded-lg px-2 py-1 flex items-center justify-center shadow-sm shrink-0"
+      style={{ height: h + 10 }}>
+      <img src={LOGO_FDFP} alt="FDFP — Fonds de Développement de la Formation Professionnelle"
+        style={{ height: h, width: "auto", maxWidth: "none", objectFit: "contain" }} />
     </div>
   );
 }
@@ -423,6 +420,22 @@ function PuceStatut({ statut }) {
   return (
     <span className="text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap shrink-0" style={{ background: t.bg, color: t.fg }}>
       {statut || "Statut non défini"}
+    </span>
+  );
+}
+/* Avertissement de couverture partielle. Un score calculé sur 20 % du modèle
+   s'affiche « Excellent » exactement comme un score complet : sans cette
+   mention, rien ne distingue à l'écran une évaluation de conception d'une
+   évaluation menée jusqu'à M+12. Teintes d'alerte douce, volontairement
+   distinctes du niveau de performance et du statut. */
+function PuceCouverture({ referentiel, notes }) {
+  const c = couvertureModele(referentiel, notes);
+  if (!c.notees || c.pct >= 100) return null;
+  return (
+    <span className="text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap shrink-0"
+      style={{ background: "#fdf0da", color: "#8a5a10" }}
+      title={`Évaluation partielle : le score ne porte que sur ${Math.round(c.pct)} % du modèle MIP-PPA (${c.notees} indicateurs notés sur ${c.indicateurs}). Il n'est pas comparable au score d'un projet évalué en entier.`}>
+      Partiel · {Math.round(c.pct)} %
     </span>
   );
 }
@@ -632,6 +645,17 @@ function CadreAccueil({ enfants }) {
         </div>
       </div>
       {enfants}
+      {/* Bandeau de certification, comme au pied de l'application une fois
+          connecté : il est ainsi présent dès l'écran de chargement et sur
+          l'écran de connexion, c'est-à-dire dès le premier regard porté sur
+          la plateforme. Plaque blanche obligatoire — l'image est fournie sur
+          fond blanc et découperait un rectangle disgracieux sur le dégradé.
+          Largeur alignée sur celle des cartes (max-w-md). */}
+      <footer className="w-full max-w-md mt-7 bg-white rounded-2xl p-3 flex justify-center"
+        style={{ border: "1px solid rgba(255,255,255,.20)", boxShadow: "0 2px 10px rgba(0,0,0,.18)" }}>
+        <img src={CERTIFICATION_FDFP} className="w-full h-auto block"
+          alt="FDFP — Fonds de Développement de la Formation Professionnelle. Certifié ISO 9001 version 2015 par Bureau Norme Audit, référence BNA/SMQ-FDCS03112513, sur tous nos processus et tous nos sites." />
+      </footer>
     </div>
   );
 }
@@ -838,31 +862,69 @@ export default function MipPpaApp() {
   const DELAI_ECHO = 2500;
   const marquerEcritureLocale = () => { derniereEcritureLocale.current = Date.now(); };
 
+  /* État courant tenu dans une ref. Une fonction de mise à jour d'état React
+     doit être pure : ces setters déclenchent des écritures Supabase, que
+     StrictMode exécutait donc deux fois en développement — chaque
+     enregistrement partait en double. En lisant l'état par la ref, l'écriture
+     sort de l'updater et n'est plus jouée qu'une fois. La ref est réassignée
+     immédiatement, pour que deux appels successifs dans le même gestionnaire
+     s'enchaînent correctement. */
+  const formationsRef = useRef(formations);
+  const suivisRef = useRef(suivis);
+  useEffect(() => { formationsRef.current = formations; }, [formations]);
+  useEffect(() => { suivisRef.current = suivis; }, [suivis]);
+
+  /* Un échec d'enregistrement doit se voir. Jusqu'ici l'erreur partait dans la
+     console : l'utilisateur repartait convaincu d'avoir sauvegardé. */
+  const signalerEchec = (error, quoi) => {
+    if (!error) return false;
+    console.warn(quoi, error.message);
+    notif(`Enregistrement impossible (${quoi}) — ${error.message}`);
+    return true;
+  };
+
   // Les setters gardent la meme signature qu'avant, mais propagent vers Supabase
-  const setFormations = (fn) => setFormationsBrut((v) => {
+  const setFormations = (fn) => {
+    const v = formationsRef.current;
     const n = typeof fn === "function" ? fn(v) : fn;
-    if (sb) {
-      marquerEcritureLocale();
-      const avantIds = new Set(v.map((x) => x.id)), apresIds = new Set(n.map((x) => x.id));
-      n.forEach((f) => { const a = v.find((x) => x.id === f.id); if (!a || JSON.stringify(a) !== JSON.stringify(f)) sb.from("projets").upsert(projetVersRow(f)).then(({ error }) => error && console.warn(error.message)); });
-      v.forEach((f) => { if (!apresIds.has(f.id)) sb.from("projets").delete().eq("id", f.id).then(() => {}); });
-    }
-    return n;
-  });
-  const setSuivis = (fn) => setSuivisBrut((v) => {
-    const n = typeof fn === "function" ? fn(v) : fn;
+    formationsRef.current = n;
+    setFormationsBrut(n);
     if (sb) {
       marquerEcritureLocale();
       const apresIds = new Set(n.map((x) => x.id));
-      n.forEach((s) => { const a = v.find((x) => x.id === s.id); if (!a || JSON.stringify(a) !== JSON.stringify(s)) sb.from("suivis").upsert(suiviVersRow(s)).then(({ error }) => error && console.warn(error.message)); });
-      v.forEach((s) => { if (!apresIds.has(s.id)) sb.from("suivis").delete().eq("id", s.id).then(() => {}); });
+      n.forEach((f) => { const a = v.find((x) => x.id === f.id); if (!a || JSON.stringify(a) !== JSON.stringify(f)) sb.from("projets").upsert(projetVersRow(f)).then(({ error }) => signalerEchec(error, "projet")); });
+      v.forEach((f) => { if (!apresIds.has(f.id)) sb.from("projets").delete().eq("id", f.id).then(({ error }) => signalerEchec(error, "suppression du projet")); });
     }
-    return n;
-  });
-  const sauverConfig = (champ, valeur) => { if (sb) { marquerEcritureLocale(); sb.from("configuration").update({ [champ]: valeur, maj_le: new Date().toISOString() }).eq("id", 1).then(({ error }) => error && console.warn(error.message)); } };
-  const setReferentiel = (fn) => setReferentielBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; sauverConfig("referentiel", n); return n; });
-  const setSecteurs = (fn) => setSecteursBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; sauverConfig("secteurs", n); return n; });
-  const setPhases = (fn) => setPhasesBrut((v) => { const n = typeof fn === "function" ? fn(v) : fn; sauverConfig("phases", n); return n; });
+  };
+  const setSuivis = (fn) => {
+    const v = suivisRef.current;
+    const n = typeof fn === "function" ? fn(v) : fn;
+    suivisRef.current = n;
+    setSuivisBrut(n);
+    if (sb) {
+      marquerEcritureLocale();
+      const apresIds = new Set(n.map((x) => x.id));
+      n.forEach((s) => { const a = v.find((x) => x.id === s.id); if (!a || JSON.stringify(a) !== JSON.stringify(s)) sb.from("suivis").upsert(suiviVersRow(s)).then(({ error }) => signalerEchec(error, "suivi")); });
+      v.forEach((s) => { if (!apresIds.has(s.id)) sb.from("suivis").delete().eq("id", s.id).then(({ error }) => signalerEchec(error, "suppression du suivi")); });
+    }
+  };
+  const sauverConfig = (champ, valeur) => { if (sb) { marquerEcritureLocale(); sb.from("configuration").update({ [champ]: valeur, maj_le: new Date().toISOString() }).eq("id", 1).then(({ error }) => signalerEchec(error, champ)); } };
+  /* Même raison que ci-dessus : « sauverConfig » écrivait depuis l'updater. */
+  const referentielRef = useRef(referentiel);
+  const secteursRef = useRef(secteurs);
+  const phasesRef = useRef(phases);
+  useEffect(() => { referentielRef.current = referentiel; }, [referentiel]);
+  useEffect(() => { secteursRef.current = secteurs; }, [secteurs]);
+  useEffect(() => { phasesRef.current = phases; }, [phases]);
+  const majConfig = (ref, setBrut, champ) => (fn) => {
+    const n = typeof fn === "function" ? fn(ref.current) : fn;
+    ref.current = n;
+    setBrut(n);
+    sauverConfig(champ, n);
+  };
+  const setReferentiel = majConfig(referentielRef, setReferentielBrut, "referentiel");
+  const setSecteurs = majConfig(secteursRef, setSecteursBrut, "secteurs");
+  const setPhases = majConfig(phasesRef, setPhasesBrut, "phases");
   const [comptes, setComptes] = useState([]);          // liste chargée depuis Supabase (page Utilisateurs)
   const [session, setSession] = useState(null);         // { id, email, nom, org, role }
   const [chargementAuth, setChargementAuth] = useState(true);
@@ -1357,7 +1419,23 @@ export default function MipPpaApp() {
     doc.setFillColor(...hexRgb(nv.bg === "#e7e5e4" ? "#a8a29e" : nv.bg)); doc.roundedRect(M, y, W - 2 * M, 16, 2.5, 2.5, "F");
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(12);
     doc.text(nettoyerPdf(`SCORE GLOBAL MIP-PPA : ${fmtPct(g)} - ${nv.txt}`), W / 2, y + 10, { align: "center" });
-    y += 24;
+    y += 20;
+    /* Couverture : la fiche PDF circule hors de l'application, souvent seule et
+       parfois imprimée. Sans cette ligne, rien n'indique au lecteur qu'un
+       « 100 % - Excellent » peut ne reposer que sur les 4 indicateurs de
+       conception, sur les 23 que compte le modèle. */
+    {
+      const c = couvertureModele(referentiel, f.notes);
+      doc.setFont("helvetica", c.pct < 100 ? "bold" : "normal"); doc.setFontSize(8.5);
+      doc.setTextColor(...(c.pct < 100 ? [150, 90, 10] : gris));
+      doc.text(nettoyerPdf(
+        c.notees
+          ? `Couverture du modele : ${Math.round(c.pct)} % - ${c.notees} indicateur(s) note(s) sur ${c.indicateurs}`
+            + (c.pct < 100 ? " - evaluation partielle, score non comparable a une evaluation complete." : "")
+          : "Aucun indicateur note a ce jour."),
+        W / 2, y, { align: "center" });
+      y += 8;
+    }
 
     // ------ Tableau des dimensions ------
     doc.setTextColor(...bleu); doc.setFontSize(11.5);
@@ -1377,32 +1455,27 @@ export default function MipPpaApp() {
     y += 3;
 
     // ------ Détail des indicateurs ------
-    /* Bandeau de certification, en clôture du document. Largeur 120 mm :
-       assez grand pour que le QR code reste scannable une fois imprimé,
-       assez sobre pour ne pas concurrencer le contenu de l'évaluation.
-       Posé sur une plaque blanche, comme dans l'application. */
-    const blocCertification = () => {
-      const L = 120, H = (L * 181) / 768;   // ratio natif du bandeau (768x181)
-      if (y + H + 16 > 278) { doc.addPage(); y = 20; }
-      y += 8;
-      doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3);
-      doc.setFillColor(255, 255, 255);
-      doc.roundedRect((W - L) / 2 - 3, y - 3, L + 6, H + 6, 2, 2, "FD");
-      try { doc.addImage(CERTIFICATION_FDFP, "PNG", (W - L) / 2, y, L, H); } catch (e) {}
-      y += H + 6;
-    };
-
+    /* Pied de page. Le bandeau de certification y est intégré, centré juste
+       au-dessus du filet orange : il accompagne les mentions institutionnelles
+       au lieu de s'imposer en pleine largeur au fil du document. Il occupait
+       auparavant un bloc de 120 mm inséré dans le corps — et se retrouvait en
+       double, la fonction étant appelée une fois avant l'annexe et une fois
+       après. 45 mm est un compromis : discret, mais assez large pour que le QR
+       code reste lisible à l'impression. */
+    const BAS_CONTENU = 270;   // le pied occupe désormais les 15 derniers mm
     const pied = () => {
       const pages = doc.getNumberOfPages();
+      const L = 45, H = (L * 181) / 768;   // ratio natif du bandeau (768x181)
       for (let p = 1; p <= pages; p++) {
         doc.setPage(p);
+        try { doc.addImage(CERTIFICATION_FDFP, "PNG", (W - L) / 2, 283.5 - H, L, H); } catch (e) {}
         doc.setDrawColor(...orange); doc.setLineWidth(0.6); doc.line(M, 285, W - M, 285);
         doc.setFontSize(7.5); doc.setTextColor(...gris); doc.setFont("helvetica", "normal");
         doc.text(nettoyerPdf("FDFP - Fonds de Developpement de la Formation Professionnelle - Modele MIP-PPA - PFE ESA/INP-HB"), M, 290);
         doc.text(nettoyerPdf(`Page ${p} / ${pages} - Edite le ${new Date().toLocaleDateString("fr-FR")}`), W - M, 290, { align: "right" });
       }
     };
-    const sautSiBesoin = (h) => { if (y + h > 278) { doc.addPage(); y = 20; } };
+    const sautSiBesoin = (h) => { if (y + h > BAS_CONTENU) { doc.addPage(); y = 20; } };
 
     referentiel.forEach((d) => {
       sautSiBesoin(14);
@@ -1491,7 +1564,9 @@ export default function MipPpaApp() {
     }));
     for (const { jalon, d } of docsWord) {
       try {
-        const mod = await import("https://cdn.jsdelivr.net/npm/mammoth@1.8.0/+esm");
+        // Chargé à la demande depuis le bundle local (plus depuis jsdelivr) :
+        // l'annexe Word fonctionne désormais sans accès réseau.
+        const mod = await import("mammoth");
         const mammoth = mod.default || mod;
         const bin = atob(d.data.split(",")[1]);
         const buf = new ArrayBuffer(bin.length); const u8 = new Uint8Array(buf);
@@ -1511,7 +1586,10 @@ export default function MipPpaApp() {
       } catch (e) { /* extraction indisponible (hors ligne) : l'encart descriptif reste */ }
     }
 
-    blocCertification();
+    /* Finalisation unique du pied de page. Elle doit avoir lieu ICI, avant que
+       « doc.output() » ne fige le document pour la fusion des annexes — et une
+       seule fois : le second appel qui suivait la bifurcation redessinait le
+       bandeau et les mentions par-dessus les premiers. */
     pied();
     // ------ Annexe : fusion des PDF joints, page a page ------
     const pdfsJoints = [];
@@ -1520,7 +1598,8 @@ export default function MipPpaApp() {
     }));
     if (pdfsJoints.length) {
       try {
-        const { PDFDocument } = await import("https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/+esm");
+        // Idem : pdf-lib vient du bundle local, l'annexe PDF ne dépend plus du réseau.
+        const { PDFDocument } = await import("pdf-lib");
         // On recupere le PDF genere par jsPDF, puis on y ajoute les pages des PDF joints
         const base = await PDFDocument.load(doc.output("arraybuffer"));
         for (const { jalon, d } of pdfsJoints) {
@@ -1548,8 +1627,7 @@ export default function MipPpaApp() {
         // pdf-lib indisponible (hors ligne) : on retombe sur le PDF simple
       }
     }
-    blocCertification();
-    pied();
+    // Le pied a déjà été posé plus haut : ne rien redessiner ici.
     doc.save(`Fiche_MIP-PPA_${f.entreprise.replace(/\s+/g, "_")}.pdf`);
     notif("Fiche PDF téléchargée");
   };
@@ -1859,9 +1937,9 @@ export default function MipPpaApp() {
       {menuMobile && <div className="fixed inset-0 z-40 md:hidden" style={{ background: "rgba(10,25,38,.55)" }} onClick={() => setMenuMobile(false)} />}
       <aside className={(menuMobile ? "flex fixed inset-y-0 left-0 z-50 " : "hidden ") + "md:flex md:sticky md:top-0 barre-laterale w-64 shrink-0 flex-col text-stone-300 h-screen overflow-y-auto overflow-x-hidden"} style={{ background: C.sidebar }}>
         <div className="flex items-center gap-3 px-5 py-5">
-          <div className="cadre-logo bg-white rounded-xl px-2 py-1.5 flex items-center justify-center shrink-0">
-            <LogoFDFP h={30} />
-          </div>
+          {/* « LogoFDFP » porte déjà sa plaque blanche : l'envelopper dans un
+              second « cadre-logo » superposait deux plaques et deux marges. */}
+          <LogoFDFP h={30} />
           <div className="min-w-0">
             <div className="text-white font-bold leading-tight">MIP-PPA</div>
             <div className="text-xs text-stone-400 break-words">Modèle d'Indicateurs de Performance - Produit Projet Apprentissage</div>
@@ -2012,7 +2090,7 @@ export default function MipPpaApp() {
 
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div><h3 className="font-bold">Projets de formation de type apprentissage (emploi-qualifcation) récents</h3><p className="text-sm text-stone-500">Cliquez pour évaluer ou consulter.</p></div>
+                <div><h3 className="font-bold">Projets de formation de type apprentissage (emploi-qualification) récents</h3><p className="text-sm text-stone-500">Cliquez pour évaluer ou consulter.</p></div>
                 <button onClick={() => setPage("formations")} className="text-sm font-semibold hover:underline" style={{ color: C.vert }}>Tout voir →</button>
               </div>
               <div className="divide-y divide-stone-100 mt-2">
@@ -2142,7 +2220,7 @@ export default function MipPpaApp() {
                     {f.beneficiaire && <div className="text-xs text-stone-400 break-words">Bénéficiaire : {f.beneficiaire}</div>}
                   </div>
                   <div className="col-span-2 text-sm min-w-0"><div className="font-medium break-words">{f.secteurGrand || grandSecteurDe(secteurs, f.filiere)}</div><div className="text-stone-500 text-xs break-words">{f.filiere}{f.domaine ? " · " + f.domaine : ""}</div></div>
-                  <div className="col-span-2 flex flex-wrap items-center gap-1.5"><Badge score={scoreGlobal(referentiel, f.notes)} /><PuceStatut statut={f.statut} /></div>
+                  <div className="col-span-2 flex flex-wrap items-center gap-1.5"><Badge score={scoreGlobal(referentiel, f.notes)} /><PuceStatut statut={f.statut} /><PuceCouverture referentiel={referentiel} notes={f.notes} /></div>
                   <div className="col-span-2 flex justify-end items-center gap-3">
                     <button onClick={() => { setEvalId(f.id); setPage("evaluation"); }} className="text-sm font-medium hover:underline" style={{ color: C.vert }}>Évaluer</button>
                     {P.editerFormation && <button title="Modifier la formation" onClick={() => editerFormation(f)} className="text-stone-500 hover:text-stone-800"><Icone n="crayon" t={16} /></button>}
@@ -2156,7 +2234,7 @@ export default function MipPpaApp() {
                   <div key={f.id} className="p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="font-semibold break-words min-w-0">{f.titre}</div>
-                      <div className="shrink-0 flex flex-col items-end gap-1"><Badge score={scoreGlobal(referentiel, f.notes)} /><PuceStatut statut={f.statut} /></div>
+                      <div className="shrink-0 flex flex-col items-end gap-1"><Badge score={scoreGlobal(referentiel, f.notes)} /><PuceStatut statut={f.statut} /><PuceCouverture referentiel={referentiel} notes={f.notes} /></div>
                     </div>
                     <div className="text-sm text-stone-500 break-words mt-1">Promoteur : {f.entreprise}{f.operateur ? ` · Opérateur : ${f.operateur}` : ""} · {f.region}</div>
                     {f.beneficiaire && <div className="text-xs text-stone-400 break-words mt-0.5">Bénéficiaire : {f.beneficiaire}</div>}
@@ -2209,6 +2287,19 @@ export default function MipPpaApp() {
                   <Badge score={scoreGlobal(referentiel, fEval.notes)} />
                   <PuceStatut statut={fEval.statut} />
                 </div>
+                {/* Sur quelle part du modèle ce score porte-t-il ? La question
+                    se pose à chaque lecture : elle est répondue ici même. */}
+                {(() => {
+                  const c = couvertureModele(referentiel, fEval.notes);
+                  if (!c.notees) return null;
+                  return (
+                    <div className="text-xs text-sky-100 mt-2">
+                      Couverture : <strong>{Math.round(c.pct)} % du modèle</strong>
+                      {" · "}{c.notees} indicateur{c.notees > 1 ? "s" : ""} noté{c.notees > 1 ? "s" : ""} sur {c.indicateurs}
+                      {c.pct < 100 && <div className="text-amber-200 mt-0.5">Score non comparable à celui d'un projet évalué en entier.</div>}
+                    </div>
+                  );
+                })()}
               </div>
             </section>
 

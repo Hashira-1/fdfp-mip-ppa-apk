@@ -1,0 +1,6 @@
+/* Feuille de style d'entrée : Tailwind est compilé ici, au build, au lieu
+   d'être téléchargé depuis cdn.tailwindcss.com à chaque ouverture de la page.
+   L'application ne dépend donc plus du réseau pour sa mise en forme. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
