@@ -125,7 +125,15 @@ function creerClientSupabase() {
   } catch (e) {}
   return null;
 }
-const sb = creerClientSupabase();
+/* Client unique pour tout l'onglet. Sans cette mise en cache, le rechargement
+   à chaud du serveur de développement ré-exécute ce module à chaque
+   modification et crée un client de plus à chaque fois. Les clients partagent
+   la même clé de stockage et se disputent le rafraîchissement du jeton :
+   l'un peut invalider celui de l'autre, ce qui déconnecte l'utilisateur en
+   pleine session. C'est ce que signalait l'avertissement « Multiple
+   GoTrueClient instances detected in the same browser context ».
+   Sans effet en production, où le module n'est évalué qu'une fois. */
+const sb = globalThis.__mipPpaSupabase || (globalThis.__mipPpaSupabase = creerClientSupabase());
 
 // ----------------- COMPTES & AUTHENTIFICATION ------
 function lireStock(cle, defaut) {
@@ -288,15 +296,15 @@ function Icone({ n, t = 18, className = "" }) {
 
 // Descriptions affichées au survol des rubriques (info-bulles)
 const DESCR_NAV = {
-  dashboard: "Vision consolidée du portefeuille : scores, radar, secteurs",
-  projets: "Portefeuille des projets de formation financés par le FDFP",
-  evaluation: "Noter un projet sur les 5 dimensions et 23 indicateurs",
-  suivi: "Suivi du niveau de performance : jalons M+3 / M+6 / M+12",
-  indicateurs: "Référentiel MIP-PPA : dimensions, pondérations, indicateurs",
-  alertes: "Projets de formation de type apprentissage sous-performantes et suivis en retard",
-  exports: "Fiches PDF officielles et tableau Excel consolidé",
-  guide: "Documentation complète de la plateforme",
-  users: "Activer les comptes et attribuer les rôles",
+  dashboard: "Vision consolidée du portefeuille : scores, radar, secteurs.",
+  projets: "Portefeuille des projets de formation financés par le FDFP.",
+  evaluation: "Noter un projet sur les 5 dimensions et 23 indicateurs.",
+  suivi: "Suivi du niveau de performance : jalons M+3 / M+6 / M+12.",
+  indicateurs: "Référentiel MIP-PPA : dimensions, pondérations, indicateurs.",
+  alertes: "Projets de formation de type apprentissage sous-performantes et suivis en retard.",
+  exports: "Fiches PDF officielles et tableau Excel consolidé.",
+  guide: "Documentation complète de la plateforme.",
+  users: "Activer les comptes et attribuer les rôles.",
 };
 
 // ----------------- COULEURS -------------------------------------
@@ -647,7 +655,7 @@ function CadreAccueil({ enfants }) {
         <LogoFDFP h={34} />
         <div className="min-w-0">
           <div className="text-white font-bold text-lg leading-tight">FDFP · MIP-PPA</div>
-          <div className="text-sky-200 text-sm">Suivi des projets de formation de type apprentissage (emploi-qualification) dans les industries agroalimentaires</div>
+          <div className="text-sky-200 text-sm">Suivi des projets de formation de type apprentissage (emploi-qualification) dans les industries agroalimentaires.</div>
         </div>
       </div>
       {enfants}
@@ -1651,15 +1659,15 @@ export default function MipPpaApp() {
     ...(P.users ? [{ section: "Administration", items: [["users", "utilisateurs", "Utilisateurs & rôles"]] }] : []),
   ];
   const titres = {
-    dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des projets de formation de type Apprentissage (emploi-qualification) dans les industries agroalimentaires"],
-    formations: ["Projets de formation de type apprentissage", "Portefeuille des projets de formation financés par le FDFP"],
-    evaluation: ["Évaluation", fEval ? fEval.titre : "Sélectionnez une formation à évaluer"],
-    suivi: ["Suivi du niveau de performance", "Évaluations à 3, 6 et 12 mois"],
-    indicateurs: ["Référentiel des indicateurs", "Modèle MIP-PPA (dimensions, pondérations, indicateurs)"],
-    alertes: ["Alertes & risques", "Formations sous-performantes et suivis en retard"],
-    exports: ["Exports", "Fiches PDF et tableaux Excel pour les rapports FDFP"],
-    guide: ["Guide d'utilisation", "Tout ce qu'il faut savoir pour utiliser la plateforme MIP-PPA"],
-    users: ["Utilisateurs & rôles", "Attribution des accès à la plateforme"],
+    dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des projets de formation de type Apprentissage (emploi-qualification) dans les industries agroalimentaires."],
+    formations: ["Projets de formation de type apprentissage", "Portefeuille des projets de formation financés par le FDFP."],
+    evaluation: ["Évaluation", fEval ? fEval.titre : "Sélectionnez une formation à évaluer."],
+    suivi: ["Suivi du niveau de performance", "Évaluations à 3, 6 et 12 mois."],
+    indicateurs: ["Référentiel des indicateurs", "Modèle MIP-PPA (dimensions, pondérations, indicateurs)."],
+    alertes: ["Alertes & risques", "Formations sous-performantes et suivis en retard."],
+    exports: ["Exports", "Fiches PDF et tableaux Excel pour les rapports FDFP."],
+    guide: ["Guide d'utilisation", "Tout ce qu'il faut savoir pour utiliser la plateforme MIP-PPA."],
+    users: ["Utilisateurs & rôles", "Attribution des accès à la plateforme."],
   };
 
   // =================== GARDE D'ACCÈS =============================
@@ -1985,7 +1993,7 @@ export default function MipPpaApp() {
           </div>
           <div className="bandeau-droite">
             <HorlogeUTC />
-            <button onClick={() => setPage("guide")} className="hidden sm:flex text-sm text-stone-600 hover:text-stone-900 items-center gap-1.5" title="Ouvrir le guide d'utilisation"><Icone n="livre" t={16} /> Guide</button>
+            <button onClick={() => setPage("guide")} className="hidden sm:flex text-sm text-stone-600 hover:text-stone-900 items-center gap-1.5" title="Ouvrir le guide d'utilisation."><Icone n="livre" t={16} /> Guide</button>
             <button onClick={basculerTheme} className="hidden sm:block text-stone-500 hover:text-stone-800 shrink-0" title={sombre ? "Passer en mode éclairé" : "Passer en mode sombre"}>
               <Icone n={sombre ? "soleil" : "lune"} t={19} />
             </button>
@@ -2137,12 +2145,12 @@ export default function MipPpaApp() {
                 className="flex-1 min-w-[240px] bg-white border border-stone-200 rounded-full px-5 py-2.5 text-sm outline-none focus:border-stone-400" />
               {P.exports && (
                 <div className="flex items-center gap-2">
-                  <button onClick={exportXlsx} className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50" title="Classeur Excel mis en forme, avec le bandeau de certification"><Icone n="telecharger" t={15} /> Excel</button>
-                  <button onClick={exportCsv} className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50" title="Données brutes séparées par des points-virgules, pour un outil d'analyse"><Icone n="fichier" t={15} /> CSV</button>
+                  <button onClick={exportXlsx} className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50" title="Classeur Excel mis en forme, avec le bandeau de certification."><Icone n="telecharger" t={15} /> Excel</button>
+                  <button onClick={exportCsv} className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50" title="Données brutes séparées par des points-virgules, pour un outil d'analyse."><Icone n="fichier" t={15} /> CSV</button>
                 </div>
               )}
               <button onClick={() => { setFormations(FORMATIONS_DEMO); setSuivis(SUIVIS_DEMO); notif("Données démo restaurées"); }}
-                className="text-sm text-stone-600 hover:text-stone-900" title="Restaurer les 3 projets de démonstration"><Icone n="rotation" t={14} /> Données démo</button>
+                className="text-sm text-stone-600 hover:text-stone-900" title="Restaurer les 3 projets de démonstration."><Icone n="rotation" t={14} /> Données démo</button>
             </div>
             {P.creerFormation && <button onClick={() => { setEditionId(null); setNouvelle({ titre: "", entreprise: "", operateur: "", beneficiaire: "", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "Siège Abidjan", apprenants: 10, budget: 5000000, statut: "Planifiée" }); setFormOuvert(!formOuvert); }}
               className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm" style={{ background: C.vertFonce }}>
@@ -2274,7 +2282,7 @@ export default function MipPpaApp() {
             <div className="flex items-center justify-between flex-wrap gap-3">
               <button onClick={() => setEvalId(null)} className="text-sm text-stone-600 hover:text-stone-900">← Retour</button>
               <div className="flex gap-3">
-                {P.exports && <button onClick={() => fichePDF(fEval)} className="bg-white border border-stone-200 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-50" title="Générer la fiche d'évaluation officielle en PDF"><Icone n="telecharger" t={15} /> Fiche PDF</button>}
+                {P.exports && <button onClick={() => fichePDF(fEval)} className="bg-white border border-stone-200 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-50" title="Générer la fiche d'évaluation officielle en PDF."><Icone n="telecharger" t={15} /> Fiche PDF</button>}
                 {!P.lectureSeule && <button onClick={() => notif("Évaluation enregistrée")} className="text-white px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: C.vertFonce }} title="Enregistrer l'évaluation"><Icone n="disquette" t={15} /> Enregistrer</button>}
               </div>
             </div>
@@ -2388,10 +2396,10 @@ export default function MipPpaApp() {
                     </div>
                     <div className="flex gap-2">
                       {!P.lectureSeule && <button onClick={() => setSuiviEdit({ id: s.id, jalon: s.jalon, titreF: s.f.titre + " — " + s.f.entreprise, echeance: s.echeance, note: s.note, docs: s.docs || [] })}
-                        className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50" title="Modifier la date, les observations et les documents"><Icone n="crayon" t={14} /> Notes & date</button>}
+                        className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50" title="Modifier la date, les observations et les documents."><Icone n="crayon" t={14} /> Notes & date</button>}
                       {P.suiviValider && (s.statut === "programmé"
-                        ? <button onClick={() => { setSuivis((ss) => ss.map((x) => x.id === s.id ? { ...x, statut: "effectué" } : x)); notif("Suivi marqué effectué"); }} className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50" title="Valider la réalisation de ce suivi"><Icone n="coche" t={14} /> Marquer effectué</button>
-                        : <button onClick={() => setSuivis((ss) => ss.map((x) => x.id === s.id ? { ...x, statut: "programmé" } : x))} className="text-sm text-stone-500 hover:text-stone-800" title="Repasser ce suivi en programmé"><Icone n="rotation" t={14} /> Ré-ouvrir</button>)}
+                        ? <button onClick={() => { setSuivis((ss) => ss.map((x) => x.id === s.id ? { ...x, statut: "effectué" } : x)); notif("Suivi marqué effectué"); }} className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50" title="Valider la réalisation de ce suivi."><Icone n="coche" t={14} /> Marquer effectué</button>
+                        : <button onClick={() => setSuivis((ss) => ss.map((x) => x.id === s.id ? { ...x, statut: "programmé" } : x))} className="text-sm text-stone-500 hover:text-stone-800" title="Repasser ce suivi en programmé."><Icone n="rotation" t={14} /> Ré-ouvrir</button>)}
                     </div>
                   </div>
                 ))}
@@ -2426,7 +2434,7 @@ export default function MipPpaApp() {
                   })}
                     className="text-white text-sm font-semibold px-4 py-2 rounded-xl" style={{ background: C.vertFonce }}>+ Nouvelle dimension</button>
                   <button onClick={() => { setReferentiel(REFERENTIEL_DEFAUT); notif("Référentiel par défaut restauré"); }}
-                    className="bg-white border border-stone-200 text-sm px-4 py-2 rounded-xl hover:bg-stone-50" title="Revenir aux 5 dimensions et 23 indicateurs d'origine"><Icone n="rotation" t={14} /> Restaurer le référentiel par défaut</button>
+                    className="bg-white border border-stone-200 text-sm px-4 py-2 rounded-xl hover:bg-stone-50" title="Revenir aux 5 dimensions et 23 indicateurs d'origine."><Icone n="rotation" t={14} /> Restaurer le référentiel par défaut</button>
                 </div>
               )}
               <div className="flex flex-wrap gap-2 mt-4">
@@ -2447,7 +2455,7 @@ export default function MipPpaApp() {
                   if (!window.confirm("Remplacer toute la hiérarchie actuelle par la nomenclature d'origine ?\n\nLes secteurs, matières premières et domaines que vous avez ajoutés ou renommés seront perdus. Les projets déjà saisis conservent leurs libellés actuels.")) return;
                   setSecteurs(SECTEURS_DEFAUT); notif("Nomenclature par défaut restaurée");
                 }}
-                  className="bg-white border border-stone-200 text-sm px-4 py-2 rounded-xl hover:bg-stone-50 mb-4" title="Revenir aux secteurs, matières premières et domaines d'origine"><Icone n="rotation" t={14} /> Restaurer la nomenclature par défaut</button>
+                  className="bg-white border border-stone-200 text-sm px-4 py-2 rounded-xl hover:bg-stone-50 mb-4" title="Revenir aux secteurs, matières premières et domaines d'origine."><Icone n="rotation" t={14} /> Restaurer la nomenclature par défaut</button>
                 <div className="space-y-4">
                   {Object.entries(normaliserSecteurs(secteurs)).map(([grand, branches]) => (
                     <div key={grand} className="border border-stone-200 rounded-xl p-4">
@@ -2479,7 +2487,7 @@ export default function MipPpaApp() {
                                 }}
                                 className="text-sm font-medium bg-transparent outline-none border-b border-transparent focus:border-stone-300 flex-1" />
                               <button onClick={() => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; const bo = { ...n[grand] }; delete bo[branche]; n[grand] = bo; return n; })}
-                                className="text-red-400 hover:text-red-600" title="Supprimer cette matière première"><Icone n="fermer" t={13} /></button>
+                                className="text-red-400 hover:text-red-600" title="Supprimer cette matière première."><Icone n="fermer" t={13} /></button>
                             </div>
                             <div className="flex flex-wrap gap-1.5 mt-2">
                               {(domaines || []).map((d, i) => (
@@ -2542,10 +2550,10 @@ export default function MipPpaApp() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm bg-stone-100 px-3 py-1 rounded-full">{d.poids} %</span>
-                    {admin && <button title="Modifier cette dimension (code, nom, pondération, description)"
+                    {admin && <button title="Modifier cette dimension (code, nom, pondération, description)."
                       onClick={() => setDimEdit({ ancienId: d.id, id: d.id, nom: d.nom, poids: d.poids, desc: d.desc })}
                       className="text-stone-500 hover:text-stone-800"><Icone n="crayon" t={16} /></button>}
-                    {admin && <button title="Supprimer cette dimension et ses indicateurs" onClick={() => { if (window.confirm(`Supprimer la dimension « ${d.nom} » et ses indicateurs ?`)) setReferentiel((r) => r.filter((x) => x.id !== d.id)); }} className="text-red-500 hover:text-red-700"><Icone n="poubelle" t={16} /></button>}
+                    {admin && <button title="Supprimer cette dimension et ses indicateurs." onClick={() => { if (window.confirm(`Supprimer la dimension « ${d.nom} » et ses indicateurs ?`)) setReferentiel((r) => r.filter((x) => x.id !== d.id)); }} className="text-red-500 hover:text-red-700"><Icone n="poubelle" t={16} /></button>}
                   </div>
                 </div>
                 <div className="space-y-2.5 mt-4">
@@ -2556,7 +2564,7 @@ export default function MipPpaApp() {
                         <div className="font-medium mt-0.5 leading-snug whitespace-normal break-words">{ind.label}</div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        {admin && <button title="Modifier cet indicateur (code, intitulé, phase)"
+                        {admin && <button title="Modifier cet indicateur (code, intitulé, phase)."
                           onClick={() => setIndEdit({ dimId: d.id, ancienId: ind.id, id: ind.id, label: ind.label, phase: ind.phase })}
                           className="text-stone-500 hover:text-stone-800"><Icone n="crayon" t={15} /></button>}
                         {admin && <button title="Supprimer cet indicateur" onClick={() => setReferentiel((r) => r.map((x) => x.id === d.id ? { ...x, indicateurs: x.indicateurs.filter((i) => i.id !== ind.id) } : x))} className="text-red-400 hover:text-red-600"><Icone n="poubelle" t={15} /></button>}
@@ -2619,10 +2627,10 @@ export default function MipPpaApp() {
               <h3 className="font-bold">Export consolidé</h3>
               <p className="text-sm text-stone-500 mb-4">Tous les projets de formation de type apprentissage et leurs indicateurs, en une feuille.</p>
               <div className="flex flex-wrap items-center gap-3">
-                <button onClick={exportXlsx} className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm" style={{ background: C.vertFonce }} title="Classeur mis en forme : bandeau de certification, colonnes figées, filtres et niveaux en couleur">
+                <button onClick={exportXlsx} className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm" style={{ background: C.vertFonce }} title="Classeur mis en forme : bandeau de certification, colonnes figées, filtres et niveaux en couleur.">
                   <Icone n="telecharger" t={15} /> Classeur Excel ({formationsVisibles.length} projet{formationsVisibles.length > 1 ? "s" : ""})
                 </button>
-                <button onClick={exportCsv} className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50" title="Données brutes, séparées par des points-virgules — pour une relecture dans un outil statistique">
+                <button onClick={exportCsv} className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50" title="Données brutes, séparées par des points-virgules — pour une relecture dans un outil statistique.">
                   <Icone n="fichier" t={15} /> Données brutes (CSV)
                 </button>
               </div>
@@ -2641,7 +2649,7 @@ export default function MipPpaApp() {
                       <div className="font-semibold">{f.titre}</div>
                       <div className="text-sm text-stone-500">{f.entreprise} · {libelleSecteur(f, secteurs)}</div>
                     </div>
-                    <button onClick={() => fichePDF(f)} className="bg-white border border-stone-200 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-50 shrink-0" title="Générer la fiche PDF de cette formation"><Icone n="fichier" t={15} /> Fiche PDF</button>
+                    <button onClick={() => fichePDF(f)} className="bg-white border border-stone-200 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-50 shrink-0" title="Générer la fiche PDF de cette formation."><Icone n="fichier" t={15} /> Fiche PDF</button>
                   </div>
                 ))}
               </div>
@@ -2685,7 +2693,7 @@ export default function MipPpaApp() {
               <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
                 <h3 className="font-bold">Comptes ({comptes.length})</h3>
                 <div className="flex items-center gap-2">
-                  <button onClick={chargerComptes} title="Recharger la liste depuis la base"
+                  <button onClick={chargerComptes} title="Recharger la liste depuis la base."
                     className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50 flex items-center gap-1.5"><Icone n="rotation" t={14} /> Actualiser</button>
                   <select defaultValue="" onChange={(e) => { if (e.target.value === "deconnexion") { if (sb) sb.auth.signOut(); setSession(null); } e.target.value = ""; }}
                     className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg bg-white cursor-pointer" title="Options du compte">
@@ -2716,7 +2724,7 @@ export default function MipPpaApp() {
                         {ROLES.filter((r) => r !== "En attente d'activation").map((r) => <option key={r}>{r}</option>)}
                       </select>
                       {roleActif === "Administrateur lead" && session?.id !== u.id && u.role !== "En attente d'activation" && (
-                        <button title="Retirer l'accès (repasse le compte en attente)" onClick={() => attribuerRole(u.id, "En attente d'activation")}
+                        <button title="Retirer l'accès (repasse le compte en attente)." onClick={() => attribuerRole(u.id, "En attente d'activation")}
                           className="text-red-500 hover:text-red-700"><Icone n="poubelle" t={16} /></button>
                       )}
                     </div>
@@ -2803,9 +2811,9 @@ export default function MipPpaApp() {
           d'évaluation du projet concerné. */}
       {detailStat && (() => {
         const entetes = {
-          projets:    ["Projets suivis", "Intitulé de chaque projet du portefeuille"],
-          apprenants: ["Apprenants concernés", "Nombre d'apprentis par projet"],
-          scores:     ["Score moyen MIP-PPA", "Score global de chaque projet"],
+          projets:    ["Projets suivis", "Intitulé de chaque projet du portefeuille."],
+          apprenants: ["Apprenants concernés", "Nombre d'apprentis par projet."],
+          scores:     ["Score moyen MIP-PPA", "Score global de chaque projet."],
         }[detailStat];
         // Tri par la grandeur affichée : la lecture est immédiate.
         const liste = [...formationsVisibles];
@@ -2829,7 +2837,7 @@ export default function MipPpaApp() {
                 <div className="mt-5 border-t border-stone-100">
                   {liste.map((f, i) => (
                     <button key={f.id} onClick={() => { setDetailStat(null); setEvalId(f.id); setPage("evaluation"); }}
-                      title="Ouvrir la fiche d'évaluation de ce projet"
+                      title="Ouvrir la fiche d'évaluation de ce projet."
                       className="w-full text-left flex items-center justify-between gap-3 py-3 px-2 rounded-lg border-b border-stone-50 hover:bg-stone-50">
                       <div className="min-w-0">
                         <div className="font-medium break-words">{f.titre}</div>
@@ -2977,7 +2985,7 @@ export default function MipPpaApp() {
                 <div className="mt-2 divide-y divide-stone-100 border border-stone-200 rounded-xl">
                   {suiviEdit.docs.map((d, i) => (
                     <div key={i} className="flex items-center justify-between gap-3 px-3.5 py-2.5 text-sm">
-                      <button onClick={() => setDocVu(d)} className="flex items-center gap-2 min-w-0 text-left hover:opacity-80" title="Ouvrir le document en grand">
+                      <button onClick={() => setDocVu(d)} className="flex items-center gap-2 min-w-0 text-left hover:opacity-80" title="Ouvrir le document en grand.">
                         {d.type.startsWith("image/")
                           ? <img src={d.data} alt="" className="w-9 h-9 object-cover rounded-lg border border-stone-200 shrink-0" />
                           : <span className="w-9 h-9 rounded-lg bg-stone-100 flex items-center justify-center shrink-0"><Icone n="fichier" t={17} className="text-stone-500" /></span>}
