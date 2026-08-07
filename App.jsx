@@ -20,6 +20,21 @@ import {
    départementaux), pas du code d'interface. Voir l'en-tête du fichier pour
    les sources et la méthode de simplification. */
 import { CARTE_LARGEUR, CARTE_HAUTEUR, DEPARTEMENTS } from "./geo-civ.js";
+/* Le vocabulaire métier — référentiel, nomenclature sectorielle, zones et
+   localités, rôles et permissions — vit dans son propre fichier. Ce sont des
+   données et des fonctions pures ; les garder ici obligeait à traverser
+   l'interface pour relire ce que la plateforme évalue. */
+import {
+  REFERENTIEL_DEFAUT, ROLES, SECTEURS_DEFAUT, normaliserSecteurs, grandSecteurDe,
+  libelleSecteur, listeSecteursPlate, nomLibre, ANTENNES_FDFP, IMPLANTATIONS,
+  normaliserRegion, LOCALITES_PAR_ZONE, DEP_PAR_LOCALITE, localitesDe,
+  localiteParDefaut, normaliserLocalite, PROJET_VIERGE, PERMS, STATUTS_PROJET,
+} from "./referentiel.js";
+/* « nettoyerPdf » est la seule partie purement calculatoire de la génération
+   de fiches — et la plus délicate. Isolée pour être testée (pdf.test.js). */
+import { nettoyerPdf } from "./pdf.js";
+/* Les tracés — 95 Ko de contours et de routes — ne sont PAS importés ici :
+   ils ne servent qu'à dessiner, sur deux écrans. Voir « useTraces ». */
 
 /* ================================================================
    FDFP · MIP-PPA — Suivi des projets de formation de type apprentissage dans l'agro-industrie
@@ -28,61 +43,6 @@ import { CARTE_LARGEUR, CARTE_HAUTEUR, DEPARTEMENTS } from "./geo-civ.js";
    ================================================================ */
 
 // ----------------- RÉFÉRENTIEL PAR DÉFAUT -----------------------
-const REFERENTIEL_DEFAUT = [
-  {
-    id: "P", nom: "Pertinence", poids: 20,
-    desc: "Alignement de la formation aux besoins métiers et aux normes de l'agro-industrie.",
-    indicateurs: [
-      { id: "P1", phase: "À la conception", label: "Part des objectifs pédagogiques rattachés à un besoin en compétences identifié par diagnostic formalisé avec l'entreprise, validée avant le démarrage (cible : 100 %)" },
-      { id: "P2", phase: "À la conception", label: "Part des modules du programme alignés sur les référentiels métiers du secteur, vérifiée à l'instruction du dossier (cible : 100 %)" },
-      { id: "P3", phase: "À la conception", label: "Part des formateurs justifiant d'une qualification et d'une expérience conformes aux contenus dispensés, contrôlée avant le démarrage (cible : 100 %)" },
-      { id: "P4", phase: "À la conception", label: "Part des exigences HACCP et réglementaires applicables couvertes par le programme, vérifiée avant le démarrage (cible : 100 %)" },
-    ],
-  },
-  {
-    id: "EP", nom: "Efficacité pédagogique", poids: 25,
-    desc: "Acquisition réelle des connaissances et gestes techniques.",
-    indicateurs: [
-      { id: "EP1", phase: "En fin de formation", label: "Progression moyenne des connaissances théoriques entre le test initial et le test final (cible : ≥ 30 points de pourcentage)" },
-      { id: "EP2", phase: "En fin de formation", label: "Part des apprenants maîtrisant les gestes techniques évalués en situation de travail en fin de formation (cible : ≥ 80 %)" },
-      { id: "EP3", phase: "En fin de formation", label: "Taux d'assiduité moyen des apprenants sur la durée totale de la formation (cible : ≥ 90 %)" },
-      { id: "EP4", phase: "En fin de formation", label: "Taux de satisfaction des apprenants mesuré par questionnaire en fin de formation (cible : ≥ 80 %)" },
-      { id: "EP5", phase: "En fin de formation", label: "Taux de satisfaction des tuteurs en entreprise sur la qualité pédagogique, recueilli en fin de formation (cible : ≥ 80 %)" },
-      { id: "EP6", phase: "En fin de formation", label: "Taux de réussite aux épreuves de certification ou d'attestation en fin de formation (cible : ≥ 85 %)" },
-    ],
-  },
-  {
-    id: "IE", nom: "Insertion et employabilité", poids: 20,
-    desc: "Insertion professionnelle des apprenants à l'issue du projet : accès à l'emploi, adéquation emploi-qualification et reconnaissance des compétences (OIT, Recommandation n° 208 sur les apprentissages de qualité, 2023).",
-    indicateurs: [
-      { id: "IE1", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Taux d'insertion des apprenants dans l'emploi (salarié ou auto-emploi) mesuré au suivi M+6 (cible : ≥ 70 %)" },
-      { id: "IE2", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des apprenants insérés occupant un emploi en adéquation avec la qualification visée, mesurée à M+6 (cible : ≥ 80 %)" },
-      { id: "IE3", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des apprenants insérés en emploi stable (contrat ≥ 6 mois ou CDI, rémunération ≥ SMIG) mesurée à M+12 (cible : ≥ 60 %)" },
-      { id: "IE4", phase: "En fin de formation", label: "Part des apprenants ayant reçu leur certification officielle (CQP, titre, attestation) dans le mois suivant la fin de la formation — délivrance systématique attendue (cible : 100 % dans le délai)" },
-    ],
-  },
-  {
-    id: "IO", nom: "Impact organisationnel", poids: 25,
-    desc: "Effets mesurables sur la qualité, la productivité et la sécurité.",
-    indicateurs: [
-      { id: "IO1", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Réduction du taux de non-conformité qualité sur les postes concernés entre M+0 et M+6 (cible : ≥ 20 %)" },
-      { id: "IO2", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Amélioration de la productivité de la ligne ou du poste concerné entre M+0 et M+6 (cible : ≥ 10 %)" },
-      { id: "IO3", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Réduction du nombre d'accidents et d'incidents de sécurité alimentaire sur les postes concernés entre M+0 et M+12 (cible : ≥ 25 %)" },
-      { id: "IO4", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des compétences acquises effectivement mobilisées au poste de travail, constatée par le management à M+3 (cible : ≥ 70 %)" },
-      { id: "IO5", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Taux de satisfaction du management sur l'atteinte des objectifs de performance du projet, mesuré à M+6 (cible : ≥ 80 %)" },
-    ],
-  },
-  {
-    id: "DC", nom: "Durabilité des compétences", poids: 10,
-    desc: "Ancrage durable des compétences acquises (6 et 12 mois).",
-    indicateurs: [
-      { id: "DC1", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Taux de rétention des apprenants dans l'entreprise mesuré à M+6 (cible : ≥ 80 %)" },
-      { id: "DC2", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des apprenants promus ou ayant évolué vers un poste supérieur, mesurée à M+12 (cible : ≥ 30 %)" },
-      { id: "DC3", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des compétences acquises intégrées aux fiches de poste et procédures internes, vérifiée à M+12 (cible : ≥ 50 %)" },
-      { id: "DC4", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des apprenants appliquant les pratiques apprises sans supervision, constatée par observation à M+6 puis M+12 (cible : ≥ 70 %)" },
-    ],
-  },
-];
 
 // ----------------- DONNÉES DÉMO ---------------------------------
 const FORMATIONS_DEMO = [
@@ -154,153 +114,8 @@ function ecrireStock(cle, val) {
   try { window.localStorage.setItem(cle, JSON.stringify(val)); } catch (e) {}
 }
 
-const ROLES = ["Administrateur lead", "Administrateur FDFP", "Agent FDFP", "Promoteur", "Opérateur", "En attente d'activation"];
-const SECTEURS_DEFAUT = {
-  "Secteur primaire": {
-    "Cultures de rente": ["Cacao", "Café", "Anacarde", "Coton", "Hévéa", "Palmier à huile"],
-    "Cultures vivrières et maraîchères": ["Riz", "Manioc", "Igname", "Banane plantain", "Maraîchage", "Fruits"],
-    "Élevage et aviculture": ["Bovins", "Petits ruminants", "Porcins", "Aviculture", "Apiculture"],
-    "Pêche et aquaculture": ["Pêche artisanale", "Pêche industrielle", "Pisciculture"],
-    "Sylviculture et exploitation forestière": ["Reboisement", "Exploitation du bois"],
-    "Extraction minière": ["Or", "Manganèse", "Autres minerais"],
-  },
-  "Secteur secondaire": {
-    "Transformation du cacao et du café": ["Fèves et masse de cacao", "Beurre et poudre", "Chocolaterie", "Torréfaction café"],
-    "Transformation de l'anacarde": ["Décorticage", "Calibrage et conditionnement", "Valorisation des coques et pommes"],
-    "Transformation des fruits et légumes": ["Jus et concentrés", "Séchage", "Conserves"],
-    "Industrie laitière": ["Lait et yaourts", "Fromages", "Crèmes glacées"],
-    "Meunerie et céréales": ["Farines", "Boulangerie-pâtisserie", "Biscuiterie", "Brasserie et boissons"],
-    "Corps gras et huilerie": ["Huile de palme", "Huile de coton", "Savonnerie"],
-    "Produits halieutiques": ["Conserverie de thon", "Fumage et salaison"],
-    "Conditionnement et emballage": ["Emballages plastiques", "Cartons", "Étiquetage"],
-    "Autres industries": ["Chimie et pharmacie", "Textile", "Métallurgie", "BTP", "Énergie"],
-  },
-  // Dans le tertiaire, le service ne transforme pas la matière première : il
-  // l'accompagne. Le niveau intermédiaire désigne donc la matière première
-  // concernée par la prestation, et le domaine précise le service rendu.
-  // « Toutes matières premières » recueille les services support qui ne sont
-  // rattachés à aucun produit en particulier (banque, numérique, formation).
-  "Secteur tertiaire": {
-    "Cacao et café": ["Négoce et exportation", "Logistique portuaire", "Certification et traçabilité"],
-    "Anacarde": ["Négoce et exportation", "Entreposage et contrôle qualité"],
-    "Fruits et légumes": ["Chaîne du froid", "Distribution et grande surface", "Exportation"],
-    "Produits halieutiques": ["Chaîne du froid", "Distribution et mareyage"],
-    "Céréales et vivriers": ["Stockage et conservation", "Commerce de gros", "Distribution de détail"],
-    "Produits laitiers et carnés": ["Chaîne du froid", "Restauration collective", "Distribution"],
-    "Toutes matières premières": ["Transport routier", "Banque et assurance agricoles", "Conseil et audit", "Numérique et traçabilité", "Formation professionnelle", "Administration et appui public"],
-  },
-};
-// Accepte les anciens formats et les convertit vers {secteur: {branche: [domaines]}}
-const normaliserSecteurs = (s) => {
-  if (Array.isArray(s)) { const o = {}; s.forEach((b) => { o[b] = ["Général"]; }); return { "Secteur secondaire": o }; }
-  if (s && typeof s === "object" && Object.keys(s).length) {
-    const o = {};
-    for (const [grand, val] of Object.entries(s)) {
-      if (Array.isArray(val)) { const bo = {}; val.forEach((b) => { bo[b] = ["Général"]; }); o[grand] = bo; }
-      else if (val && typeof val === "object") o[grand] = val;
-    }
-    return Object.keys(o).length ? o : SECTEURS_DEFAUT;
-  }
-  return SECTEURS_DEFAUT;
-};
-// Retrouve le grand secteur d'une matiere premiere donnee
-const grandSecteurDe = (secteurs, branche) => {
-  const n = normaliserSecteurs(secteurs);
-  for (const [grand, branches] of Object.entries(n)) if (Object.keys(branches || {}).includes(branche)) return grand;
-  return "";
-};
-// Libelle complet : "Secteur secondaire · Transformation de l'anacarde · Décorticage"
-const libelleSecteur = (f, secteurs) => {
-  const grand = f.secteurGrand || grandSecteurDe(secteurs, f.filiere);
-  const morceaux = [grand, f.filiere, f.domaine].filter(Boolean);
-  return morceaux.join(" · ");
-};
-const listeSecteursPlate = (s) => Object.values(normaliserSecteurs(s)).map((b) => Object.keys(b)).flat();
 
-// Libellé « Base », puis « Base 2 », « Base 3 »… sans collision avec l'existant.
-// Sans cela, un ajout pouvait réutiliser une clé déjà prise et écraser la ligne.
-const nomLibre = (base, existants) => {
-  if (!existants.includes(base)) return base;
-  let k = 2; while (existants.includes(`${base} ${k}`)) k++;
-  return `${base} ${k}`;
-};
 
-// ----------------- IMPLANTATIONS FDFP (champ « Zone ») -----------
-// Note : le champ reste stocké sous le nom « region » (colonne Supabase).
-const ANTENNES_FDFP = ["Abengourou", "Bouaké", "Daloa", "Korhogo", "Man", "San-Pédro", "Yamoussoukro"];
-const IMPLANTATIONS = ["Siège Abidjan", ...ANTENNES_FDFP.map((a) => `Antenne ${a}`)];
-// Convertit les valeurs historiques (« Abidjan », « San-Pédro », « antenne de Bouaké »…)
-// vers la nomenclature officielle ; laisse la valeur intacte si elle est inconnue.
-const normaliserRegion = (r) => {
-  const v = String(r || "").trim();
-  if (!v || IMPLANTATIONS.includes(v)) return v;
-  const nu = v.replace(/^(si[eè]ge|antenne)\s*(d[eu']\s*)?/i, "").trim();
-  const memeMot = (a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }) === 0;
-  if (memeMot(nu, "Abidjan")) return "Siège Abidjan";
-  const antenne = ANTENNES_FDFP.find((a) => memeMot(a, nu));
-  return antenne ? `Antenne ${antenne}` : v;
-};
-
-// ----------------- LOCALITÉS (champ « Localité ») ----------------
-// Une zone n'est pas un point : c'est un ensemble de départements. Le champ
-// « Localité » désigne celui où le projet se déroule réellement, ce que la
-// zone seule ne dit pas — huit implantations pour 108 départements.
-// La liste proposée est donc toujours celle de la zone choisie, jamais les
-// 108 : on ne peut pas se tromper d'antenne en choisissant sa localité.
-const LOCALITES_PAR_ZONE = DEPARTEMENTS.reduce((acc, d) => {
-  (acc[d.z] = acc[d.z] || []).push(d.n);
-  return acc;
-}, {});
-Object.values(LOCALITES_PAR_ZONE).forEach((l) => l.sort((a, b) => a.localeCompare(b, "fr")));
-
-const DEP_PAR_LOCALITE = DEPARTEMENTS.reduce((acc, d) => { acc[d.n] = d; return acc; }, {});
-
-const localitesDe = (zone) => LOCALITES_PAR_ZONE[normaliserRegion(zone)] || [];
-
-// Chef-lieu de l'implantation elle-même : « Antenne Bouaké » → « Bouaké ».
-// C'est la localité la plus probable, donc celle proposée par défaut.
-const localiteParDefaut = (zone) => {
-  const z = normaliserRegion(zone);
-  const liste = localitesDe(z);
-  if (!liste.length) return "";
-  const chef = z.replace(/^(Siège|Antenne)\s+/, "");
-  return liste.find((n) => n.localeCompare(chef, "fr", { sensitivity: "base" }) === 0) || liste[0];
-};
-
-/* Ramène une localité à la nomenclature, dans le périmètre de sa zone. Une
-   valeur venue d'un import ou d'une zone modifiée depuis peut ne plus
-   appartenir à la zone : elle est alors remplacée par le chef-lieu, pour que
-   carte et liste ne se contredisent jamais. */
-const normaliserLocalite = (loc, zone) => {
-  const liste = localitesDe(zone);
-  const v = String(loc || "").trim();
-  if (!v) return localiteParDefaut(zone);
-  const exact = liste.find((n) => n.localeCompare(v, "fr", { sensitivity: "base" }) === 0);
-  return exact || localiteParDefaut(zone);
-};
-
-/* Formulaire de projet à l'état neuf. Une fonction, pas un objet partagé :
-   quatre endroits le réinitialisent (ouverture, création, modification,
-   état initial) et ils écrivaient jusqu'ici quatre copies du même littéral —
-   de quoi oublier un champ dans l'une d'elles en en ajoutant un. */
-const PROJET_VIERGE = () => ({
-  titre: "", entreprise: "", operateur: "", beneficiaire: "",
-  secteurGrand: "Secteur secondaire",
-  filiere: "Transformation du cacao et du café",
-  domaine: "Fèves et masse de cacao",
-  region: "Siège Abidjan", localite: localiteParDefaut("Siège Abidjan"),
-  apprenants: 10, budget: 5000000, statut: "Planifiée",
-});
-
-// ----------------- MATRICE DES PERMISSIONS PAR RÔLE -------------
-const PERMS = {
-  "Administrateur lead":     { pages: ["dashboard", "formations", "evaluation", "suivi", "indicateurs", "alertes", "exports", "guide", "users"], evalDims: "toutes", creerFormation: true,  editerFormation: true,  supprimerFormation: true,  referentiel: true,  secteurs: true,  users: true,  exports: true,  suivisJalons: "tous", suiviValider: true,  portee: "tous" },
-  "Administrateur FDFP":     { pages: ["dashboard", "formations", "evaluation", "suivi", "indicateurs", "alertes", "exports", "guide"],          evalDims: "toutes", creerFormation: true,  editerFormation: true,  supprimerFormation: false, referentiel: true,  secteurs: false, users: false, exports: true,  suivisJalons: "tous", suiviValider: true,  portee: "tous" },
-  "Agent FDFP":              { pages: ["dashboard", "formations", "evaluation", "suivi", "indicateurs", "alertes", "exports", "guide"],          evalDims: "toutes", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, exports: true,  suivisJalons: "tous", suiviValider: true,  portee: "tous" },
-  "Promoteur":               { pages: ["dashboard", "formations", "evaluation", "suivi", "exports", "guide"],                          evalDims: "aucune", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, exports: true,  suivisJalons: "tous", suiviValider: false, portee: "entreprise", lectureSeule: true },
-  "Opérateur":               { pages: ["dashboard", "formations", "evaluation", "suivi", "guide"],                                     evalDims: "aucune", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, exports: false, suivisJalons: "tous", suiviValider: false, portee: "entreprise", lectureSeule: true },
-  "En attente d'activation": { pages: ["guide"], evalDims: null, creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, exports: false, suivisJalons: "aucun", suiviValider: false, portee: "aucune" },
-};
 // ----------------- TEMPS DE RÉFÉRENCE ---------------------------
 // Toute la plateforme raisonne en temps universel (UTC / GMT+0), et non dans
 // le fuseau du poste : le FDFP et ses antennes doivent voir le même « en
@@ -349,7 +164,7 @@ const IC = {
 };
 function Icone({ n, t = 18, className = "" }) {
   return (
-    <svg viewBox="0 0 24 24" width={t} height={t} fill="none" stroke="currentColor"
+    <svg viewBox="0 0 24 24" width={t} height={t} fill="none" stroke="currentColor" aria-hidden="true" focusable="false"
       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={"inline-block shrink-0 " + className}>
       {IC[n]}
     </svg>
@@ -478,7 +293,6 @@ function Badge({ score }) {
 // performance utilise des aplats saturés (vert, bleu, orange, rouge). Deux
 // informations différentes, deux registres chromatiques distincts.
 // Texte noir ou violet foncé : contraste largement supérieur au seuil AA.
-const STATUTS_PROJET = ["Planifiée", "En cours", "Terminée"];
 const teinteStatut = (statut) => {
   if (statut === "Terminée") return { bg: "#FFE94A", fg: "#000000" };  // jaune lumineux
   if (statut === "En cours") return { bg: "#FBCFE8", fg: "#000000" };  // rose doux
@@ -672,18 +486,28 @@ function TickRadar({ x, y, cx, cy, payload, mobile }) {
    Le <svg> porte le viewBox voulu et « width: 100% » : le navigateur met à
    l'échelle, donc rien à recalculer au redimensionnement. */
 
-// Une teinte par implantation. La même antenne garde la même couleur du
-// tableau de bord à la fiche d'évaluation : c'est ce qui rend les deux
-// cartes lisibles ensemble.
+/* Une teinte par implantation. La même antenne garde la même couleur du
+   tableau de bord à la fiche d'évaluation : c'est ce qui rend les deux cartes
+   lisibles ensemble.
+
+   Les teintes sont attribuées de façon que deux zones VOISINES soient
+   franchement différentes — c'est le seul cas où la confusion trompe, deux
+   zones éloignées ne se comparent jamais du regard. Contrainte forte, car la
+   carte les montre en aplat à 18 % d'opacité : des couleurs très distinctes
+   en pastille pleine peuvent devenir indiscernables une fois délavées.
+   Mesure CIEDE2000 sur les aplats, sur les quinze couples de zones qui se
+   touchent : la première palette descendait à ΔE 3,3 (Siège / Abengourou) et
+   4,3 (Bouaké / Yamoussoukro), soit le seuil sous lequel deux surfaces se
+   confondent. Celle-ci ne descend pas sous 8,7. */
 const COULEURS_ZONE = {
-  "Siège Abidjan": "#0e3c60",
-  "Antenne Abengourou": "#1d6fa8",
-  "Antenne Bouaké": "#b5701c",
-  "Antenne Daloa": "#2c855a",
-  "Antenne Korhogo": "#75539c",
-  "Antenne Man": "#b34c3d",
-  "Antenne San-Pédro": "#0f7c85",
-  "Antenne Yamoussoukro": "#8d7011",
+  "Siège Abidjan": "#14487a",       // bleu marine
+  "Antenne Abengourou": "#b8256f",  // fuchsia
+  "Antenne Bouaké": "#3f8f3a",      // vert
+  "Antenne Yamoussoukro": "#e08214",// orange
+  "Antenne Daloa": "#6b3fa0",       // violet
+  "Antenne Korhogo": "#c9990c",     // or
+  "Antenne Man": "#0f8f8f",         // turquoise
+  "Antenne San-Pédro": "#a3312a",   // rouge brique
 };
 const couleurZone = (z) => COULEURS_ZONE[normaliserRegion(z)] || "#78716c";
 
@@ -695,6 +519,77 @@ const couleurZone = (z) => COULEURS_ZONE[normaliserRegion(z)] || "#78716c";
    cadre en 1,25 lui ajoutait 40 % de hauteur inutile. Les bornes servent
    seulement aux cas extrêmes, qu'elles ramènent à des proportions
    affichables. */
+/* Chargement à la demande des tracés. Ils pèsent l'essentiel des données
+   géographiques et ne servent qu'ici ; les laisser dans le paquet initial les
+   faisait télécharger par tout le monde, écran de connexion compris, pour un
+   dessin que la plupart des visites ne demandent jamais. Même traitement que
+   jsPDF, ExcelJS, mammoth et pdf-lib.
+   Le module reste en cache après le premier appel : passer d'un projet à
+   l'autre ne recharge rien. */
+let tracesEnCours = null;
+let tracesPretes = null;
+function useTraces() {
+  const [traces, setTraces] = useState(tracesPretes);
+  const [echec, setEchec] = useState(false);
+  useEffect(() => {
+    if (tracesPretes) { setTraces(tracesPretes); return; }
+    let vivant = true;
+    tracesEnCours = tracesEnCours || import("./geo-civ-traces.js");
+    tracesEnCours.then((m) => {
+      tracesPretes = m;
+      if (vivant) setTraces(m);
+    }).catch(() => { if (vivant) setEchec(true); });
+    return () => { vivant = false; };
+  }, []);
+  return { traces, echec };
+}
+
+/* Cadre d'attente, à la place de la carte. Il occupe la même hauteur que
+   celle-ci : sans cela, la page sautait à l'arrivée des tracés. */
+function CarteEnAttente({ hauteur, echec }) {
+  return (
+    <div className="flex items-center justify-center rounded-xl bg-stone-50 border border-stone-100 text-sm text-stone-500"
+      style={{ height: hauteur }} role="status">
+      {echec ? "Fond de carte indisponible." : "Chargement du fond de carte…"}
+    </div>
+  );
+}
+
+/* Le réseau routier, en fond de carte. Il répond à une question que les
+   contours ne traitent pas : deux localités voisines sur la carte peuvent
+   n'être reliées par aucune route directe, et c'est le temps de trajet qui
+   décide de la charge réelle d'une antenne — c'est d'ailleurs le premier des
+   critères de zonage énoncés par la note de la DACD.
+   Deux tracés seulement, donc deux nœuds dans le DOM : le dessin ne change
+   jamais, il n'a pas à être découpé en éléments. « k » remet les épaisseurs
+   à l'échelle quand la carte est recadrée sur une zone. */
+function Routes({ ROUTES, k = 1, sombre, opacite = 1 }) {
+  if (!ROUTES) return null;
+  const commun = { fill: "none", strokeLinecap: "round", strokeLinejoin: "round" };
+  return (
+    <g opacity={opacite} style={{ pointerEvents: "none" }}>
+      <path d={ROUTES.principales} {...commun}
+        stroke={sombre ? "#5b6b7d" : "#9c8866"} strokeWidth={1.1 * k} />
+      <path d={ROUTES.axes} {...commun}
+        stroke={sombre ? "#8298ad" : "#6f5836"} strokeWidth={1.9 * k} />
+    </g>
+  );
+}
+
+/* Attribution des fonds de carte. Les limites administratives viennent des
+   données humanitaires d'OCHA, le réseau routier d'OpenStreetMap : la licence
+   ODbL de ce dernier impose de citer la source partout où la carte est
+   montrée. Ce n'est pas une politesse, c'est une condition d'usage. */
+function MentionCarte() {
+  return (
+    <p className="text-[11px] text-stone-400 mt-2 leading-snug">
+      Fonds de carte : limites administratives OCHA / HDX (COD-AB Côte d'Ivoire) ·
+      réseau routier © les contributeurs d'OpenStreetMap, licence ODbL ·
+      zonage FDFP d'après « Zones de couverture de la DACD », juin 2026.
+    </p>
+  );
+}
+
 function cadreDe(deps, marge, ratioMin, ratioMax) {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   deps.forEach((d) => {
@@ -734,9 +629,16 @@ function etiquettesLisibles(candidats, marge = 0) {
 
 /* Carte nationale : une pastille par localité où se déroulent des projets,
    d'aire proportionnelle à leur nombre. L'aire, et non le rayon : c'est la
-   surface que l'œil compare, et doubler le rayon quadruplerait la tache. */
-function CarteNationale({ comptes, surClic, sombre }) {
+   surface que l'œil compare, et doubler le rayon quadruplerait la tache.
+
+   Deux lectures de la même carte, au choix :
+   « implantation » — chaque zone à sa couleur, on lit la répartition ;
+   « score » — chaque zone au niveau moyen de ses projets, on lit où le
+   portefeuille va mal. Compter les projets ne dit pas comment ils se
+   portent : une antenne peut en avoir dix et tous les rater. */
+function CarteNationale({ comptes, scores, lecture, surClic, sombre }) {
   const [survol, setSurvol] = useState(null);
+  const { traces, echec } = useTraces();
   const total = Object.values(comptes).reduce((a, b) => a + b, 0);
   const maxi = Math.max(1, ...Object.values(comptes));
   const points = DEPARTEMENTS
@@ -744,11 +646,24 @@ function CarteNationale({ comptes, surClic, sombre }) {
     .sort((a, b) => comptes[b.n] - comptes[a.n]);
   const rayon = (n) => 9 + 17 * Math.sqrt(n / maxi);
 
+  /* Teinte d'un département. En lecture « score », une zone sans projet noté
+     reste grise : lui donner la couleur du palier le plus bas la ferait
+     passer pour mauvaise alors qu'elle est seulement non évaluée. */
+  const teinteDe = (d) => {
+    if (lecture !== "score") return couleurZone(d.z);
+    const s = scores ? scores[d.z] : null;
+    return s === null || s === undefined ? "#a8a29e" : niveau(s).bg;
+  };
+
   // Les localités les plus chargées sont examinées d'abord : à encombrement
   // égal, c'est le nom du gros contingent qu'il faut pouvoir lire.
   const nommees = useMemo(() => etiquettesLisibles(points.map((d) => ({
     cle: d.c, texte: d.n, taille: 15, x: d.x, y: d.y + rayon(comptes[d.n]) + 15,
   })), 6), [comptes]);
+
+  /* Garde placée APRÈS tous les hooks : un retour anticipé au-dessus
+     changerait leur nombre d'un rendu à l'autre, ce que React interdit. */
+  if (!traces) return <CarteEnAttente hauteur={420} echec={echec} />;
 
   return (
     <div className="relative">
@@ -759,17 +674,18 @@ function CarteNationale({ comptes, surClic, sombre }) {
         {/* Les huit zones, en aplat très clair : elles donnent le contexte
             « quelle antenne » sans concurrencer les pastilles. */}
         {DEPARTEMENTS.map((d) => (
-          <path key={d.c} d={d.d} fill={couleurZone(d.z)}
-            fillOpacity={survol && survol.z === d.z ? 0.34 : 0.16}
+          <path key={d.c} d={traces.CONTOURS[d.c]} fill={teinteDe(d)}
+            fillOpacity={survol && survol.z === d.z ? 0.42 : 0.22}
             stroke={sombre ? "#0d1721" : "#ffffff"} strokeWidth="0.8" />
         ))}
+        <Routes ROUTES={traces.ROUTES} sombre={sombre} opacite={0.75} />
         {/* Liseré autour de chaque zone : le trait blanc inter-départemental
             ne suffit pas à faire voir les huit ensembles. */}
         {Object.keys(LOCALITES_PAR_ZONE).map((z) => (
           <g key={z}>
             {DEPARTEMENTS.filter((d) => d.z === z).map((d) => (
-              <path key={d.c} d={d.d} fill="none" stroke={couleurZone(z)}
-                strokeWidth="1.6" strokeOpacity="0.5" />
+              <path key={d.c} d={traces.CONTOURS[d.c]} fill="none" stroke={teinteDe(d)}
+                strokeWidth="1.6" strokeOpacity="0.55" />
             ))}
           </g>
         ))}
@@ -803,6 +719,12 @@ function CarteNationale({ comptes, surClic, sombre }) {
           <div className="text-stone-500">{survol.r}</div>
           <div style={{ color: couleurZone(survol.z) }} className="font-semibold mt-0.5">{survol.z}</div>
           <div className="mt-0.5">{comptes[survol.n]} projet{comptes[survol.n] > 1 ? "s" : ""}</div>
+          {scores && scores[survol.z] !== null && scores[survol.z] !== undefined && (
+            <div className="mt-0.5 text-stone-500">
+              Moyenne de la zone : <strong style={{ color: niveau(scores[survol.z]).bg }}>
+                {fmtPct(scores[survol.z])}</strong> · {niveau(scores[survol.z]).txt}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -814,6 +736,7 @@ function CarteNationale({ comptes, surClic, sombre }) {
    Le reste du pays reste dessiné en fond neutre — sans lui, on ne saurait
    pas où la zone se situe dans le pays. */
 function CarteZone({ zone, localite, sombre }) {
+  const { traces, echec } = useTraces();
   const z = normaliserRegion(zone);
   const dedans = DEPARTEMENTS.filter((d) => d.z === z);
   const cible = DEP_PAR_LOCALITE[localite];
@@ -841,6 +764,8 @@ function CarteZone({ zone, localite, sombre }) {
     return etiquettesLisibles(candidats, 3 * k);
   }, [z, localite, k]);
 
+  if (!traces) return <CarteEnAttente hauteur={320} echec={echec} />;
+
   return (
     <svg viewBox={`${cadre.x} ${cadre.y} ${cadre.w} ${cadre.h}`} width="100%"
       style={{ display: "block", maxHeight: "min(56vh, 460px)" }}
@@ -848,19 +773,20 @@ function CarteZone({ zone, localite, sombre }) {
       aria-label={`Zone de couverture ${z} : ${dedans.length} localités, dont ${localite || "aucune"} pour ce projet.`}>
       {/* Le pays entier, en fond neutre */}
       {DEPARTEMENTS.map((d) => (
-        <path key={d.c} d={d.d} className="carte-hors-zone"
+        <path key={d.c} d={traces.CONTOURS[d.c]} className="carte-hors-zone"
           stroke={sombre ? "#22303f" : "#e7e5e4"} strokeWidth={0.9 * k} />
       ))}
       {/* La zone de l'implantation */}
       {dedans.map((d) => {
         const estCible = cible && d.c === cible.c;
         return (
-          <path key={d.c} d={d.d} fill={teinte}
+          <path key={d.c} d={traces.CONTOURS[d.c]} fill={teinte}
             fillOpacity={estCible ? 0.85 : 0.2}
             stroke={estCible ? teinte : (sombre ? "#0d1721" : "#ffffff")}
             strokeWidth={(estCible ? 2.6 : 1) * k} />
         );
       })}
+      <Routes ROUTES={traces.ROUTES} k={k} sombre={sombre} opacite={0.85} />
       {/* Les autres localités de la zone : présentes, mais en retrait. Le
           point est toujours dessiné ; le nom omis faute de place reste
           lisible au survol. */}
@@ -1120,7 +1046,7 @@ function EcranConnexion() {
               onKeyDown={(e) => e.key === "Enter" && (onglet === "connexion" ? connecter() : creer())}
               className="w-full border border-stone-300 rounded-xl px-3.5 py-2.5 pr-12 font-normal outline-none focus:border-sky-600" />
             <button type="button" onClick={() => setVoirMdp(!voirMdp)} tabIndex={-1}
-              title={voirMdp ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+              title={voirMdp ? "Masquer le mot de passe" : "Afficher le mot de passe"} aria-label={voirMdp ? "Masquer le mot de passe" : "Afficher le mot de passe"}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700">
               {voirMdp ? <Icone n="oeilBarre" t={19} /> : <Icone n="oeil" t={19} />}
             </button>
@@ -1295,6 +1221,8 @@ export default function MipPpaApp() {
   const [evalId, setEvalId] = useState(null);
   const [jalonAFiger, setJalonAFiger] = useState(JALONS[0]);   // trajectoire
   const [recherche, setRecherche] = useState("");
+  const [filtreZone, setFiltreZone] = useState("");       // "" = toutes
+  const [filtreLocalite, setFiltreLocalite] = useState(""); // "" = toutes
   const [formOuvert, setFormOuvert] = useState(false);
   const [menuCompte, setMenuCompte] = useState(false);
   const [menuMobile, setMenuMobile] = useState(false);
@@ -1317,6 +1245,7 @@ export default function MipPpaApp() {
   const [docVu, setDocVu] = useState(null);          // visionneuse de document
   const [detailStat, setDetailStat] = useState(null); // "projets" | "apprenants" | "scores"
   const [detailLocalite, setDetailLocalite] = useState(null); // nom d'une localité de la carte
+  const [lectureCarte, setLectureCarte] = useState("implantation"); // ou "score"
   const lead = roleActif === "Administrateur lead";
   const P = PERMS[roleActif] || PERMS["En attente d'activation"];
   const monCompte = session;
@@ -1508,6 +1437,40 @@ export default function MipPpaApp() {
     });
     return map;
   }, [formationsVisibles]);
+
+  /* Portefeuille tel que la liste l'affiche : recherche plein texte, puis
+     zone, puis localité. Le calcul était écrit deux fois — une fois pour la
+     vue tableau, une fois pour la vue cartes du mobile — et les deux copies
+     devaient être modifiées ensemble.
+     Note : les exports restent sur le portefeuille entier, comme ils le
+     faisaient déjà pour la recherche. Un export est un livrable, il ne doit
+     pas dépendre de l'état d'un filtre d'écran. */
+  const projetsFiltres = useMemo(() => formationsVisibles.filter((f) => {
+    const texte = (f.titre + f.entreprise + f.filiere + (f.secteurGrand || "") + (f.domaine || ""))
+      .toLowerCase().includes(recherche.toLowerCase());
+    if (!texte) return false;
+    if (filtreZone && normaliserRegion(f.region) !== filtreZone) return false;
+    if (filtreLocalite && normaliserLocalite(f.localite, f.region) !== filtreLocalite) return false;
+    return true;
+  }), [formationsVisibles, recherche, filtreZone, filtreLocalite]);
+
+  /* Score moyen par implantation, pour la seconde lecture de la carte.
+     Moyenne des scores globaux des projets de la zone ; « null » si aucun
+     n'est noté — une zone non évaluée n'est pas une zone en échec. */
+  const scoreParZone = useMemo(() => {
+    const acc = {};
+    formationsVisibles.forEach((f) => {
+      const s = scoreGlobal(referentiel, f.notes);
+      if (s === null) return;
+      const z = normaliserRegion(f.region);
+      (acc[z] = acc[z] || []).push(s);
+    });
+    const out = {};
+    IMPLANTATIONS.forEach((z) => {
+      out[z] = acc[z] && acc[z].length ? acc[z].reduce((a, b) => a + b, 0) / acc[z].length : null;
+    });
+    return out;
+  }, [formationsVisibles, referentiel]);
 
   const filiereData = useMemo(() => {
     const map = {};
@@ -1737,54 +1700,6 @@ export default function MipPpaApp() {
     notif("Données CSV téléchargées");
   };
 
-  /* Preparation du texte pour le PDF.
-     ---------------------------------------------------------------------------
-     Cette fonction supprimait TOUS les accents : « Efficacite pedagogique ».
-     C'etait inutile. Verification faite sur jsPDF 2.5, les polices standard
-     rendent parfaitement les accents, les ligatures (oe, ae), la ponctuation
-     francaise et les symboles courants : tout Windows-1252 passe.
-
-     Deux choses cassent en revanche, et il faut les traiter, car un seul
-     caractere fautif deregle l'espacement de la LIGNE ENTIERE :
-       - l'espace fine insecable U+202F, qui s'imprime en « / » ;
-       - tout caractere hors Windows-1252, a commencer par « >= » et « <= »,
-         qui figurent dans les cibles des indicateurs (« cible : >= 80 % »). */
-  const CP1252_SPECIAUX = "€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ";
-  const HORS_CP1252 = {
-    "≥": ">=", "≤": "<=", "≠": "!=", "≈": "~",
-    "→": "->", "←": "<-", "⇒": "=>", "✓": "v",
-    "✔": "v", "✗": "x", "−": "-", "‰": "%o",
-    /* Lettres latines que la decomposition Unicode ne sait pas reduire : ce ne
-       sont pas des lettres accentuees mais des caracteres a part entiere, qui
-       disparaitraient sans equivalent explicite. */
-    "Ł": "L", "ł": "l", "Đ": "D", "đ": "d",
-    "Ħ": "H", "ħ": "h", "Ŧ": "T", "ŧ": "t",
-    "Ŋ": "N", "ŋ": "n",
-  };
-  const estRenduPdf = (c) => {
-    const p = c.codePointAt(0);
-    return (p >= 0x20 && p <= 0x7E)          // ASCII imprimable
-      || (p >= 0xA1 && p <= 0xFF)            // Latin-1 : accents, symboles
-      || CP1252_SPECIAUX.includes(c);        // complement Windows-1252
-  };
-  const nettoyerPdf = (t) => {
-    let s = String(t == null ? "" : t);
-    /* Espaces speciales ramenees a l'espace ordinaire. Sans cela, le separateur
-       de milliers des montants cassait l'affichage du budget. */
-    s = s.replace(/[      ]/g, " ");
-    return [...s].map((c) => {
-      if (HORS_CP1252[c]) return HORS_CP1252[c];
-      if (estRenduPdf(c)) return c;
-      /* Avant d'abandonner un caractere : lui retirer ses signes diacritiques
-         (a-macron -> a, r-caron -> r). Si la lettre de base est imprimable, on
-         la garde — mieux vaut une lettre approchee qu'un trou. */
-      const base = c.normalize("NFD").replace(/[̀-ͯ]/g, "");
-      if (base && [...base].every(estRenduPdf)) return base;
-      /* Sinon on le retire purement et simplement : AUCUN caractere inconnu
-         ne doit apparaitre dans un document officiel. */
-      return "";
-    }).join("");
-  };
 
   const fichePDF = async (f) => {
     const g = scoreGlobal(referentiel, f.notes);
@@ -1847,7 +1762,7 @@ export default function MipPpaApp() {
     };
     const locPdf = normaliserLocalite(f.localite, f.region);
     ligne(`Promoteur : ${f.entreprise}  -  ${f.filiere}  -  ${f.region}${locPdf ? ` (${locPdf})` : ""}`);
-    if (f.operateur || f.beneficiaire) ligne(`${f.operateur ? "Operateur : " + f.operateur : ""}${f.operateur && f.beneficiaire ? "  -  " : ""}${f.beneficiaire ? "Beneficiaire : " + f.beneficiaire : ""}`);
+    if (f.operateur || f.beneficiaire) ligne(`${f.operateur ? "Opérateur : " + f.operateur : ""}${f.operateur && f.beneficiaire ? "  -  " : ""}${f.beneficiaire ? "Bénéficiaire : " + f.beneficiaire : ""}`);
     doc.text(nettoyerPdf(`${f.apprenants} apprenants  -  Budget : ${fmtFCFA(f.budget)}  -  Statut : ${f.statut}`), M, y); y += 9;
 
     // ------ Score global ------
@@ -1943,8 +1858,8 @@ export default function MipPpaApp() {
         try { doc.addImage(CERTIFICATION_FDFP, "PNG", (W - L) / 2, 283.5 - H, L, H); } catch (e) {}
         doc.setDrawColor(...orange); doc.setLineWidth(0.6); doc.line(M, 285, W - M, 285);
         doc.setFontSize(7.5); doc.setTextColor(...gris); doc.setFont("helvetica", "normal");
-        doc.text(nettoyerPdf("FDFP - Fonds de Developpement de la Formation Professionnelle - Modele MIP-PPA - PFE ESA/INP-HB"), M, 290);
-        doc.text(nettoyerPdf(`Page ${p} / ${nbTotal} - Edite le ${new Date().toLocaleDateString("fr-FR")}`), W - M, 290, { align: "right" });
+        doc.text(nettoyerPdf("FDFP - Fonds de Développement de la Formation Professionnelle - Modèle MIP-PPA - PFE ESA/INP-HB"), M, 290);
+        doc.text(nettoyerPdf(`Page ${p} / ${nbTotal} - Édité le ${new Date().toLocaleDateString("fr-FR")}`), W - M, 290, { align: "right" });
       }
     };
     const sautSiBesoin = (h) => { if (y + h > BAS_CONTENU) { doc.addPage(); y = 20; } };
@@ -2064,7 +1979,7 @@ export default function MipPpaApp() {
       if (((d.type || "").includes("pdf") || /\.pdf$/i.test(d.nom)) && d.data) pdfsJoints.push({ jalon: s.jalon, d });
     }));
     const nomFichier = `Fiche_MIP-PPA_${f.entreprise.replace(/\s+/g, "_")}.pdf`;
-    const MENTION = "FDFP - Fonds de Developpement de la Formation Professionnelle - Modele MIP-PPA - PFE ESA/INP-HB";
+    const MENTION = "FDFP - Fonds de Développement de la Formation Professionnelle - Modèle MIP-PPA - PFE ESA/INP-HB";
     const LE_JOUR = new Date().toLocaleDateString("fr-FR");
 
     if (pdfsJoints.length) {
@@ -2110,15 +2025,29 @@ export default function MipPpaApp() {
         base.getPages().forEach((pg, i) => {
           if (i < pagesFiche) return;         // déjà traitées par jsPDF
           const { width } = pg.getSize();
+          const L = 45 * MM, H = (L * 181) / 768;
+          /* Fond opaque sous le pied. Les pages d'annexe viennent de documents
+             que nous n'avons pas composés : leur contenu descend jusqu'où il
+             veut, y compris dans la marge basse. Sans ce fond, le pied s'y
+             mélangeait — le numéro de page d'origine du document joint se
+             superposait au bandeau de certification, et le filet orange
+             traversait le texte de l'annexe.
+             La bande couvre exactement la hauteur du pied, bandeau compris ;
+             ce qu'une annexe aurait écrit dans ces 26 derniers millimètres
+             est masqué, y compris sa propre numérotation — c'est voulu, la
+             fiche renumérote l'ensemble en continu. */
+          pg.drawRectangle({
+            x: 0, y: 0, width, height: 13.5 * MM + H + 2 * MM,
+            color: rgb(1, 1, 1),
+          });
           if (bandeau) {
-            const L = 45 * MM, H = (L * 181) / 768;
             pg.drawImage(bandeau, { x: (width - L) / 2, y: 13.5 * MM, width: L, height: H });
           }
           pg.drawLine({
             start: { x: M * MM, y: 12 * MM }, end: { x: width - M * MM, y: 12 * MM },
             thickness: 0.6 * MM, color: rgb(242 / 255, 163 / 255, 60 / 255),
           });
-          const droite = nettoyerPdf(`Page ${i + 1} / ${total} - Edite le ${LE_JOUR}`);
+          const droite = nettoyerPdf(`Page ${i + 1} / ${total} - Édité le ${LE_JOUR}`);
           const gris01 = rgb(0.35, 0.35, 0.35);
           pg.drawText(nettoyerPdf(MENTION), { x: M * MM, y: 7 * MM, size: 7.5, font: police, color: gris01 });
           pg.drawText(droite, {
@@ -2503,7 +2432,7 @@ export default function MipPpaApp() {
           <div className="bandeau-droite">
             <HorlogeUTC />
             <button onClick={() => setPage("guide")} className="hidden sm:flex text-sm text-stone-600 hover:text-stone-900 items-center gap-1.5" title="Ouvrir le guide d'utilisation."><Icone n="livre" t={16} /> Guide</button>
-            <button onClick={basculerTheme} className="hidden sm:block text-stone-500 hover:text-stone-800 shrink-0" title={sombre ? "Passer en mode éclairé" : "Passer en mode sombre"}>
+            <button onClick={basculerTheme} className="hidden sm:block text-stone-500 hover:text-stone-800 shrink-0" title={sombre ? "Passer en mode éclairé" : "Passer en mode sombre"} aria-label={sombre ? "Passer en mode éclairé" : "Passer en mode sombre"}>
               <Icone n={sombre ? "soleil" : "lune"} t={19} />
             </button>
             <div className="relative">
@@ -2577,11 +2506,26 @@ export default function MipPpaApp() {
                 <RadarChart data={radarData} outerRadius={estMobile ? "54%" : "72%"}>
                   <PolarGrid stroke="#e7e5e4" />
                   <PolarAngleAxis dataKey="dim" tick={<TickRadar mobile={estMobile} />} />
-                  <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 9 }} />
+                  {/* Graduations masquées. Recharts les empile le long d'un
+                      rayon, par-dessus le polygone : « 0 25 50 75 100 » se
+                      chevauchaient sur la surface colorée sans être lisibles.
+                      L'échelle reste donnée par la grille, et la valeur exacte
+                      par l'infobulle — rien n'est perdu. */}
+                  <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
                   <Radar dataKey="score" stroke={C.vert} fill={C.vert} fillOpacity={0.35} />
                   <Tooltip formatter={(v) => `${Math.round(v)} %`} />
                 </RadarChart>
               </ResponsiveContainer>
+              {/* Équivalent textuel. Recharts produit un SVG que rien
+                  n'annonce : sans cette liste, la page n'expose aucun des
+                  chiffres du graphique à qui ne le voit pas. « sr-only » la
+                  réserve aux lecteurs d'écran — le graphique reste seul à
+                  l'affichage. */}
+              <ul className="sr-only">
+                {radarData.map((d) => (
+                  <li key={d.dim}>{d.dim} : {Math.round(d.score)} %</li>
+                ))}
+              </ul>
             </section>
 
             {/* ---------- CARTE DU PORTEFEUILLE ----------
@@ -2591,18 +2535,48 @@ export default function MipPpaApp() {
                 Korhogo » pouvait aussi bien être à Korhogo qu'à Odienné, à
                 200 km de là. */}
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
-              <h3 className="font-bold">Implantation des projets</h3>
-              <p className="text-sm text-stone-500 mb-2">
-                Nombre de projets par localité. La taille de chaque pastille suit le nombre de projets, et sa couleur l'implantation de rattachement.
-              </p>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="font-bold">Implantation des projets</h3>
+                  <p className="text-sm text-stone-500 mb-2">
+                    {lectureCarte === "score"
+                      ? "Chaque zone prend la couleur du niveau moyen de ses projets. La taille des pastilles suit toujours le nombre de projets."
+                      : "Nombre de projets par localité. La taille de chaque pastille suit le nombre de projets, et sa couleur l'implantation de rattachement."}
+                  </p>
+                </div>
+                {/* Compter les projets ne dit pas comment ils se portent :
+                    une antenne peut en porter dix et tous les rater. La même
+                    carte se relit donc au niveau moyen. */}
+                <div className="flex rounded-lg border border-stone-200 overflow-hidden shrink-0" role="group"
+                  aria-label="Choisir ce que la couleur des zones représente">
+                  {[["implantation", "Implantation"], ["score", "Niveau moyen"]].map(([cle, txt]) => (
+                    <button key={cle} onClick={() => setLectureCarte(cle)}
+                      aria-pressed={lectureCarte === cle}
+                      className={"text-xs px-3 py-1.5 font-medium " + (lectureCarte === cle ? "text-white" : "bg-white text-stone-600 hover:bg-stone-50")}
+                      style={lectureCarte === cle ? { background: C.vertFonce } : undefined}>
+                      {txt}
+                    </button>
+                  ))}
+                </div>
+              </div>
               {Object.keys(projetsParLocalite).length ? (
                 <>
-                  <CarteNationale comptes={projetsParLocalite} sombre={sombre}
+                  <CarteNationale comptes={projetsParLocalite} scores={scoreParZone}
+                    lecture={lectureCarte} sombre={sombre}
                     surClic={(d) => setDetailLocalite(d.n)} />
-                  {/* Légende : les huit implantations, avec leur part du
-                      portefeuille. Une couleur sans total ne se lit pas. */}
+                  {/* Légende. En lecture « implantation » : les huit zones et
+                      leur part du portefeuille — une couleur sans total ne se
+                      lit pas. En lecture « score » : les quatre paliers du
+                      modèle, plus le gris des zones non évaluées. */}
                   <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3">
-                    {IMPLANTATIONS.map((z) => {
+                    {lectureCarte === "score" ? (<>
+                      {[["Insuffisant", C.insuffisant], ["Moyen", C.dev], ["Satisfaisant", C.satisfaisant], ["Excellent", C.excellent], ["Non évaluée", "#a8a29e"]].map(([t, c]) => (
+                        <span key={t} className="inline-flex items-center gap-1.5 text-xs">
+                          <span className="inline-block w-3 h-3 rounded-sm shrink-0" style={{ background: c }} />
+                          <span className="font-medium">{t}</span>
+                        </span>
+                      ))}
+                    </>) : IMPLANTATIONS.map((z) => {
                       const n = formationsVisibles.filter((f) => normaliserRegion(f.region) === z).length;
                       return (
                         <span key={z} className={"inline-flex items-center gap-1.5 text-xs " + (n ? "" : "opacity-40")}>
@@ -2613,6 +2587,19 @@ export default function MipPpaApp() {
                       );
                     })}
                   </div>
+                  {/* Les pastilles de la carte portent les chiffres ; cette
+                      liste les redonne à qui ne voit pas le dessin. */}
+                  <ul className="sr-only">
+                    {Object.entries(projetsParLocalite)
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([loc, n]) => (
+                        <li key={loc}>{loc} : {n} projet{n > 1 ? "s" : ""}</li>
+                      ))}
+                    {IMPLANTATIONS.filter((z) => scoreParZone[z] !== null).map((z) => (
+                      <li key={z}>{z} : niveau moyen {fmtPct(scoreParZone[z])}, {niveau(scoreParZone[z]).txt}</li>
+                    ))}
+                  </ul>
+                  <MentionCarte />
                 </>
               ) : (
                 <p className="text-sm text-stone-500 py-8 text-center">Aucun projet à localiser.</p>
@@ -2644,6 +2631,11 @@ export default function MipPpaApp() {
                   <Bar dataKey="score" fill={C.vert} radius={[0, 6, 6, 0]} barSize={26} />
                 </BarChart>
               </ResponsiveContainer>
+              <ul className="sr-only">
+                {filiereData.map((d) => (
+                  <li key={d.filiere}>{d.filiere} : {Math.round(d.score)} %</li>
+                ))}
+              </ul>
             </section>
 
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
@@ -2686,7 +2678,38 @@ export default function MipPpaApp() {
           {page === "formations" && (<>
             <div className="flex flex-wrap items-center gap-3">
               <input value={recherche} onChange={(e) => setRecherche(e.target.value)} placeholder="Rechercher entreprise, formation, secteur…"
+                aria-label="Rechercher un projet par entreprise, intitulé ou secteur"
                 className="flex-1 min-w-[240px] bg-white border border-stone-200 rounded-full px-5 py-2.5 text-sm outline-none focus:border-stone-400" />
+              {/* Filtres géographiques. La carte du tableau de bord montre où
+                  sont les projets, mais la liste ne s'y rangeait pas : un
+                  responsable d'antenne n'avait aucun moyen de n'afficher que
+                  les siens. Changer de zone remet la localité à zéro — elle
+                  n'appartient plus forcément à la nouvelle zone. */}
+              <select value={filtreZone} onChange={(e) => { setFiltreZone(e.target.value); setFiltreLocalite(""); }}
+                aria-label="Filtrer les projets par zone de couverture"
+                title="N'afficher que les projets d'une implantation."
+                className="bg-white border border-stone-200 rounded-full px-4 py-2.5 text-sm">
+                <option value="">Toutes les zones</option>
+                {IMPLANTATIONS.map((z) => <option key={z} value={z}>{z}</option>)}
+              </select>
+              <select value={filtreLocalite} onChange={(e) => setFiltreLocalite(e.target.value)}
+                aria-label="Filtrer les projets par localité"
+                title="N'afficher que les projets d'une localité."
+                className="bg-white border border-stone-200 rounded-full px-4 py-2.5 text-sm">
+                <option value="">Toutes les localités</option>
+                {/* Sans zone choisie, seules les localités qui portent des
+                    projets sont proposées : dérouler les 108 pour en trouver
+                    trois n'aiderait personne. */}
+                {(filtreZone ? localitesDe(filtreZone)
+                             : Object.keys(projetsParLocalite).sort((a, b) => a.localeCompare(b, "fr"))
+                 ).map((l) => <option key={l} value={l}>{l}</option>)}
+              </select>
+              {(filtreZone || filtreLocalite) && (
+                <button onClick={() => { setFiltreZone(""); setFiltreLocalite(""); }}
+                  className="text-sm text-stone-600 hover:text-stone-900 underline">
+                  Retirer les filtres
+                </button>
+              )}
               {P.exports && (
                 <div className="flex items-center gap-2">
                   <button onClick={exportXlsx} className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50" title="Classeur Excel mis en forme, avec le bandeau de certification."><Icone n="telecharger" t={15} /> Excel</button>
@@ -2783,12 +2806,23 @@ export default function MipPpaApp() {
               </div>
             )}
 
+            {/* Combien de projets répondent aux critères. Sans ce compte, une
+                liste vide se lit comme un portefeuille vide alors qu'il ne
+                s'agit que d'un filtre trop étroit. « aria-live » le fait
+                annoncer à mesure que la sélection change. */}
+            <div className="text-sm text-stone-500 -mb-1" aria-live="polite">
+              {projetsFiltres.length} projet{projetsFiltres.length > 1 ? "s" : ""}
+              {projetsFiltres.length !== formationsVisibles.length && ` sur ${formationsVisibles.length}`}
+              {filtreZone && ` · ${filtreZone}`}
+              {filtreLocalite && ` · ${filtreLocalite}`}
+            </div>
+
             <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden">
               {/* Vue tableau — ordinateur / tablette large */}
               <div className="hidden md:grid grid-cols-12 px-5 py-3 text-sm font-semibold text-stone-600 border-b border-stone-100">
                 <div className="col-span-6">Projet de formation de type apprentissage</div><div className="col-span-2">Secteur</div><div className="col-span-2">Score MIP &amp; statut</div><div className="col-span-2 text-right">Actions</div>
               </div>
-              {formationsVisibles.filter((f) => (f.titre + f.entreprise + f.filiere + (f.secteurGrand || "") + (f.domaine || "")).toLowerCase().includes(recherche.toLowerCase())).map((f) => (
+              {projetsFiltres.map((f) => (
                 <div key={f.id} className="hidden md:grid grid-cols-12 items-center px-5 py-4 border-b border-stone-50 hover:bg-stone-50">
                   <div className="col-span-6 pr-3 min-w-0">
                     <div className="font-semibold break-words">{f.titre}</div>
@@ -2799,14 +2833,14 @@ export default function MipPpaApp() {
                   <div className="col-span-2 flex flex-wrap items-center gap-1.5"><Badge score={scoreGlobal(referentiel, f.notes)} /><PuceStatut statut={f.statut} /><PuceCouverture referentiel={referentiel} notes={f.notes} /></div>
                   <div className="col-span-2 flex justify-end items-center gap-3">
                     <button onClick={() => { setEvalId(f.id); setPage("evaluation"); }} className="text-sm font-medium hover:underline" style={{ color: C.vert }}>Évaluer</button>
-                    {P.editerFormation && <button title="Modifier la formation" onClick={() => editerFormation(f)} className="text-stone-500 hover:text-stone-800"><Icone n="crayon" t={16} /></button>}
+                    {P.editerFormation && <button title="Modifier la formation" onClick={() => editerFormation(f)} className="text-stone-500 hover:text-stone-800" aria-label="Modifier la formation"><Icone n="crayon" t={16} /></button>}
                     {P.supprimerFormation && <button onClick={() => { if (window.confirm(`Supprimer « ${f.titre} » et ses suivis ?`)) { setFormations((fs) => fs.filter((x) => x.id !== f.id)); setSuivis((ss) => ss.filter((x) => x.formationId !== f.id)); } }} className="text-red-500 hover:text-red-700" ><Icone n="poubelle" t={16} /></button>}
                   </div>
                 </div>
               ))}
               {/* Vue cartes — mobile : chaque projet entièrement visible, sans défilement horizontal */}
               <div className="md:hidden divide-y divide-stone-100">
-                {formationsVisibles.filter((f) => (f.titre + f.entreprise + f.filiere + (f.secteurGrand || "") + (f.domaine || "")).toLowerCase().includes(recherche.toLowerCase())).map((f) => (
+                {projetsFiltres.map((f) => (
                   <div key={f.id} className="p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="font-semibold break-words min-w-0">{f.titre}</div>
@@ -2819,7 +2853,7 @@ export default function MipPpaApp() {
                     </div>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3">
                       <button onClick={() => { setEvalId(f.id); setPage("evaluation"); }} className="text-sm font-medium hover:underline" style={{ color: C.vert }}>Évaluer</button>
-                      {P.editerFormation && <button title="Modifier la formation" onClick={() => editerFormation(f)} className="text-stone-500 hover:text-stone-800"><Icone n="crayon" t={16} /></button>}
+                      {P.editerFormation && <button title="Modifier la formation" onClick={() => editerFormation(f)} className="text-stone-500 hover:text-stone-800" aria-label="Modifier la formation"><Icone n="crayon" t={16} /></button>}
                       {P.supprimerFormation && <button onClick={() => { if (window.confirm(`Supprimer « ${f.titre} » et ses suivis ?`)) { setFormations((fs) => fs.filter((x) => x.id !== f.id)); setSuivis((ss) => ss.filter((x) => x.formationId !== f.id)); } }} className="text-red-500 hover:text-red-700" ><Icone n="poubelle" t={16} /></button>}
                     </div>
                   </div>
@@ -2849,17 +2883,24 @@ export default function MipPpaApp() {
               </div>
             </div>
 
-            <section className="rounded-2xl p-6 text-white flex flex-wrap items-start justify-between gap-4" style={{ background: "linear-gradient(120deg,#0e3c60,#2280bf)" }}>
-              <div>
+            {/* Bandeau centré. Il était en deux colonnes — identification à
+                gauche, score à droite — mais les deux lignes qui se sont
+                ajoutées sous le score, couverture et marge au seuil, sont
+                trop longues pour une demi-largeur : elles débordaient sous le
+                bloc de gauche et rompaient l'alignement à droite. Tout est
+                désormais empilé et centré, ce qui vaut aussi bien sur un
+                téléphone que sur un grand écran. */}
+            <section className="rounded-2xl p-6 text-white flex flex-col items-center text-center gap-4" style={{ background: "linear-gradient(120deg,#0e3c60,#2280bf)" }}>
+              <div className="max-w-3xl">
                 <div className="text-xs uppercase tracking-wider text-sky-200">Promoteur : {fEval.entreprise}</div>
-                <h2 className="text-2xl font-bold mt-1">{fEval.titre}</h2>
-                <div className="text-sm text-sky-100 mt-1">{libelleSecteur(fEval, secteurs)} · {fEval.region}{normaliserLocalite(fEval.localite, fEval.region) ? ` (${normaliserLocalite(fEval.localite, fEval.region)})` : ""} · {fEval.apprenants} apprenants · {fmtFCFA(fEval.budget)}</div>
-                {(fEval.operateur || fEval.beneficiaire) && <div className="text-xs text-sky-200 mt-1">{[fEval.operateur ? `Opérateur : ${fEval.operateur}` : "", fEval.beneficiaire ? `Bénéficiaire : ${fEval.beneficiaire}` : ""].filter(Boolean).join(" · ")}</div>}
+                <h2 className="text-2xl font-bold mt-1 break-words">{fEval.titre}</h2>
+                <div className="text-sm text-sky-100 mt-1 break-words">{libelleSecteur(fEval, secteurs)} · {fEval.region}{normaliserLocalite(fEval.localite, fEval.region) ? ` (${normaliserLocalite(fEval.localite, fEval.region)})` : ""} · {fEval.apprenants} apprenants · {fmtFCFA(fEval.budget)}</div>
+                {(fEval.operateur || fEval.beneficiaire) && <div className="text-xs text-sky-200 mt-1 break-words">{[fEval.operateur ? `Opérateur : ${fEval.operateur}` : "", fEval.beneficiaire ? `Bénéficiaire : ${fEval.beneficiaire}` : ""].filter(Boolean).join(" · ")}</div>}
               </div>
-              <div className="text-right">
+              <div className="max-w-3xl">
                 <div className="text-xs uppercase tracking-wider text-sky-200">Score global MIP-PPA</div>
                 <div className="text-5xl font-bold">{fmtPct(scoreGlobal(referentiel, fEval.notes))}</div>
-                <div className="mt-1.5 flex flex-wrap justify-end items-center gap-2">
+                <div className="mt-1.5 flex flex-wrap justify-center items-center gap-2">
                   <Badge score={scoreGlobal(referentiel, fEval.notes)} />
                   <PuceStatut statut={fEval.statut} />
                 </div>
@@ -2961,6 +3002,7 @@ export default function MipPpaApp() {
                   </div>
                   <div className="mt-3">
                     <CarteZone zone={zone} localite={loc} sombre={sombre} />
+                    <MentionCarte />
                   </div>
                 </section>
               );
@@ -3252,7 +3294,7 @@ export default function MipPpaApp() {
                         }}
                         className="bg-transparent outline-none" />
                       <button onClick={() => setPhases((ss) => ss.filter((_, j) => j !== i))}
-                        className="text-stone-400 hover:text-red-600 w-5 h-5 rounded-full flex items-center justify-center" title="Supprimer cette phase"><Icone n="fermer" t={12} /></button>
+                        className="text-stone-400 hover:text-red-600 w-5 h-5 rounded-full flex items-center justify-center" title="Supprimer cette phase" aria-label="Supprimer cette phase"><Icone n="fermer" t={12} /></button>
                     </span>
                   ))}
                   <button onClick={() => setPhases((ss) => [...ss, "Nouvelle phase"])}
@@ -3466,7 +3508,7 @@ export default function MipPpaApp() {
                       </select>
                       {roleActif === "Administrateur lead" && session?.id !== u.id && u.role !== "En attente d'activation" && (
                         <button title="Retirer l'accès (repasse le compte en attente)." onClick={() => attribuerRole(u.id, "En attente d'activation")}
-                          className="text-red-500 hover:text-red-700"><Icone n="poubelle" t={16} /></button>
+                          className="text-red-500 hover:text-red-700" aria-label="Retirer l'accès (repasse le compte en attente)."><Icone n="poubelle" t={16} /></button>
                       )}
                     </div>
                   </div>
@@ -3569,7 +3611,7 @@ export default function MipPpaApp() {
                   <h3 className="text-xl font-bold break-words">{entetes[0]}</h3>
                   <p className="text-sm text-stone-500 break-words">{entetes[1]}</p>
                 </div>
-                <button onClick={() => setDetailStat(null)} className="text-stone-400 hover:text-stone-700 shrink-0" title="Fermer"><Icone n="fermer" t={18} /></button>
+                <button onClick={() => setDetailStat(null)} className="text-stone-400 hover:text-stone-700 shrink-0" title="Fermer" aria-label="Fermer"><Icone n="fermer" t={18} /></button>
               </div>
 
               {!liste.length ? (
@@ -3624,7 +3666,7 @@ export default function MipPpaApp() {
                     {dep ? `${dep.r} · rattachée à ${dep.z}.` : "Localité hors nomenclature."}
                   </p>
                 </div>
-                <button onClick={() => setDetailLocalite(null)} className="text-stone-400 hover:text-stone-700 shrink-0" title="Fermer"><Icone n="fermer" t={18} /></button>
+                <button onClick={() => setDetailLocalite(null)} className="text-stone-400 hover:text-stone-700 shrink-0" title="Fermer" aria-label="Fermer"><Icone n="fermer" t={18} /></button>
               </div>
               <div className="mt-5 border-t border-stone-100">
                 {liste.map((f) => (
@@ -3641,8 +3683,22 @@ export default function MipPpaApp() {
                   </button>
                 ))}
               </div>
-              <div className="mt-4 pt-3 border-t border-stone-200 text-sm text-stone-500">
-                {liste.length} projet{liste.length > 1 ? "s" : ""} dans cette localité.
+              <div className="mt-4 pt-3 border-t border-stone-200 flex flex-wrap items-center justify-between gap-2 text-sm">
+                <span className="text-stone-500">
+                  {liste.length} projet{liste.length > 1 ? "s" : ""} dans cette localité.
+                </span>
+                {/* Passer de la carte à la liste filtrée : sans ce raccourci,
+                    il fallait retrouver la localité à la main dans le filtre. */}
+                <button
+                  onClick={() => {
+                    setFiltreZone(dep ? dep.z : "");
+                    setFiltreLocalite(detailLocalite);
+                    setDetailLocalite(null);
+                    setPage("formations");
+                  }}
+                  className="font-semibold hover:underline" style={{ color: C.vert }}>
+                  Filtrer le portefeuille sur cette localité →
+                </button>
               </div>
             </div>
           </div>
@@ -3656,7 +3712,7 @@ export default function MipPpaApp() {
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-5 md:p-7 page-anim max-h-[92vh] overflow-y-auto">
             <div className="flex items-start justify-between">
               <h3 className="text-xl font-bold">Modifier la dimension</h3>
-              <button onClick={() => setDimEdit(null)} className="text-stone-400 hover:text-stone-700" title="Fermer"><Icone n="fermer" t={18} /></button>
+              <button onClick={() => setDimEdit(null)} className="text-stone-400 hover:text-stone-700" title="Fermer" aria-label="Fermer"><Icone n="fermer" t={18} /></button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
               <label className="text-sm font-semibold text-stone-800">Code court
@@ -3696,7 +3752,7 @@ export default function MipPpaApp() {
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-5 md:p-7 page-anim max-h-[92vh] overflow-y-auto">
             <div className="flex items-start justify-between">
               <h3 className="text-xl font-bold">Modifier l'indicateur</h3>
-              <button onClick={() => setIndEdit(null)} className="text-stone-400 hover:text-stone-700" title="Fermer"><Icone n="fermer" t={18} /></button>
+              <button onClick={() => setIndEdit(null)} className="text-stone-400 hover:text-stone-700" title="Fermer" aria-label="Fermer"><Icone n="fermer" t={18} /></button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
               <label className="text-sm font-semibold text-stone-800">Code
@@ -3739,7 +3795,7 @@ export default function MipPpaApp() {
                 <h3 className="text-xl font-bold">Suivi {suiviEdit.jalon}</h3>
                 <p className="text-sm text-stone-500 mt-0.5">{suiviEdit.titreF}</p>
               </div>
-              <button onClick={() => setSuiviEdit(null)} className="text-stone-400 hover:text-stone-700" title="Fermer"><Icone n="fermer" t={18} /></button>
+              <button onClick={() => setSuiviEdit(null)} className="text-stone-400 hover:text-stone-700" title="Fermer" aria-label="Fermer"><Icone n="fermer" t={18} /></button>
             </div>
             <label className="block text-sm font-semibold text-stone-800 mt-5">Date d'échéance
               <input type="date" value={suiviEdit.echeance}
