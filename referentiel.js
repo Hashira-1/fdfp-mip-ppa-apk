@@ -183,7 +183,16 @@ export const normaliserRegion = (r) => {
 // zone seule ne dit pas — huit implantations pour 108 départements.
 // La liste proposée est donc toujours celle de la zone choisie, jamais les
 // 108 : on ne peut pas se tromper d'antenne en choisissant sa localité.
+/* Deux notions à ne pas confondre, et c'est la distinction du FDFP lui-même :
+     — la ZONE d'occupation couvre tout le territoire. Chaque département
+       relève d'une antenne ou du Siège ; c'est ce que la carte colorie.
+     — les VILLES CIBLES (« t ») sont celles que le document de la DACD nomme,
+       là où le FDFP intervient effectivement. Ce sont elles, et elles seules,
+       qui sont proposées à la saisie.
+   Un département sans ville cible appartient donc bien à une antenne : il est
+   colorié comme elle, simplement aucun projet ne s'y localise. */
 export const LOCALITES_PAR_ZONE = DEPARTEMENTS.reduce((acc, d) => {
+  if (!d.t) return acc;
   (acc[d.z] = acc[d.z] || []).push(d.n);
   return acc;
 }, {});

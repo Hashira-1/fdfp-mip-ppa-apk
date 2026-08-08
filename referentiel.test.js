@@ -10,6 +10,7 @@ import {
   STATUTS_PROJET, normaliserStatut, normaliserRegion, normaliserLocalite,
   localitesDe, localiteParDefaut, IMPLANTATIONS, LOCALITES_PAR_ZONE,
 } from "./referentiel.js";
+import { DEPARTEMENTS } from "./geo-civ.js";
 
 describe("normaliserStatut", () => {
   it("le statut qualifie le projet : masculin", () => {
@@ -66,16 +67,53 @@ describe("memeNom — accents et séparateurs", () => {
 
   it("reconnaît les localités écrites sans accent ni séparateur", () => {
     expect(normaliserLocalite("M'BENGUE", "Antenne Korhogo")).toBe("M'Bengué");
-    expect(normaliserLocalite("KOUN FAO", "Antenne Abengourou")).toBe("Koun-Fao");
+    expect(normaliserLocalite("AGNIBILEKROU", "Antenne Abengourou")).toBe("Agnibilékrou");
     expect(normaliserLocalite("san pedro", "Antenne San-Pédro")).toBe("San-Pédro");
   });
 });
 
 describe("localités et zones", () => {
-  it("couvre les 108 départements, sans doublon entre zones", () => {
+  it("ne propose à la saisie que les villes cibles du document", () => {
+    // 76 départements cités + Bonoua, citée elle aussi.
     const toutes = IMPLANTATIONS.flatMap((z) => localitesDe(z));
-    expect(toutes).toHaveLength(108);
-    expect(new Set(toutes).size).toBe(108);
+    expect(toutes).toHaveLength(77);
+    expect(new Set(toutes).size).toBe(77);
+  });
+
+  it("le zonage, lui, couvre le territoire entier", () => {
+    /* La distinction est celle du FDFP : la zone d'occupation d'une antenne
+       couvre tous ses départements ; le document ne nomme que les villes où
+       elle intervient. Un département sans ville cible appartient donc bien à
+       une antenne — il est colorié comme elle — mais rien ne s'y localise. */
+    // Aucun département orphelin, et aucune zone hors nomenclature.
+    expect(DEPARTEMENTS.every((d) => d.z)).toBe(true);
+    expect(DEPARTEMENTS.every((d) => IMPLANTATIONS.includes(d.z))).toBe(true);
+    // Les villes cibles sont un sous-ensemble strict des départements zonés.
+    expect(DEPARTEMENTS.filter((d) => d.t)).toHaveLength(77);
+    expect(DEPARTEMENTS.length).toBeGreaterThan(77);
+  });
+
+  it("les départements sans ville cible restent rattachés à leur antenne", () => {
+    const parNom = (n) => DEPARTEMENTS.find((d) => d.n === n);
+    expect(parNom("Taabo").z).toBe("Siège Abidjan");
+    expect(parNom("Prikro").z).toBe("Antenne Abengourou");
+    expect(parNom("Sipilou").z).toBe("Antenne Man");
+    // …mais aucun n'est proposé à la saisie.
+    const toutes = IMPLANTATIONS.flatMap((z) => localitesDe(z));
+    ["Taabo", "Tiapoum", "Téhini", "Koun-Fao", "Prikro", "Kouto",
+     "Madinani", "Sipilou", "Buyo", "Méagui", "Gbeleban", "Bloléquin"]
+      .forEach((n) => expect(toutes).not.toContain(n));
+  });
+
+  it("M'Bengué est bien une ville cible de Korhogo", () => {
+    expect(localitesDe("Antenne Korhogo")).toContain("M'Bengué");
+  });
+
+  it("inclut Bonoua, citée par la DACD sans être un département", () => {
+    // Sous-préfecture de Grand-Bassam : absente du niveau départemental,
+    // mais nommée par le document pour le Siège.
+    expect(localitesDe("Siège Abidjan")).toContain("Bonoua");
+    expect(localitesDe("Siège Abidjan")).toContain("Grand-Bassam");
   });
 
   it("les huit implantations ont toutes des localités", () => {

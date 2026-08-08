@@ -602,6 +602,26 @@ function Routes({ ROUTES, k = 1, sombre, opacite = 1 }) {
    données humanitaires d'OCHA, le réseau routier d'OpenStreetMap : la licence
    ODbL de ce dernier impose de citer la source partout où la carte est
    montrée. Ce n'est pas une politesse, c'est une condition d'usage. */
+/* Légende du fond de carte : les deux épaisseurs de route ne veulent rien
+   dire tant qu'on ne sait pas ce qu'elles distinguent. */
+function LegendeFond({ sombre }) {
+  const trait = (couleur, epaisseur) => (
+    <svg width="26" height="8" aria-hidden="true" className="shrink-0">
+      <line x1="1" y1="4" x2="25" y2="4" stroke={couleur} strokeWidth={epaisseur} strokeLinecap="round" />
+    </svg>
+  );
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-2 text-xs text-stone-500">
+      <span className="inline-flex items-center gap-1.5">
+        {trait(sombre ? "#8298ad" : "#6f5836", 2.6)} Autoroutes et voies express
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        {trait(sombre ? "#5b6b7d" : "#9c8866", 1.5)} Routes nationales
+      </span>
+    </div>
+  );
+}
+
 function MentionCarte() {
   return (
     <p className="text-[11px] text-stone-400 mt-2 leading-snug">
@@ -775,7 +795,10 @@ function CarteZone({ zone, localite, sombre }) {
      tête et s'impose : son nom ne cède jamais la place. Les autres suivent du
      plus grand département au plus petit — à encombrement égal, le nom du
      plus visible est le plus utile. */
-  const autres = dedans.filter((d) => !cible || d.c !== cible.c);
+  /* Seules les villes cibles portent un point et un nom : les autres
+     départements de la zone en font partie — ils sont coloriés — mais le
+     document de la DACD n'y désigne aucune ville d'intervention. */
+  const autres = dedans.filter((d) => d.t && (!cible || d.c !== cible.c));
   const nommees = useMemo(() => {
     const aire = (d) => (d.b[2] - d.b[0]) * (d.b[3] - d.b[1]);
     const candidats = [];
@@ -3023,6 +3046,7 @@ export default function MipPpaApp() {
                       );
                     })}
                   </div>
+                  <LegendeFond sombre={sombre} />
                   {/* Les pastilles de la carte portent les chiffres ; cette
                       liste les redonne à qui ne voit pas le dessin. */}
                   <ul className="sr-only">
@@ -3506,6 +3530,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                   </div>
                   <div className="mt-3">
                     <CarteZone zone={zone} localite={loc} sombre={sombre} />
+                    <LegendeFond sombre={sombre} />
                     <MentionCarte />
                   </div>
                 </section>
