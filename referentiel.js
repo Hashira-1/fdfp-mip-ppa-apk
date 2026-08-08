@@ -150,13 +150,28 @@ export const nomLibre = (base, existants) => {
 // Note : le champ reste stocké sous le nom « region » (colonne Supabase).
 export const ANTENNES_FDFP = ["Abengourou", "Bouaké", "Daloa", "Korhogo", "Man", "San-Pédro", "Yamoussoukro"];
 export const IMPLANTATIONS = ["Siège Abidjan", ...ANTENNES_FDFP.map((a) => `Antenne ${a}`)];
+/* Comparaison de noms propres, indifférente aux accents ET aux séparateurs.
+   « sensitivity: base » suffit pour les accents, mais pas pour le trait
+   d'union ni l'apostrophe : le document de la DACD écrit « SAN PEDRO » et
+   « M'BENGUE » là où l'application écrit « San-Pédro » et « M'Bengué ». Sans
+   cette tolérance, les deux formes n'étaient pas reconnues comme une seule, et
+   un projet repris sous la forme du document restait hors nomenclature —
+   invisible aux filtres, absent de la carte. */
+export const memeNom = (a, b) => {
+  const pivot = (x) => String(x == null ? "" : x).replace(/[\s\-'’]+/g, "").toLowerCase();
+  return pivot(a).localeCompare(pivot(b), "fr", { sensitivity: "base" }) === 0;
+};
+
 // Convertit les valeurs historiques (« Abidjan », « San-Pédro », « antenne de Bouaké »…)
 // vers la nomenclature officielle ; laisse la valeur intacte si elle est inconnue.
 export const normaliserRegion = (r) => {
   const v = String(r || "").trim();
   if (!v || IMPLANTATIONS.includes(v)) return v;
   const nu = v.replace(/^(si[eè]ge|antenne)\s*(d[eu']\s*)?/i, "").trim();
-  const memeMot = (a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }) === 0;
+  const memeMot = (a, b) => memeNom(a, b);
+  /* « SIEGE » tout seul — l'intitulé de la colonne dans le tableau B du
+     document de la DACD. Il n'y a qu'un siège, et il est à Abidjan. */
+  if (!nu && /^si[eè]ge/i.test(v)) return "Siège Abidjan";
   if (memeMot(nu, "Abidjan")) return "Siège Abidjan";
   const antenne = ANTENNES_FDFP.find((a) => memeMot(a, nu));
   return antenne ? `Antenne ${antenne}` : v;
@@ -185,7 +200,7 @@ export const localiteParDefaut = (zone) => {
   const liste = localitesDe(z);
   if (!liste.length) return "";
   const chef = z.replace(/^(Siège|Antenne)\s+/, "");
-  return liste.find((n) => n.localeCompare(chef, "fr", { sensitivity: "base" }) === 0) || liste[0];
+  return liste.find((n) => memeNom(n, chef)) || liste[0];
 };
 
 /* Ramène une localité à la nomenclature, dans le périmètre de sa zone. Une
@@ -196,7 +211,7 @@ export const normaliserLocalite = (loc, zone) => {
   const liste = localitesDe(zone);
   const v = String(loc || "").trim();
   if (!v) return localiteParDefaut(zone);
-  const exact = liste.find((n) => n.localeCompare(v, "fr", { sensitivity: "base" }) === 0);
+  const exact = liste.find((n) => memeNom(n, v));
   return exact || localiteParDefaut(zone);
 };
 
@@ -210,7 +225,7 @@ export const PROJET_VIERGE = () => ({
   filiere: "Transformation du cacao et du café",
   domaine: "Fèves et masse de cacao",
   region: "Siège Abidjan", localite: localiteParDefaut("Siège Abidjan"),
-  apprenants: 10, budget: 5000000, statut: "Planifiée",
+  apprenants: 10, budget: 5000000, statut: "Planifié",
 });
 
 // ----------------- MATRICE DES PERMISSIONS PAR RÔLE -------------
@@ -223,4 +238,23 @@ export const PERMS = {
   "En attente d'activation": { pages: ["guide"], evalDims: null, creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, exports: false, suivisJalons: "aucun", suiviValider: false, portee: "aucune" },
 };
 
-export const STATUTS_PROJET = ["Planifiée", "En cours", "Terminée"];
+/* Le statut qualifie le PROJET de formation, pas la formation : « Planifié »,
+   « Terminé », au masculin. Le féminin était un reste de l'époque où
+   l'application parlait de « formations ». */
+export const STATUTS_PROJET = ["Planifié", "En cours", "Terminé"];
+
+/* Les projets déjà enregistrés portent l'ancienne forme. Elle est convertie à
+   la lecture, comme « region » l'est par « normaliserRegion » : rien à migrer
+   en base, et une valeur inconnue est laissée intacte plutôt que perdue. */
+export const normaliserStatut = (v) => {
+  const t = String(v || "").trim();
+  if (!t) return "Planifié";
+  if (STATUTS_PROJET.includes(t)) return t;
+  const sansAccentFinal = { "Planifiée": "Planifié", "Terminée": "Terminé", "Planifiee": "Planifié", "Terminee": "Terminé" };
+  if (sansAccentFinal[t]) return sansAccentFinal[t];
+  const bas = t.toLowerCase();
+  if (bas.startsWith("planifi")) return "Planifié";
+  if (bas.startsWith("termin")) return "Terminé";
+  if (bas.startsWith("en cours")) return "En cours";
+  return t;
+};

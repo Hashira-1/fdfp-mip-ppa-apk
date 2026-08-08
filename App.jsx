@@ -29,6 +29,7 @@ import {
   libelleSecteur, listeSecteursPlate, nomLibre, ANTENNES_FDFP, IMPLANTATIONS,
   normaliserRegion, LOCALITES_PAR_ZONE, DEP_PAR_LOCALITE, localitesDe,
   localiteParDefaut, normaliserLocalite, PROJET_VIERGE, PERMS, STATUTS_PROJET,
+  normaliserStatut,
 } from "./referentiel.js";
 /* « nettoyerPdf » est la seule partie purement calculatoire de la génération
    de fiches — et la plus délicate. Isolée pour être testée (pdf.test.js). */
@@ -49,19 +50,19 @@ const FORMATIONS_DEMO = [
   {
     id: "f1", titre: "Maîtrise HACCP en ligne de conditionnement cacao",
     entreprise: "SACO", operateur: "A.C.A", beneficiaire: "SCINPA", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "Siège Abidjan", localite: "Abidjan",
-    apprenants: 18, budget: 12500000, statut: "Terminée",
+    apprenants: 18, budget: 12500000, statut: "Terminé",
     notes: { P1: 4, P2: 3, P3: 4, P4: 4, EP1: 3, EP2: 3, EP3: 4, EP4: 4, EP5: 3, EP6: 4, IE1: 3, IE2: 3, IE3: 4, IE4: 3, IO1: 3, IO2: 3, IO3: 4, IO4: 3, IO5: 3, DC1: 3, DC2: 2, DC3: 3, DC4: 3 },
   },
   {
     id: "f2", titre: "Conduite de séchoir industriel (fruits tropicaux)",
     entreprise: "AGROCI", operateur: "Emergence", beneficiaire: "AGROCI", secteurGrand: "Secteur secondaire", filiere: "Transformation des fruits et légumes", domaine: "Jus et concentrés", region: "Antenne Yamoussoukro", localite: "Toumodi",
-    apprenants: 9, budget: 6800000, statut: "Terminée",
+    apprenants: 9, budget: 6800000, statut: "Terminé",
     notes: { P1: 3, P2: 2, P3: 3, P4: 2, EP1: 2, EP2: 2, EP3: 3, EP4: 4, EP5: 2, EP6: 2, IE1: 2, IE2: 3, IE3: 2, IE4: 2, IO1: 2, IO2: 2, IO3: 3, IO4: 2, IO5: 2, DC1: 3, DC2: 2, DC3: 2, DC4: 2 },
   },
   {
     id: "f3", titre: "Sécurité alimentaire & traçabilité ISO 22000",
     entreprise: "FrieslandCampina", operateur: "Domny", beneficiaire: "FrieslandCampina", secteurGrand: "Secteur secondaire", filiere: "Industrie laitière", domaine: "Lait et yaourts", region: "Antenne San-Pédro", localite: "San-Pédro",
-    apprenants: 24, budget: 15200000, statut: "Terminée",
+    apprenants: 24, budget: 15200000, statut: "Terminé",
     notes: { P1: 4, P2: 4, P3: 4, P4: 4, EP1: 4, EP2: 3, EP3: 4, EP4: 4, EP5: 4, EP6: 4, IE1: 3, IE2: 3, IE3: 4, IE4: 3, IO1: 4, IO2: 3, IO3: 4, IO4: 4, IO5: 3, DC1: 3, DC2: 3, DC3: 4, DC4: 3 },
   },
 ];
@@ -112,6 +113,27 @@ function lireStock(cle, defaut) {
 }
 function ecrireStock(cle, val) {
   try { window.localStorage.setItem(cle, JSON.stringify(val)); } catch (e) {}
+}
+
+/* ----------------- FILET DE SÉCURITÉ : COPIE DE SECOURS -----------------
+   Une copie du portefeuille est gardée dans le navigateur à chaque
+   chargement réussi, et juste avant toute opération qui supprime en masse.
+   Ce n'est pas une sauvegarde au sens propre — elle est locale à un poste et
+   à un navigateur, elle ne remplace pas les sauvegardes de Supabase — mais
+   elle transforme une perte définitive en simple mauvaise minute.
+   Elle est volontairement écrite AVANT l'opération risquée, jamais après :
+   une copie prise après coup ne vaut rien. */
+const CLE_SECOURS = "mip-ppa-secours";
+function sauvegardeSecours(projets, suivis) {
+  if (!projets || !projets.length) return;   // ne jamais écraser par du vide
+  ecrireStock(CLE_SECOURS, {
+    le: new Date().toISOString(),
+    projets, suivis: suivis || [],
+  });
+}
+function lireSauvegardeSecours() {
+  const s = lireStock(CLE_SECOURS, null);
+  return s && Array.isArray(s.projets) && s.projets.length ? s : null;
 }
 
 
@@ -294,9 +316,9 @@ function Badge({ score }) {
 // informations différentes, deux registres chromatiques distincts.
 // Texte noir ou violet foncé : contraste largement supérieur au seuil AA.
 const teinteStatut = (statut) => {
-  if (statut === "Terminée") return { bg: "#FFE94A", fg: "#000000" };  // jaune lumineux
+  if (statut === "Terminé") return { bg: "#FFE94A", fg: "#000000" };  // jaune lumineux
   if (statut === "En cours") return { bg: "#FBCFE8", fg: "#000000" };  // rose doux
-  if (statut === "Planifiée") return { bg: "#ede9fe", fg: "#5b21b6" }; // violet très pâle
+  if (statut === "Planifié") return { bg: "#ede9fe", fg: "#5b21b6" }; // violet très pâle
   return { bg: "#eceaf2", fg: "#5c5470" };
 };
 function PuceStatut({ statut }) {
@@ -1083,7 +1105,7 @@ export default function MipPpaApp() {
      pas encore été exécuté — d'où le repli sur un tableau vide des deux côtés,
      qui laisse l'application fonctionner sans la trajectoire. */
   const projetVersRow = (f) => {
-    const row = { id: f.id, titre: f.titre || "", promoteur: f.entreprise || f.promoteur || "", operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", secteur: f.filiere || f.secteur || "", secteur_grand: f.secteurGrand || "", domaine: f.domaine || "", region: f.region || "", apprenants: Number(f.apprenants) || 0, budget: Number(f.budget) || 0, statut: f.statut || "Planifiée", notes: f.notes || {}, maj_le: new Date().toISOString() };
+    const row = { id: f.id, titre: f.titre || "", promoteur: f.entreprise || f.promoteur || "", operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", secteur: f.filiere || f.secteur || "", secteur_grand: f.secteurGrand || "", domaine: f.domaine || "", region: f.region || "", apprenants: Number(f.apprenants) || 0, budget: Number(f.budget) || 0, statut: normaliserStatut(f.statut), notes: f.notes || {}, maj_le: new Date().toISOString() };
     /* « historique » n'est envoyé que s'il contient quelque chose : tant qu'aucun
        jalon n'est figé, l'application écrit exactement les mêmes colonnes
        qu'avant et continue de fonctionner sur une base où la migration de la
@@ -1099,8 +1121,10 @@ export default function MipPpaApp() {
   /* La localité est ramenée au périmètre de sa zone à la lecture : une base
      antérieure à la phase 4 ne renvoie rien, et le chef-lieu de l'implantation
      prend alors le relais. La carte a donc toujours un point à montrer. */
-  const rowVersProjet = (r) => ({ id: r.id, titre: r.titre, entreprise: r.promoteur, operateur: r.operateur, beneficiaire: r.beneficiaire, filiere: r.secteur, secteurGrand: r.secteur_grand || "", domaine: r.domaine || "", region: normaliserRegion(r.region), localite: normaliserLocalite(r.localite, r.region), apprenants: r.apprenants, budget: r.budget, statut: r.statut, notes: r.notes || {}, historique: Array.isArray(r.historique) ? r.historique : [] });
+  const rowVersProjet = (r) => ({ id: r.id, titre: r.titre, entreprise: r.promoteur, operateur: r.operateur, beneficiaire: r.beneficiaire, filiere: r.secteur, secteurGrand: r.secteur_grand || "", domaine: r.domaine || "", region: normaliserRegion(r.region), localite: normaliserLocalite(r.localite, r.region), apprenants: r.apprenants, budget: r.budget, statut: normaliserStatut(r.statut), notes: r.notes || {}, historique: Array.isArray(r.historique) ? r.historique : [] });
   const suiviVersRow = (s) => ({ id: s.id, projet_id: s.formationId, jalon: s.jalon, echeance: s.echeance || null, statut: s.statut || "programmé", note: s.note || "", docs: s.docs || [], maj_le: new Date().toISOString() });
+  /* Le statut d'un SUIVI est « programmé » / « effectué » : rien à voir avec
+     celui d'un projet, il ne passe donc pas par « normaliserStatut ». */
   const rowVersSuivi = (r) => ({ id: r.id, formationId: r.projet_id, jalon: r.jalon, echeance: r.echeance, statut: r.statut, note: r.note || "", docs: r.docs || [] });
 
   // --- Anti-echo temps reel ---
@@ -1146,31 +1170,106 @@ export default function MipPpaApp() {
     return true;
   };
 
-  // Les setters gardent la meme signature qu'avant, mais propagent vers Supabase
-  const setFormations = (fn) => {
+  /* Les setters gardent la meme signature qu'avant, mais propagent vers Supabase.
+
+     ⚠ CE SETTER SUPPRIME EN BASE tout projet absent du nouveau tableau. C'est
+     voulu pour la corbeille d'un projet — un clic, une ligne — mais c'est
+     exactement par là que le portefeuille a été perdu : « setFormations »
+     appelé avec les trois projets de démonstration efface, sans rien demander,
+     tous les projets réels. Deux garde-fous désormais :
+       - une copie de secours est prise AVANT toute suppression multiple ;
+       - au-delà d'une ligne, l'appelant doit avoir demandé l'autorisation
+         explicitement (« autoriserSuppressionMultiple »), sinon la suppression
+         est refusée et l'écran signale l'incident. Aucun geste normal de
+         l'application ne supprime deux projets d'un coup. */
+  const setFormations = (fn, options) => {
     const v = formationsRef.current;
     const n = typeof fn === "function" ? fn(v) : fn;
+    const apresIds = new Set(n.map((x) => x.id));
+    const aSupprimer = v.filter((f) => !apresIds.has(f.id));
+
+    if (aSupprimer.length > 1 && !(options && options.autoriserSuppressionMultiple)) {
+      console.warn("Suppression multiple refusée :", aSupprimer.length, "projets");
+      notif(`Opération refusée : elle aurait supprimé ${aSupprimer.length} projets d'un coup.`);
+      return;
+    }
+    if (aSupprimer.length) sauvegardeSecours(v, suivisRef.current);
+
     formationsRef.current = n;
     setFormationsBrut(n);
     if (sb) {
       marquerEcritureLocale();
-      const apresIds = new Set(n.map((x) => x.id));
       n.forEach((f) => { const a = v.find((x) => x.id === f.id); if (!a || JSON.stringify(a) !== JSON.stringify(f)) sb.from("projets").upsert(projetVersRow(f)).then(({ error }) => signalerEchec(error, "projet")); });
-      v.forEach((f) => { if (!apresIds.has(f.id)) sb.from("projets").delete().eq("id", f.id).then(({ error }) => signalerEchec(error, "suppression du projet")); });
+      aSupprimer.forEach((f) => sb.from("projets").delete().eq("id", f.id).then(({ error }) => signalerEchec(error, "suppression du projet")));
     }
   };
-  const setSuivis = (fn) => {
+  /* Les suivis suivent la même règle, à une nuance près : supprimer un projet
+     emporte légitimement ses trois jalons. Le seuil est donc plus haut, et
+     l'autorisation explicite passe par la même option. */
+  const setSuivis = (fn, options) => {
     const v = suivisRef.current;
     const n = typeof fn === "function" ? fn(v) : fn;
+    const apresIds = new Set(n.map((x) => x.id));
+    const aSupprimer = v.filter((s) => !apresIds.has(s.id));
+
+    // Un projet porte au plus quatre jalons (Initiale, M+3, M+6, M+12) ; le
+    // seuil garde deux crans de marge pour ne jamais refuser une suppression
+    // légitime, tout en restant loin d'un remplacement de portefeuille.
+    if (aSupprimer.length > 6 && !(options && options.autoriserSuppressionMultiple)) {
+      console.warn("Suppression multiple de suivis refusée :", aSupprimer.length);
+      notif(`Opération refusée : elle aurait supprimé ${aSupprimer.length} suivis d'un coup.`);
+      return;
+    }
+    if (aSupprimer.length) sauvegardeSecours(formationsRef.current, v);
+
     suivisRef.current = n;
     setSuivisBrut(n);
     if (sb) {
       marquerEcritureLocale();
-      const apresIds = new Set(n.map((x) => x.id));
       n.forEach((s) => { const a = v.find((x) => x.id === s.id); if (!a || JSON.stringify(a) !== JSON.stringify(s)) sb.from("suivis").upsert(suiviVersRow(s)).then(({ error }) => signalerEchec(error, "suivi")); });
-      v.forEach((s) => { if (!apresIds.has(s.id)) sb.from("suivis").delete().eq("id", s.id).then(({ error }) => signalerEchec(error, "suppression du suivi")); });
+      aSupprimer.forEach((s) => sb.from("suivis").delete().eq("id", s.id).then(({ error }) => signalerEchec(error, "suppression du suivi")));
     }
   };
+  /* Mise à la corbeille d'un projet. Tant que « supprime_le » existe, rien
+     n'est effacé : la ligne est marquée, l'application cesse de l'afficher, et
+     elle reste restaurable. Si la migration de la phase 5 n'a pas été passée,
+     on revient à l'ancienne suppression définitive — mais en le disant. */
+  const mettreALaCorbeille = async (f) => {
+    sauvegardeSecours(formationsRef.current, suivisRef.current);
+    if (!sb || !corbeilleDispo) {
+      setFormations((fs) => fs.filter((x) => x.id !== f.id));
+      setSuivis((ss) => ss.filter((x) => x.formationId !== f.id));
+      if (sb) notif("Projet supprimé définitivement — exécutez « supabase-phase5.sql » pour activer la corbeille.");
+      return;
+    }
+    marquerEcritureLocale();
+    const le = new Date().toISOString();
+    const { error } = await sb.from("projets")
+      .update({ supprime_le: le, supprime_par: session?.email || "" }).eq("id", f.id);
+    if (signalerEchec(error, "mise à la corbeille")) return;
+    await sb.from("suivis").update({ supprime_le: le }).eq("projet_id", f.id);
+    // L'état local suit sans repasser par les setters, qui déclencheraient
+    // un DELETE : la ligne doit rester en base.
+    formationsRef.current = formationsRef.current.filter((x) => x.id !== f.id);
+    setFormationsBrut(formationsRef.current);
+    suivisRef.current = suivisRef.current.filter((x) => x.formationId !== f.id);
+    setSuivisBrut(suivisRef.current);
+    setCorbeille((c) => [{ ...f, supprimeLe: le, supprimePar: session?.email || "" }, ...c]);
+    notif(`« ${f.titre} » mis à la corbeille — restaurable depuis la page Projets.`);
+  };
+
+  const restaurerDeLaCorbeille = async (f) => {
+    if (!sb) return;
+    marquerEcritureLocale();
+    const { error } = await sb.from("projets")
+      .update({ supprime_le: null, supprime_par: null }).eq("id", f.id);
+    if (signalerEchec(error, "restauration")) return;
+    await sb.from("suivis").update({ supprime_le: null }).eq("projet_id", f.id);
+    setCorbeille((c) => c.filter((x) => x.id !== f.id));
+    await chargerDonnees();          // relit projet et suivis d'un coup
+    notif(`« ${f.titre} » restauré.`);
+  };
+
   const sauverConfig = (champ, valeur) => { if (sb) { marquerEcritureLocale(); sb.from("configuration").update({ [champ]: valeur, maj_le: new Date().toISOString() }).eq("id", 1).then(({ error }) => signalerEchec(error, champ)); } };
   /* Même raison que ci-dessus : « sauverConfig » écrivait depuis l'updater. */
   const referentielRef = useRef(referentiel);
@@ -1246,6 +1345,13 @@ export default function MipPpaApp() {
   const [detailStat, setDetailStat] = useState(null); // "projets" | "apprenants" | "scores"
   const [detailLocalite, setDetailLocalite] = useState(null); // nom d'une localité de la carte
   const [lectureCarte, setLectureCarte] = useState("implantation"); // ou "score"
+  /* Copie de secours disponible. Relue à chaque rendu de la page Projets :
+     elle est écrite hors de React (localStorage), un état figé au montage
+     manquerait celle que l'opération en cours vient de prendre. */
+  const secours = lireSauvegardeSecours();
+  const [corbeille, setCorbeille] = useState([]);        // projets mis à la corbeille
+  const [corbeilleDispo, setCorbeilleDispo] = useState(false); // migration phase 5 passée ?
+  const [corbeilleOuverte, setCorbeilleOuverte] = useState(false);
   const lead = roleActif === "Administrateur lead";
   const P = PERMS[roleActif] || PERMS["En attente d'activation"];
   const monCompte = session;
@@ -1266,12 +1372,43 @@ export default function MipPpaApp() {
         if (Array.isArray(cfg.phases) && cfg.phases.length) setPhasesBrut(cfg.phases);
         else sauverConfig("phases", ["À la conception", "En fin de formation", "Suivi post-formation (3 / 6 / 12 mois)"]);
       }
-      // Projets + suivis
-      const { data: projs } = await sb.from("projets").select("*").order("cree_le");
-      const { data: suivs } = await sb.from("suivis").select("*");
-      let listeProjets = (projs || []).map(rowVersProjet);
-      let listeSuivis = (suivs || []).map(rowVersSuivi);
-      // Amorçage : si la base est vide ET qu'on est admin, injecter les donnees de demo
+      /* Projets + suivis.
+         L'ERREUR EST RÉCUPÉRÉE, et c'est capital. Elle était ignorée : sur
+         une lecture en échec — coupure réseau, jeton expiré, politique RLS
+         qui refuse — PostgREST renvoie « data: null ». La liste devenait
+         vide, et une base illisible se lisait exactement comme une base
+         vide. L'amorçage juste en dessous s'enclenchait alors et réinjectait
+         les projets de démonstration par-dessus un portefeuille bien vivant.
+         Une base qu'on n'a pas su lire n'est PAS une base vide. */
+      const { data: projs, error: errProjets } = await sb.from("projets").select("*").order("cree_le");
+      const { data: suivs, error: errSuivis } = await sb.from("suivis").select("*");
+      if (errProjets || errSuivis) {
+        const msg = (errProjets || errSuivis).message;
+        console.warn("Lecture des projets:", msg);
+        notif("Lecture des projets impossible — rien n'a été modifié. " + msg);
+        setChargementData(false);
+        return;                       // surtout : ne rien écrire, ne rien amorcer
+      }
+      /* Corbeille (phase 5). La colonne peut ne pas exister : on la détecte
+         sur la première ligne reçue plutôt qu'en filtrant dans la requête —
+         un « .is('supprime_le', null) » sur une colonne absente ferait échouer
+         toute la lecture, et l'on retomberait sur le défaut qu'on vient de
+         corriger. Le tri se fait donc côté client ; à l'échelle d'un
+         portefeuille d'antenne, la différence ne se mesure pas. */
+      const lignes = projs || [];
+      const avecCorbeille = lignes.length === 0 || "supprime_le" in lignes[0];
+      setCorbeilleDispo(avecCorbeille);
+      const actives = lignes.filter((r) => !r.supprime_le);
+      const jetees = lignes.filter((r) => r.supprime_le);
+      setCorbeille(jetees.map((r) => ({ ...rowVersProjet(r), supprimeLe: r.supprime_le, supprimePar: r.supprime_par })));
+
+      let listeProjets = actives.map(rowVersProjet);
+      const idsActifs = new Set(actives.map((r) => r.id));
+      let listeSuivis = (suivs || [])
+        .filter((r) => !r.supprime_le && idsActifs.has(r.projet_id))
+        .map(rowVersSuivi);
+      /* Amorçage : la base répond, elle est réellement vide, et l'utilisateur
+         est administrateur. Les trois conditions sont nécessaires. */
       if (!listeProjets.length && est_admin_amorcage()) {
         for (const f of FORMATIONS_DEMO) { await sb.from("projets").upsert(projetVersRow(f)); }
         for (const s of SUIVIS_DEMO) { await sb.from("suivis").upsert(suiviVersRow(s)); }
@@ -1280,7 +1417,12 @@ export default function MipPpaApp() {
       }
       setFormationsBrut(listeProjets);
       setSuivisBrut(listeSuivis);
-    } catch (e) { console.warn("Chargement donnees:", e.message); }
+      // Copie de secours locale, à chaque chargement réussi et non vide.
+      if (listeProjets.length) sauvegardeSecours(listeProjets, listeSuivis);
+    } catch (e) {
+      console.warn("Chargement donnees:", e.message);
+      notif("Chargement impossible — rien n'a été modifié. " + e.message);
+    }
     setChargementData(false);
   };
   const est_admin_amorcage = () => ["Administrateur lead", "Administrateur FDFP"].includes(roleActif);
@@ -1563,6 +1705,84 @@ export default function MipPpaApp() {
   };
 
   /* ---------- DONNEES COMMUNES AUX DEUX EXPORTS ---------- */
+  /* ---------- SAUVEGARDE ET RESTAURATION ----------
+     Le classeur Excel est un livrable de communication : il porte des scores
+     déjà calculés, pas les notes qui les produisent, ni les identifiants, ni
+     les suivis. On ne peut donc pas le réinjecter — un import du classeur
+     rendrait des projets sans notes, ce qui est pire que rien.
+     La sauvegarde ci-dessous est l'exact opposé : illisible pour un humain,
+     mais complète et fidèle. C'est elle qui ferme la boucle ouverte le 8 août,
+     quand le portefeuille a été perdu sans aucun moyen de le remonter. */
+  const VERSION_SAUVEGARDE = 1;
+
+  const exporterSauvegarde = () => {
+    const contenu = {
+      format: "mip-ppa/sauvegarde",
+      version: VERSION_SAUVEGARDE,
+      le: new Date().toISOString(),
+      parcompte: session?.email || "",
+      projets: formations,
+      suivis: suivis,
+      referentiel, secteurs, phases,
+    };
+    const nom = `Sauvegarde_MIP-PPA_${new Date().toISOString().slice(0, 10)}.json`;
+    telecharger(nom, JSON.stringify(contenu, null, 1), "application/json");
+    notif(`Sauvegarde de ${formations.length} projets téléchargée`);
+  };
+
+  /* La restauration n'efface RIEN : elle ajoute ce qui manque et remplace ce
+     qui porte le même identifiant. Un projet créé depuis la sauvegarde reste
+     donc en place. C'est volontaire — une restauration doit réparer une
+     perte, pas en provoquer une seconde. */
+  const importerSauvegarde = async (fichier) => {
+    if (!fichier) return;
+    let data;
+    try {
+      data = JSON.parse(await fichier.text());
+    } catch (e) {
+      notif("Fichier illisible : ce n'est pas une sauvegarde MIP-PPA.");
+      return;
+    }
+    if (!data || data.format !== "mip-ppa/sauvegarde" || !Array.isArray(data.projets)) {
+      notif("Ce fichier n'est pas une sauvegarde MIP-PPA.");
+      return;
+    }
+    if (Number(data.version) > VERSION_SAUVEGARDE) {
+      notif("Sauvegarde produite par une version plus récente de l'application.");
+      return;
+    }
+    const connus = new Set(formations.map((f) => f.id));
+    const nouveaux = data.projets.filter((p) => p && p.id && !connus.has(p.id));
+    const remplaces = data.projets.filter((p) => p && p.id && connus.has(p.id));
+    const quand = data.le ? new Date(data.le).toLocaleString("fr-FR") : "date inconnue";
+    if (!window.confirm(
+      `Sauvegarde du ${quand} — ${data.projets.length} projets.\n\n` +
+      `${nouveaux.length} seront ajoutés.\n` +
+      `${remplaces.length} déjà présents seront remplacés par la version sauvegardée.\n` +
+      `Aucun projet ne sera supprimé.\n\n` +
+      `Restaurer ?`)) return;
+
+    sauvegardeSecours(formations, suivis);
+    // Les notes et l'historique sont repris tels quels ; la zone et la
+    // localité repassent par les normalisateurs, au cas où la sauvegarde
+    // daterait d'avant la nomenclature actuelle.
+    const propres = data.projets.filter((p) => p && p.id).map((p) => ({
+      ...p,
+      region: normaliserRegion(p.region),
+      localite: normaliserLocalite(p.localite, p.region),
+      statut: normaliserStatut(p.statut),
+      notes: p.notes || {},
+      historique: Array.isArray(p.historique) ? p.historique : [],
+    }));
+    const ids = new Set(propres.map((p) => p.id));
+    setFormations((fs) => [...fs.filter((f) => !ids.has(f.id)), ...propres]);
+    if (Array.isArray(data.suivis)) {
+      const idsS = new Set(data.suivis.filter((s) => s && s.id).map((s) => s.id));
+      setSuivis((ss) => [...ss.filter((s) => !idsS.has(s.id)), ...data.suivis.filter((s) => s && s.id)]);
+    }
+    notif(`${propres.length} projets restaurés (${nouveaux.length} ajoutés, ${remplaces.length} remplacés)`);
+  };
+
   const colonnesExport = () => ["Projet", "Promoteur", "Secteur", "Matière première", "Domaine", "Zone", "Localité",
     "Apprenants", "Budget (FCFA)", "Statut",
     ...referentiel.map((d) => `${d.nom} (%)`), "Score global (%)", "Niveau"];
@@ -2005,54 +2225,78 @@ export default function MipPpaApp() {
 
         const base = await PDFDocument.load(doc.output("arraybuffer"));
         const police = await base.embedFont(StandardFonts.Helvetica);
+
+        /* Géométrie des pages d'annexe. Les positions sont comptées depuis le
+           BAS : pdf-lib a son origine en bas à gauche.
+           « HAUT_PIED » est la bande réservée au pied — bandeau de
+           certification (10,6 mm posés à 13,5 mm du bord), filet orange et
+           mentions —, arrondie au millimètre supérieur. */
+        const MM_PT = 2.8346;                          // 1 mm en points PDF
+        const LARGEUR_A4 = 595.28, HAUTEUR_A4 = 841.89;
+        const LARG_BANDEAU = 45 * MM_PT;
+        const HAUT_BANDEAU = (LARG_BANDEAU * 181) / 768;
+        const HAUT_PIED = 13.5 * MM_PT + HAUT_BANDEAU + 2 * MM_PT;
+
         for (const { jalon, d, ext } of annexes) {
           const garde = base.addPage();
           const { height } = garde.getSize();
           garde.drawText(nettoyerPdf(`Annexe - ${jalon} - ${d.nom}`), { x: 40, y: height - 60, size: 13, font: police });
           garde.drawText(nettoyerPdf("Document joint dans la plateforme MIP-PPA"), { x: 40, y: height - 80, size: 9, font: police });
-          const pages = await base.copyPages(ext, ext.getPageIndices());
-          pages.forEach((p) => base.addPage(p));
+          /* Les pages jointes ne sont pas recopiées telles quelles : elles
+             sont EMBARQUÉES puis redessinées, légèrement réduites, dans une
+             page A4 neuve dont les derniers millimètres sont laissés libres
+             pour le pied.
+             Recopier la page à l'identique obligeait à choisir entre deux
+             mauvaises solutions : laisser le pied se mélanger au contenu de
+             l'annexe, ou poser un fond opaque qui masquait ce que l'annexe
+             avait écrit dans sa marge basse. Réduire ne cache rien : tout le
+             document joint reste lisible, et le pied a sa propre bande.
+             C'est ce que fait « ajuster à la page » d'une imprimante.
+             Le facteur est plafonné à 1 : une page plus petite qu'une A4 —
+             un ticket, une photo — n'est jamais agrandie. */
+          const embarquees = await base.embedPages(ext.getPages());
+          for (const emb of embarquees) {
+            const pg = base.addPage([LARGEUR_A4, HAUTEUR_A4]);
+            const dispoL = LARGEUR_A4 - 2 * M * MM_PT;
+            const dispoH = HAUTEUR_A4 - HAUT_PIED - 6 * MM_PT;
+            const k = Math.min(dispoL / emb.width, dispoH / emb.height, 1);
+            pg.drawPage(emb, {
+              x: (LARGEUR_A4 - emb.width * k) / 2,
+              y: HAUT_PIED + (dispoH - emb.height * k) / 2,
+              xScale: k, yScale: k,
+            });
+          }
         }
 
         /* Pied des pages d'annexe. Elles proviennent de documents externes :
            jsPDF ne les a jamais vues, elles n'ont donc ni filet, ni mentions,
            ni numéro. Les positions sont comptées depuis le BAS de page — pdf-lib
            a son origine en bas à gauche, et une annexe peut ne pas être en A4. */
-        const MM = 2.8346;                    // 1 mm en points PDF
+        /* Le pied se pose maintenant dans une bande LIBRE : les pages
+           d'annexe ont été redessinées plus haut, réduites juste ce qu'il
+           faut. Plus rien à masquer, plus rien qui se chevauche. */
         const total = base.getPageCount();
         let bandeau = null;
         try { bandeau = await base.embedPng(CERTIFICATION_FDFP); } catch (e) { /* sans bandeau */ }
         base.getPages().forEach((pg, i) => {
           if (i < pagesFiche) return;         // déjà traitées par jsPDF
           const { width } = pg.getSize();
-          const L = 45 * MM, H = (L * 181) / 768;
-          /* Fond opaque sous le pied. Les pages d'annexe viennent de documents
-             que nous n'avons pas composés : leur contenu descend jusqu'où il
-             veut, y compris dans la marge basse. Sans ce fond, le pied s'y
-             mélangeait — le numéro de page d'origine du document joint se
-             superposait au bandeau de certification, et le filet orange
-             traversait le texte de l'annexe.
-             La bande couvre exactement la hauteur du pied, bandeau compris ;
-             ce qu'une annexe aurait écrit dans ces 26 derniers millimètres
-             est masqué, y compris sa propre numérotation — c'est voulu, la
-             fiche renumérote l'ensemble en continu. */
-          pg.drawRectangle({
-            x: 0, y: 0, width, height: 13.5 * MM + H + 2 * MM,
-            color: rgb(1, 1, 1),
-          });
           if (bandeau) {
-            pg.drawImage(bandeau, { x: (width - L) / 2, y: 13.5 * MM, width: L, height: H });
+            pg.drawImage(bandeau, {
+              x: (width - LARG_BANDEAU) / 2, y: 13.5 * MM_PT,
+              width: LARG_BANDEAU, height: HAUT_BANDEAU,
+            });
           }
           pg.drawLine({
-            start: { x: M * MM, y: 12 * MM }, end: { x: width - M * MM, y: 12 * MM },
-            thickness: 0.6 * MM, color: rgb(242 / 255, 163 / 255, 60 / 255),
+            start: { x: M * MM_PT, y: 12 * MM_PT }, end: { x: width - M * MM_PT, y: 12 * MM_PT },
+            thickness: 0.6 * MM_PT, color: rgb(242 / 255, 163 / 255, 60 / 255),
           });
           const droite = nettoyerPdf(`Page ${i + 1} / ${total} - Édité le ${LE_JOUR}`);
           const gris01 = rgb(0.35, 0.35, 0.35);
-          pg.drawText(nettoyerPdf(MENTION), { x: M * MM, y: 7 * MM, size: 7.5, font: police, color: gris01 });
+          pg.drawText(nettoyerPdf(MENTION), { x: M * MM_PT, y: 7 * MM_PT, size: 7.5, font: police, color: gris01 });
           pg.drawText(droite, {
-            x: width - M * MM - police.widthOfTextAtSize(droite, 7.5),
-            y: 7 * MM, size: 7.5, font: police, color: gris01,
+            x: width - M * MM_PT - police.widthOfTextAtSize(droite, 7.5),
+            y: 7 * MM_PT, size: 7.5, font: police, color: gris01,
           });
         });
 
@@ -2089,10 +2333,10 @@ export default function MipPpaApp() {
   const titres = {
     dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des projets de formation de type Apprentissage (emploi-qualification) dans les industries agroalimentaires."],
     formations: ["Projets de formation de type apprentissage", "Portefeuille des projets de formation financés par le FDFP."],
-    evaluation: ["Évaluation", fEval ? fEval.titre : "Sélectionnez une formation à évaluer."],
+    evaluation: ["Évaluation", fEval ? fEval.titre : "Sélectionnez un projet à évaluer."],
     suivi: ["Suivi du niveau de performance", "Évaluations à 3, 6 et 12 mois."],
     indicateurs: ["Référentiel des indicateurs", "Modèle MIP-PPA (dimensions, pondérations, indicateurs)."],
-    alertes: ["Alertes & risques", "Formations sous-performantes et suivis en retard."],
+    alertes: ["Alertes & risques", "Projets sous-performants et suivis en retard."],
     exports: ["Exports", "Fiches PDF et tableaux Excel pour les rapports FDFP."],
     guide: ["Guide d'utilisation", "Tout ce qu'il faut savoir pour utiliser la plateforme MIP-PPA."],
     users: ["Utilisateurs & rôles", "Attribution des accès à la plateforme."],
@@ -2487,7 +2731,7 @@ export default function MipPpaApp() {
               <StatCard icone={<Icone n="cap" t={20} />} titre="Projets suivis" valeur={stats.nb}
                 surClic={() => setDetailStat("projets")} indice="Voir l'intitulé de chaque projet" />
               <StatCard icone={<Icone n="usine" t={20} />} titre="Apprenants concernés" valeur={stats.apprenants} teinte="#fdf0da" fg="#b07515"
-                surClic={() => setDetailStat("apprenants")} indice="Voir le nombre d'apprentis par projet" />
+                surClic={() => setDetailStat("apprenants")} indice="Voir le nombre d'apprenants par projet" />
               <StatCard icone={<Icone n="cible" t={20} />} titre="Score moyen MIP-PPA" valeur={fmtPct(stats.moy)} sous="Moyenne pondérée du portefeuille" teinte="#dcebf7" fg={C.vert}
                 surClic={() => setDetailStat("scores")} indice="Voir le score de chaque projet" />
               {/* La feuille Alertes n'est pas ouverte à tous les rôles : sans
@@ -2716,8 +2960,68 @@ export default function MipPpaApp() {
                   <button onClick={exportCsv} className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50" title="Données brutes séparées par des points-virgules, pour un outil d'analyse."><Icone n="fichier" t={15} /> CSV</button>
                 </div>
               )}
-              <button onClick={() => { setFormations(FORMATIONS_DEMO); setSuivis(SUIVIS_DEMO); notif("Données démo restaurées"); }}
-                className="text-sm text-stone-600 hover:text-stone-900" title="Restaurer les 3 projets de démonstration."><Icone n="rotation" t={14} /> Données démo</button>
+              {/* ⚠ Ce bouton REMPLACE le portefeuille : il supprime en base
+                  tous les projets qui ne sont pas dans le jeu de démonstration.
+                  Il s'intitulait « Données démo » et son infobulle disait
+                  « Restaurer les 3 projets de démonstration » — rien n'annonçait
+                  une destruction, aucune confirmation n'était demandée, et il
+                  était offert à tous les rôles, y compris à ceux qui n'ont pas
+                  le droit de supprimer un seul projet. C'est ainsi que le
+                  portefeuille a été perdu.
+                  Désormais : réservé à qui peut supprimer, intitulé explicite,
+                  confirmation chiffrée, et copie de secours préalable. */}
+              {P.supprimerFormation && (
+                <button
+                  onClick={() => {
+                    const n = formations.length;
+                    const perdus = formations.filter((f) => !FORMATIONS_DEMO.some((d) => d.id === f.id)).length;
+                    if (perdus > 0 && !window.confirm(
+                      `Cette action REMPLACE le portefeuille par les 3 projets de démonstration.\n\n` +
+                      `${perdus} projet${perdus > 1 ? "s" : ""} sur ${n} ${perdus > 1 ? "seront supprimés" : "sera supprimé"} de la base, ainsi que leurs suivis et leurs notes.\n\n` +
+                      `Une copie de secours sera gardée dans ce navigateur, mais elle ne vaut pas une sauvegarde.\n\n` +
+                      `Confirmer le remplacement ?`)) return;
+                    sauvegardeSecours(formations, suivis);
+                    setFormations(FORMATIONS_DEMO, { autoriserSuppressionMultiple: true });
+                    setSuivis(SUIVIS_DEMO, { autoriserSuppressionMultiple: true });
+                    notif("Portefeuille remplacé par les données de démonstration");
+                  }}
+                  className="text-sm text-stone-600 hover:text-red-700"
+                  title="Remplace le portefeuille par les 3 projets de démonstration. Les autres projets sont supprimés.">
+                  <Icone n="rotation" t={14} /> Remplacer par la démo
+                </button>
+              )}
+              {/* La corbeille ne s'affiche que si elle contient quelque chose :
+                  un bouton vide n'apprend rien et encombre la barre. */}
+              {corbeille.length > 0 && (
+                <button onClick={() => setCorbeilleOuverte(true)}
+                  className="text-sm text-stone-600 hover:text-stone-900"
+                  title="Projets mis à la corbeille — restaurables.">
+                  <Icone n="poubelle" t={14} /> Corbeille ({corbeille.length})
+                </button>
+              )}
+              {/* Retour en arrière, tant que la copie de secours est là. */}
+              {P.creerFormation && secours && (
+                <button
+                  onClick={() => {
+                    if (!window.confirm(
+                      `Restaurer les ${secours.projets.length} projets de la copie du ` +
+                      `${new Date(secours.le).toLocaleString("fr-FR")} ?\n\n` +
+                      `Les projets actuellement en base ne sont pas supprimés : ceux de la copie sont réécrits par-dessus.`)) return;
+                    setFormations((fs) => {
+                      const ids = new Set(secours.projets.map((p) => p.id));
+                      return [...fs.filter((f) => !ids.has(f.id)), ...secours.projets];
+                    });
+                    setSuivis((ss) => {
+                      const ids = new Set((secours.suivis || []).map((s) => s.id));
+                      return [...ss.filter((s) => !ids.has(s.id)), ...(secours.suivis || [])];
+                    });
+                    notif(`${secours.projets.length} projets restaurés depuis la copie de secours`);
+                  }}
+                  className="text-sm font-medium hover:underline" style={{ color: C.vert }}
+                  title={`Copie prise le ${new Date(secours.le).toLocaleString("fr-FR")} — ${secours.projets.length} projets.`}>
+                  <Icone n="rotation" t={14} /> Restaurer la copie de secours
+                </button>
+              )}
             </div>
             {P.creerFormation && <button onClick={() => { setEditionId(null); setNouvelle(PROJET_VIERGE()); setFormOuvert(!formOuvert); }}
               className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm" style={{ background: C.vertFonce }}>
@@ -2800,7 +3104,7 @@ export default function MipPpaApp() {
                   </select>
                 </label>
                 <div className="md:col-span-2 flex gap-3">
-                  <button onClick={ajouterFormation} className="text-white font-semibold px-5 py-2 rounded-xl text-sm" style={{ background: C.vertFonce }}>{editionId ? "Enregistrer les modifications" : "Créer la formation"}</button>
+                  <button onClick={ajouterFormation} className="text-white font-semibold px-5 py-2 rounded-xl text-sm" style={{ background: C.vertFonce }}>{editionId ? "Enregistrer les modifications" : "Créer le projet"}</button>
                   <button onClick={() => setFormOuvert(false)} className="text-sm text-stone-500">Annuler</button>
                 </div>
               </div>
@@ -2834,7 +3138,11 @@ export default function MipPpaApp() {
                   <div className="col-span-2 flex justify-end items-center gap-3">
                     <button onClick={() => { setEvalId(f.id); setPage("evaluation"); }} className="text-sm font-medium hover:underline" style={{ color: C.vert }}>Évaluer</button>
                     {P.editerFormation && <button title="Modifier la formation" onClick={() => editerFormation(f)} className="text-stone-500 hover:text-stone-800" aria-label="Modifier la formation"><Icone n="crayon" t={16} /></button>}
-                    {P.supprimerFormation && <button onClick={() => { if (window.confirm(`Supprimer « ${f.titre} » et ses suivis ?`)) { setFormations((fs) => fs.filter((x) => x.id !== f.id)); setSuivis((ss) => ss.filter((x) => x.formationId !== f.id)); } }} className="text-red-500 hover:text-red-700" ><Icone n="poubelle" t={16} /></button>}
+                    {P.supprimerFormation && <button onClick={() => { if (window.confirm(corbeilleDispo ? `Mettre « ${f.titre} » à la corbeille ?
+
+Le projet et ses suivis seront masqués, et resteront restaurables depuis la page Projets.` : `Supprimer définitivement « ${f.titre} » et ses suivis ?
+
+La corbeille n'est pas active : cette suppression est irréversible.`)) mettreALaCorbeille(f); }} className="text-red-500 hover:text-red-700" ><Icone n="poubelle" t={16} /></button>}
                   </div>
                 </div>
               ))}
@@ -2854,7 +3162,11 @@ export default function MipPpaApp() {
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3">
                       <button onClick={() => { setEvalId(f.id); setPage("evaluation"); }} className="text-sm font-medium hover:underline" style={{ color: C.vert }}>Évaluer</button>
                       {P.editerFormation && <button title="Modifier la formation" onClick={() => editerFormation(f)} className="text-stone-500 hover:text-stone-800" aria-label="Modifier la formation"><Icone n="crayon" t={16} /></button>}
-                      {P.supprimerFormation && <button onClick={() => { if (window.confirm(`Supprimer « ${f.titre} » et ses suivis ?`)) { setFormations((fs) => fs.filter((x) => x.id !== f.id)); setSuivis((ss) => ss.filter((x) => x.formationId !== f.id)); } }} className="text-red-500 hover:text-red-700" ><Icone n="poubelle" t={16} /></button>}
+                      {P.supprimerFormation && <button onClick={() => { if (window.confirm(corbeilleDispo ? `Mettre « ${f.titre} » à la corbeille ?
+
+Le projet et ses suivis seront masqués, et resteront restaurables depuis la page Projets.` : `Supprimer définitivement « ${f.titre} » et ses suivis ?
+
+La corbeille n'est pas active : cette suppression est irréversible.`)) mettreALaCorbeille(f); }} className="text-red-500 hover:text-red-700" ><Icone n="poubelle" t={16} /></button>}
                     </div>
                   </div>
                 ))}
@@ -3422,6 +3734,39 @@ export default function MipPpaApp() {
                 Le <b>.csv</b> ne contient que les données, au format le plus simple à relire dans un logiciel d'analyse.
               </p>
             </section>
+            {/* ---------- SAUVEGARDE ET RESTAURATION ----------
+                Distinguée de l'export : le classeur sert à communiquer, la
+                sauvegarde sert à remonter. Le 8 août, un portefeuille a été
+                perdu sans aucun moyen de le reconstituer — c'est ce trou
+                que cette section ferme. */}
+            <section className="bg-white rounded-2xl border border-stone-200 p-6">
+              <h3 className="font-bold">Sauvegarde et restauration</h3>
+              <p className="text-sm text-stone-500 mb-4">
+                Copie <b>complète et fidèle</b> : projets, notes de chaque indicateur, suivis,
+                jalons figés et référentiel. C'est ce fichier — et non le classeur Excel — qui
+                permet de tout remonter après une fausse manœuvre.
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <button onClick={exporterSauvegarde}
+                  className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm" style={{ background: C.vertFonce }}
+                  title="Télécharge une copie complète du portefeuille, restaurable par le bouton voisin.">
+                  <Icone n="disquette" t={15} /> Télécharger la sauvegarde ({formations.length} projet{formations.length > 1 ? "s" : ""})
+                </button>
+                {P.creerFormation && (
+                  <label className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50 cursor-pointer"
+                    title="Réinjecte une sauvegarde. Rien n'est supprimé : les projets absents sont ajoutés, ceux de même identifiant sont remplacés.">
+                    <Icone n="rotation" t={15} /> Restaurer une sauvegarde
+                    <input type="file" accept="application/json,.json" className="sr-only"
+                      onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ""; importerSauvegarde(f); }} />
+                  </label>
+                )}
+              </div>
+              <p className="text-xs text-stone-400 mt-3">
+                La restauration <b>ne supprime jamais</b> : elle ajoute les projets absents et remplace ceux
+                qui portent le même identifiant. Le décompte exact vous est présenté avant toute écriture.
+                Gardez ce fichier hors du navigateur — une copie sur le poste ne survit pas à un effacement des données du site.
+              </p>
+            </section>
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <h3 className="font-bold">Fiches d'évaluation PDF</h3>
               <p className="text-sm text-stone-500">Une fiche officielle par projet de formation de type apprentissage.</p>
@@ -3595,7 +3940,7 @@ export default function MipPpaApp() {
       {detailStat && (() => {
         const entetes = {
           projets:    ["Projets suivis", "Intitulé de chaque projet du portefeuille."],
-          apprenants: ["Apprenants concernés", "Nombre d'apprentis par projet."],
+          apprenants: ["Apprenants concernés", "Nombre d'apprenants par projet."],
           scores:     ["Score moyen MIP-PPA", "Score global de chaque projet."],
         }[detailStat];
         // Tri par la grandeur affichée : la lecture est immédiate.
@@ -3650,6 +3995,49 @@ export default function MipPpaApp() {
       {/* ---------- FENÊTRE : PROJETS D'UNE LOCALITÉ ----------
           Une pastille de la carte porte un nombre ; cliquer dessus doit dire
           lesquels, sinon la carte ne fait que compter. */}
+      {/* ---------- CORBEILLE ---------- */}
+      {corbeilleOuverte && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(15,23,32,.55)" }}
+          onClick={(e) => e.target === e.currentTarget && setCorbeilleOuverte(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto p-5">
+            <div className="flex items-start justify-between gap-3 mb-1">
+              <div className="min-w-0">
+                <h3 className="font-bold">Corbeille</h3>
+                <p className="text-sm text-stone-500">
+                  {corbeille.length} projet{corbeille.length > 1 ? "s" : ""} retiré{corbeille.length > 1 ? "s" : ""} du portefeuille.
+                  Rien n'est effacé : la restauration remet le projet et ses suivis en place.
+                </p>
+              </div>
+              <button onClick={() => setCorbeilleOuverte(false)} aria-label="Fermer"
+                className="text-stone-400 hover:text-stone-700 shrink-0" title="Fermer"><Icone n="fermer" t={18} /></button>
+            </div>
+            <div className="divide-y divide-stone-100 mt-3">
+              {corbeille.map((f) => (
+                <div key={f.id} className="py-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-semibold break-words">{f.titre}</div>
+                    <div className="text-xs text-stone-500 break-words">
+                      {f.entreprise}{f.region ? ` · ${f.region}` : ""}
+                      {f.supprimeLe ? ` · retiré le ${new Date(f.supprimeLe).toLocaleString("fr-FR")}` : ""}
+                      {f.supprimePar ? ` par ${f.supprimePar}` : ""}
+                    </div>
+                  </div>
+                  <button onClick={() => restaurerDeLaCorbeille(f)}
+                    className="text-sm font-semibold hover:underline shrink-0" style={{ color: C.vert }}>
+                    Restaurer
+                  </button>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-stone-400 mt-4 pt-3 border-t border-stone-100">
+              La corbeille ne se vide pas toute seule. La purge se fait à la main
+              dans Supabase — la marche à suivre est en commentaire dans
+              « supabase-phase5.sql ».
+            </p>
+          </div>
+        </div>
+      )}
+
       {detailLocalite && (() => {
         const dep = DEP_PAR_LOCALITE[detailLocalite];
         const liste = formationsVisibles
