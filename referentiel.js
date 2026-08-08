@@ -49,7 +49,7 @@ export const REFERENTIEL_DEFAUT = [
       { id: "IE1", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Taux d'insertion des apprenants dans l'emploi (salarié ou auto-emploi) mesuré au suivi M+6 (cible : ≥ 70 %)" },
       { id: "IE2", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des apprenants insérés occupant un emploi en adéquation avec la qualification visée, mesurée à M+6 (cible : ≥ 80 %)" },
       { id: "IE3", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des apprenants insérés en emploi stable (contrat ≥ 6 mois ou CDI, rémunération ≥ SMIG) mesurée à M+12 (cible : ≥ 60 %)" },
-      { id: "IE4", phase: "En fin de formation", label: "Part des apprenants ayant reçu leur certification officielle (CQP, titre, attestation) dans le mois suivant la fin de la formation — délivrance systématique attendue (cible : 100 % dans le délai)" },
+      { id: "IE4", phase: "En fin de formation", label: "Part des apprenants ayant reçu leur certification officielle (CQP, titre, attestation) dans le mois suivant la fin de la formation, la délivrance systématique étant attendue (cible : 100 % dans le délai)" },
     ],
   },
   {
@@ -238,13 +238,31 @@ export const PROJET_VIERGE = () => ({
 });
 
 // ----------------- MATRICE DES PERMISSIONS PAR RÔLE -------------
+/* « exports » recouvrait trois choses très différentes, et c'est ce qui a
+   ouvert la porte : sortir la fiche PDF d'un projet, extraire le classeur du
+   portefeuille, et sauvegarder ou restaurer la base. Elles sont désormais
+   distinctes.
+     fichePdf        la fiche d'évaluation d'UN projet. Un promoteur y a droit
+                     pour les siens : c'est son dossier.
+     exportXlsx      le classeur Excel mis en forme, avec bandeau de
+                     certification : c'est un document institutionnel, réservé
+                     au FDFP.
+     exportCsv       les mêmes données, brutes. Ouvert jusqu'au promoteur et à
+                     l'opérateur : chacun peut relire ses propres chiffres dans
+                     son tableur, sans que cela engage le FDFP.
+     sauvegarde      sauvegarder, restaurer, reprendre un ancien classeur.
+                     Ce sont des actes d'administration de la base, pas de
+                     consultation. Réservé aux administrateurs.
+   « Remplacer par la démo » reste sous « supprimerFormation » : c'est bien
+   une suppression de masse, et le seul rôle qui l'a est l'administrateur
+   lead. */
 export const PERMS = {
-  "Administrateur lead":     { pages: ["dashboard", "formations", "evaluation", "suivi", "indicateurs", "alertes", "exports", "guide", "users"], evalDims: "toutes", creerFormation: true,  editerFormation: true,  supprimerFormation: true,  referentiel: true,  secteurs: true,  users: true,  exports: true,  suivisJalons: "tous", suiviValider: true,  portee: "tous" },
-  "Administrateur FDFP":     { pages: ["dashboard", "formations", "evaluation", "suivi", "indicateurs", "alertes", "exports", "guide"],          evalDims: "toutes", creerFormation: true,  editerFormation: true,  supprimerFormation: false, referentiel: true,  secteurs: false, users: false, exports: true,  suivisJalons: "tous", suiviValider: true,  portee: "tous" },
-  "Agent FDFP":              { pages: ["dashboard", "formations", "evaluation", "suivi", "indicateurs", "alertes", "exports", "guide"],          evalDims: "toutes", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, exports: true,  suivisJalons: "tous", suiviValider: true,  portee: "tous" },
-  "Promoteur":               { pages: ["dashboard", "formations", "evaluation", "suivi", "exports", "guide"],                          evalDims: "aucune", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, exports: true,  suivisJalons: "tous", suiviValider: false, portee: "entreprise", lectureSeule: true },
-  "Opérateur":               { pages: ["dashboard", "formations", "evaluation", "suivi", "guide"],                                     evalDims: "aucune", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, exports: false, suivisJalons: "tous", suiviValider: false, portee: "entreprise", lectureSeule: true },
-  "En attente d'activation": { pages: ["guide"], evalDims: null, creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, exports: false, suivisJalons: "aucun", suiviValider: false, portee: "aucune" },
+  "Administrateur lead":     { pages: ["dashboard", "formations", "evaluation", "suivi", "indicateurs", "alertes", "exports", "guide", "users"], evalDims: "toutes", creerFormation: true,  editerFormation: true,  supprimerFormation: true,  referentiel: true,  secteurs: true,  users: true,  fichePdf: true,  exportXlsx: true,  exportCsv: true,  sauvegarde: true,  suivisJalons: "tous", suiviValider: true,  portee: "tous" },
+  "Administrateur FDFP":     { pages: ["dashboard", "formations", "evaluation", "suivi", "indicateurs", "alertes", "exports", "guide"],          evalDims: "toutes", creerFormation: true,  editerFormation: true,  supprimerFormation: false, referentiel: true,  secteurs: false, users: false, fichePdf: true,  exportXlsx: true,  exportCsv: true,  sauvegarde: true,  suivisJalons: "tous", suiviValider: true,  portee: "tous" },
+  "Agent FDFP":              { pages: ["dashboard", "formations", "evaluation", "suivi", "indicateurs", "alertes", "exports", "guide"],          evalDims: "toutes", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, fichePdf: true,  exportXlsx: true,  exportCsv: true,  sauvegarde: false,  suivisJalons: "tous", suiviValider: true,  portee: "tous" },
+  "Promoteur":               { pages: ["dashboard", "formations", "evaluation", "suivi", "exports", "guide"],                          evalDims: "aucune", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, fichePdf: true,  exportXlsx: false, exportCsv: true, sauvegarde: false,  suivisJalons: "tous", suiviValider: false, portee: "entreprise", lectureSeule: true },
+  "Opérateur":               { pages: ["dashboard", "formations", "evaluation", "suivi", "guide"],                                     evalDims: "aucune", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, fichePdf: false, exportXlsx: false, exportCsv: true, sauvegarde: false, suivisJalons: "tous", suiviValider: false, portee: "entreprise", lectureSeule: true },
+  "En attente d'activation": { pages: ["guide"], evalDims: null, creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, fichePdf: false, exportXlsx: false, exportCsv: false, sauvegarde: false, suivisJalons: "aucun", suiviValider: false, portee: "aucune" },
 };
 
 /* Le statut qualifie le PROJET de formation, pas la formation : « Planifié »,

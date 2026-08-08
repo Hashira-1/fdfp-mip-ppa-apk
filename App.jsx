@@ -215,11 +215,11 @@ const C = {
 };
 
 // ----------------- CALCULS --------------------------------------
-const noteLabel = (n) => (n === 4 ? "Excellent" : n === 3 ? "Bon" : n === 2 ? "Partiel" : n === 1 ? "Faible" : n === 0 ? "Insuffisant" : "—");
+const noteLabel = (n) => (n === 4 ? "Excellent" : n === 3 ? "Bon" : n === 2 ? "Partiel" : n === 1 ? "Faible" : n === 0 ? "Insuffisant" : "Non noté");
 
 /* scoreDimension, scoreGlobal, couvertureModele et niveau sont importés depuis
    « calculs.js » : le modèle est isolé pour être testé (npm test). */
-const fmtPct = (v) => (v === null ? "—" : `${Math.round(v)} %`);
+const fmtPct = (v) => (v === null ? "Non noté" : `${Math.round(v)} %`);
 /* Montants : regroupement par tranches de trois chiffres — milliers, millions,
    milliards… — pour que l'ordre de grandeur se lise d'un coup d'œil.
    Le séparateur produit par Intl varie selon le moteur (espace fine insécable
@@ -295,7 +295,7 @@ function LogoFDFP({ h = 32 }) {
   return (
     <div className="cadre-logo bg-white rounded-lg px-2 py-1 flex items-center justify-center shadow-sm shrink-0"
       style={{ height: h + 10 }}>
-      <img src={LOGO_FDFP} alt="FDFP — Fonds de Développement de la Formation Professionnelle"
+      <img src={LOGO_FDFP} alt="FDFP, Fonds de Développement de la Formation Professionnelle"
         style={{ height: h, width: "auto", maxWidth: "none", objectFit: "contain" }} />
     </div>
   );
@@ -389,7 +389,7 @@ function PiedCertification() {
   return (
     <footer className="pied-certification">
       <img src={CERTIFICATION_FDFP}
-        alt="FDFP — Fonds de Développement de la Formation Professionnelle. Certifié ISO 9001 version 2015 par Bureau Norme Audit, référence BNA/SMQ-FDCS03112513, sur tous nos processus et tous nos sites." />
+        alt="FDFP, Fonds de Développement de la Formation Professionnelle. Certifié ISO 9001 version 2015 par Bureau Norme Audit, référence BNA/SMQ-FDCS03112513, sur tous nos processus et tous nos sites." />
     </footer>
   );
 }
@@ -418,7 +418,7 @@ function HorlogeUTC() {
   const p2 = (n) => String(n).padStart(2, "0");
   const heureMinute = p2(maintenant.getUTCHours()) + ":" + p2(maintenant.getUTCMinutes());
   const secondes = p2(maintenant.getUTCSeconds());
-  const legende = "Date et heure de référence de la plateforme — temps universel (GMT+0). C'est sur cette base que sont calculés les retards et les échéances.";
+  const legende = "Date et heure de référence de la plateforme, en temps universel (GMT+0). C'est sur cette base que sont calculés les retards et les échéances.";
   return (
     <div className="horloge-utc" title={legende} aria-label={legende + " Il est " + heureMinute + " GMT+0, le " + jour + "."}>
       <div className="horloge-date">
@@ -931,7 +931,7 @@ function CadreAccueil({ enfants }) {
       <footer className="w-full max-w-md mt-7 bg-white rounded-2xl p-3 flex justify-center"
         style={{ border: "1px solid rgba(255,255,255,.20)", boxShadow: "0 2px 10px rgba(0,0,0,.18)" }}>
         <img src={CERTIFICATION_FDFP} className="w-full h-auto block"
-          alt="FDFP — Fonds de Développement de la Formation Professionnelle. Certifié ISO 9001 version 2015 par Bureau Norme Audit, référence BNA/SMQ-FDCS03112513, sur tous nos processus et tous nos sites." />
+          alt="FDFP, Fonds de Développement de la Formation Professionnelle. Certifié ISO 9001 version 2015 par Bureau Norme Audit, référence BNA/SMQ-FDCS03112513, sur tous nos processus et tous nos sites." />
       </footer>
     </div>
   );
@@ -973,7 +973,7 @@ function EcranAttente({ session, surActualiser, surDeconnexion }) {
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-7 page-anim text-center">
         <div className="flex justify-center text-amber-500"><Icone n="horloge" t={36} /></div>
         <h2 className="font-bold text-lg mt-3">Compte en attente d'activation</h2>
-        <p className="text-sm text-stone-500 mt-2">Bonjour {session.nom.split(" ")[0]} — votre compte ({session.email}) est bien créé et votre email est vérifié. L'administrateur lead doit maintenant vous attribuer un rôle pour activer votre accès.</p>
+        <p className="text-sm text-stone-500 mt-2">Bonjour {session.nom.split(" ")[0]}, votre compte ({session.email}) est bien créé et votre email est vérifié. L'administrateur lead doit maintenant vous attribuer un rôle pour activer votre accès.</p>
         <div className="flex justify-center gap-3 mt-6">
           <button onClick={surActualiser} className="border border-stone-300 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50 flex items-center gap-1.5"><Icone n="rotation" t={14} /> Vérifier à nouveau</button>
           <button onClick={surDeconnexion} className="text-white px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-1.5" style={{ background: C.vertFonce }}><Icone n="deconnexion" t={14} /> Se déconnecter</button>
@@ -1189,7 +1189,7 @@ export default function MipPpaApp() {
       notif("Localité indisponible : exécutez « supabase-phase4.sql » dans Supabase.");
       return true;
     }
-    notif(`Enregistrement impossible (${quoi}) — ${error.message}`);
+    notif(`Enregistrement impossible (${quoi}) : ${error.message}`);
     return true;
   };
 
@@ -1262,7 +1262,7 @@ export default function MipPpaApp() {
     if (!sb || !corbeilleDispo) {
       setFormations((fs) => fs.filter((x) => x.id !== f.id));
       setSuivis((ss) => ss.filter((x) => x.formationId !== f.id));
-      if (sb) notif("Projet supprimé définitivement — exécutez « supabase-phase5.sql » pour activer la corbeille.");
+      if (sb) notif("Projet supprimé définitivement. Exécutez « supabase-phase5.sql » pour activer la corbeille.");
       return;
     }
     marquerEcritureLocale();
@@ -1278,7 +1278,7 @@ export default function MipPpaApp() {
     suivisRef.current = suivisRef.current.filter((x) => x.formationId !== f.id);
     setSuivisBrut(suivisRef.current);
     setCorbeille((c) => [{ ...f, supprimeLe: le, supprimePar: session?.email || "" }, ...c]);
-    notif(`« ${f.titre} » mis à la corbeille — restaurable depuis la page Projets.`);
+    notif(`« ${f.titre} » mis à la corbeille. Restaurable depuis la page Projets.`);
   };
 
   const restaurerDeLaCorbeille = async (f) => {
@@ -1315,17 +1315,54 @@ export default function MipPpaApp() {
   const [chargementAuth, setChargementAuth] = useState(true);
   const roleActif = session?.role ?? "";
 
-  // Charger le profil + rôle de l'utilisateur connecté
+  /* Charger le profil et le rôle de l'utilisateur connecté.
+
+     DEUX PRÉCAUTIONS, chacune corrigeant un défaut observé en service.
+
+     1. Un échec de lecture ne dégrade PLUS le rôle. La ligne écrivait
+        « role: r?.role || "En attente d'activation" » : si la requête
+        n'aboutissait pas — réseau lent, coupure, jeton en cours de
+        renouvellement — le rôle retombait sur « En attente d'activation » et
+        l'utilisateur se retrouvait éjecté sur l'écran d'attente, sans avoir
+        rien fait. C'est la « déconnexion forcée ». En cas d'échec, on garde
+        désormais ce qu'on avait ; seule une réponse REÇUE fait autorité.
+
+     2. L'objet de session n'est remplacé que s'il a réellement changé. Il
+        était recréé à chaque appel, donc à chaque rafraîchissement de jeton :
+        toute la page se reconstruisait, et les listes avec elle. */
   const chargerProfil = async (utilisateur) => {
-    const { data: p } = await sb.from("profiles").select("*").eq("id", utilisateur.id).maybeSingle();
-    const { data: r } = await sb.from("user_roles").select("role").eq("user_id", utilisateur.id).maybeSingle();
-    setSession({ id: utilisateur.id, email: utilisateur.email, nom: p?.nom || "", org: p?.org || "", role: r?.role || "En attente d'activation", aFinaliser: !(p && p.nom) });
+    const { data: p, error: eP } = await sb.from("profiles").select("*").eq("id", utilisateur.id).maybeSingle();
+    const { data: r, error: eR } = await sb.from("user_roles").select("role").eq("user_id", utilisateur.id).maybeSingle();
+    setSession((avant) => {
+      const memeCompte = avant && avant.id === utilisateur.id;
+      const role = eR
+        ? (memeCompte ? avant.role : "En attente d'activation")   // lecture ratée : on ne rétrograde pas
+        : (r?.role || "En attente d'activation");
+      const nom = eP ? (memeCompte ? avant.nom : "") : (p?.nom || "");
+      const org = eP ? (memeCompte ? avant.org : "") : (p?.org || "");
+      const neuf = {
+        id: utilisateur.id, email: utilisateur.email, nom, org, role,
+        aFinaliser: eP ? (memeCompte ? avant.aFinaliser : false) : !(p && p.nom),
+      };
+      // Référence conservée si rien n'a bougé : pas de rendu inutile.
+      if (avant && ["id", "email", "nom", "org", "role", "aFinaliser"].every((k) => avant[k] === neuf[k])) return avant;
+      return neuf;
+    });
     setChargementAuth(false);
   };
   useEffect(() => {
     if (!sb) { setChargementAuth(false); return; }
     sb.auth.getSession().then(({ data }) => { if (data.session?.user) chargerProfil(data.session.user); else setChargementAuth(false); });
-    const { data: abo } = sb.auth.onAuthStateChange((_ev, s) => { if (s?.user) chargerProfil(s.user); else { setSession(null); setChargementAuth(false); } });
+    /* Seuls les événements qui changent VRAIMENT l'utilisateur sont traités.
+       « TOKEN_REFRESHED » survient tout seul, périodiquement et au retour sur
+       l'onglet : il ne signifie rien d'autre que « le jeton a été renouvelé ».
+       Le traiter comme une reconnexion relançait le chargement complet des
+       données et recréait l'abonnement temps réel, plusieurs fois par heure. */
+    const { data: abo } = sb.auth.onAuthStateChange((ev, s) => {
+      if (ev === "TOKEN_REFRESHED" || ev === "INITIAL_SESSION") return;
+      if (ev === "SIGNED_OUT") { setSession(null); setChargementAuth(false); return; }
+      if (s?.user) chargerProfil(s.user);
+    });
     return () => abo.subscription.unsubscribe();
   }, []);
 
@@ -1333,7 +1370,7 @@ export default function MipPpaApp() {
   const chargerComptes = async () => {
     const { data: profils } = await sb.from("profiles").select("*").order("cree_le");
     const { data: roles } = await sb.from("user_roles").select("*");
-    setComptes((profils || []).map((p) => ({ id: p.id, email: p.email, nom: p.nom || p.email, org: p.org || "—", role: (roles || []).find((r) => r.user_id === p.id)?.role || "En attente d'activation" })));
+    setComptes((profils || []).map((p) => ({ id: p.id, email: p.email, nom: p.nom || p.email, org: p.org || "Non renseignée", role: (roles || []).find((r) => r.user_id === p.id)?.role || "En attente d'activation" })));
   };
   const attribuerRole = async (userId, role) => {
     const { error } = await sb.from("user_roles").update({ role }).eq("user_id", userId);
@@ -1403,12 +1440,12 @@ export default function MipPpaApp() {
          vide. L'amorçage juste en dessous s'enclenchait alors et réinjectait
          les projets de démonstration par-dessus un portefeuille bien vivant.
          Une base qu'on n'a pas su lire n'est PAS une base vide. */
-      const { data: projs, error: errProjets } = await sb.from("projets").select("*").order("cree_le");
-      const { data: suivs, error: errSuivis } = await sb.from("suivis").select("*");
+      const { data: projs, error: errProjets } = await sb.from("projets").select("*").order("cree_le").order("id");
+      const { data: suivs, error: errSuivis } = await sb.from("suivis").select("*").order("projet_id").order("jalon").order("id");
       if (errProjets || errSuivis) {
         const msg = (errProjets || errSuivis).message;
         console.warn("Lecture des projets:", msg);
-        notif("Lecture des projets impossible — rien n'a été modifié. " + msg);
+        notif("Lecture des projets impossible. Rien n'a été modifié. " + msg);
         setChargementData(false);
         return;                       // surtout : ne rien écrire, ne rien amorcer
       }
@@ -1444,7 +1481,7 @@ export default function MipPpaApp() {
       if (listeProjets.length) sauvegardeSecours(listeProjets, listeSuivis);
     } catch (e) {
       console.warn("Chargement donnees:", e.message);
-      notif("Chargement impossible — rien n'a été modifié. " + e.message);
+      notif("Chargement impossible. Rien n'a été modifié. " + e.message);
     }
     setChargementData(false);
   };
@@ -1461,7 +1498,12 @@ export default function MipPpaApp() {
       .on("postgres_changes", { event: "*", schema: "public", table: "configuration" }, () => rechargerLeger())
       .subscribe();
     return () => { sb.removeChannel(canal); };
-  }, [session, roleActif]);
+    /* Dépendances réduites à des valeurs SIMPLES. Avec l'objet « session »,
+       l'effet se rejouait dès que cet objet était recréé — même à contenu
+       identique : rechargement complet des données et abonnement temps réel
+       détruit puis reconstruit, plusieurs fois par heure. C'est ce qui faisait
+       sauter les listes sans raison apparente. */
+  }, [session?.id, roleActif]);
 
   // Rechargement silencieux (declenche par le temps reel des autres utilisateurs).
   // Le minuteur vit dans une ref : l'ancienne variable locale etait recreee a chaque
@@ -1479,13 +1521,30 @@ export default function MipPpaApp() {
         // On lit tout d'abord, puis on applique en bloc : appliquer la configuration
         // avant la fin des autres requetes rouvrait la fenetre d'ecrasement.
         const { data: cfg } = await sb.from("configuration").select("*").eq("id", 1).maybeSingle();
-        const { data: projs } = await sb.from("projets").select("*").order("cree_le");
-        const { data: suivs } = await sb.from("suivis").select("*");
+        /* Les deux lectures sont TRIÉES, et par une clé unique. Les suivis
+           étaient lus sans « order » : PostgreSQL ne promet alors aucun ordre,
+           et il varie d'une lecture à l'autre. À chaque rechargement, les
+           lignes se réarrangeaient donc sous le curseur, sans que rien n'ait
+           changé. Le tri sur l'identifiant lève l'ambiguïté quand deux dates
+           sont égales. */
+        const { data: projs, error: eP } = await sb.from("projets").select("*").order("cree_le").order("id");
+        const { data: suivs, error: eS } = await sb.from("suivis").select("*").order("projet_id").order("jalon").order("id");
+        // Lecture en échec : on garde ce qui est à l'écran plutôt que de le vider.
+        if (eP || eS) return;
         // Une ecriture locale a pu partir pendant les requetes : on abandonne ce lot.
         if (Date.now() - derniereEcritureLocale.current < DELAI_ECHO) { rechargerLeger(); return; }
         if (cfg) { if (Array.isArray(cfg.referentiel) && cfg.referentiel.length) setReferentielBrut(cfg.referentiel); if (cfg.secteurs) setSecteursBrut(normaliserSecteurs(cfg.secteurs)); if (Array.isArray(cfg.phases)) setPhasesBrut(cfg.phases); }
-        setFormationsBrut((projs || []).map(rowVersProjet));
-        setSuivisBrut((suivs || []).map(rowVersSuivi));
+        /* La corbeille est respectée ici aussi. Sans ce filtre, un projet mis
+           à la corbeille réapparaissait au premier rechargement temps réel :
+           sa ligne existe toujours en base, elle est seulement marquée. */
+        const actifs = (projs || []).filter((r) => !r.supprime_le);
+        const idsActifs = new Set(actifs.map((r) => r.id));
+        setFormationsBrut(actifs.map(rowVersProjet));
+        setSuivisBrut((suivs || [])
+          .filter((r) => !r.supprime_le && idsActifs.has(r.projet_id))
+          .map(rowVersSuivi));
+        setCorbeille((projs || []).filter((r) => r.supprime_le)
+          .map((r) => ({ ...rowVersProjet(r), supprimeLe: r.supprime_le, supprimePar: r.supprime_par })));
       } catch (e) {}
     };
     rechargeTimer.current = setTimeout(executer, 600);
@@ -1514,12 +1573,12 @@ export default function MipPpaApp() {
   };
   const envoyerInvitation = async () => {
     const email = emailInvite.trim().toLowerCase();
-    if (!REGEX_EMAIL.test(email)) { notif("Adresse email invalide — vérifiez le format (ex. nom@organisation.ci)"); return; }
+    if (!REGEX_EMAIL.test(email)) { notif("Adresse email invalide. Vérifiez le format, par exemple nom@organisation.ci"); return; }
     const suggestion = suggestionDomaine(email);
     if (suggestion) {
       const corrige = email.split("@")[0] + "@" + suggestion;
       const veutCorriger = window.confirm(`Vouliez-vous dire « ${corrige} » au lieu de « ${email} » ?\n\nOK pour corriger automatiquement, Annuler pour envoyer tel quel.`);
-      if (veutCorriger) { setEmailInvite(corrige); notif("Adresse corrigée — cliquez à nouveau sur Envoyer pour confirmer"); return; }
+      if (veutCorriger) { setEmailInvite(corrige); notif("Adresse corrigée. Cliquez à nouveau sur Envoyer pour confirmer"); return; }
     }
     setEnvoiInvite(true);
     try {
@@ -1529,7 +1588,7 @@ export default function MipPpaApp() {
       setEmailInvite("");
     } catch (e) {
       // Repli : la fonction serveur n'est pas (encore) déployée -> messagerie pré-remplie
-      notif("Envoi direct indisponible (" + (e.message || e) + ") — ouverture de votre messagerie");
+      notif("Envoi direct indisponible (" + (e.message || e) + ") : ouverture de votre messagerie");
       const sujet = "Invitation - Plateforme FDFP MIP-PPA";
       const corps = ["Bonjour,", "", "Vous etes invite(e) a rejoindre la plateforme FDFP MIP-PPA.", "", "1. Rendez-vous sur : " + urlApp, "2. Cliquez sur \"Creer un compte\".", "3. Confirmez votre email puis attendez l'activation de votre acces (role prevu : " + roleInvite + ").", "", "L'equipe FDFP"].join("\n");
       window.location.href = "mailto:" + encodeURIComponent(email) + "?subject=" + encodeURIComponent(sujet) + "&body=" + encodeURIComponent(corps);
@@ -1693,7 +1752,7 @@ export default function MipPpaApp() {
   };
   // « 3 projets mis à jour » / « aucun projet concerné »
   const messagePropagation = (n, mot = "projet") =>
-    n ? ` — ${n} ${mot}${n > 1 ? "s" : ""} mis à jour` : "";
+    n ? `, ${n} ${mot}${n > 1 ? "s" : ""} mis à jour` : "";
 
   const noter = (fid, indId, note) => {
     setFormations((fs) => fs.map((f) => {
@@ -1720,7 +1779,7 @@ export default function MipPpaApp() {
     });
     setFormOuvert(false);
     setNouvelle(PROJET_VIERGE());
-    notif("Formation créée — 3 suivis (M+3/M+6/M+12) planifiés");
+    notif("Projet créé, avec 3 suivis planifiés (M+3, M+6, M+12)");
   };
   const editerFormation = (f) => {
     setNouvelle({ titre: f.titre, entreprise: f.entreprise, operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", secteurGrand: f.secteurGrand || grandSecteurDe(secteurs, f.filiere), filiere: f.filiere, domaine: f.domaine || "", region: normaliserRegion(f.region), localite: normaliserLocalite(f.localite, f.region), apprenants: f.apprenants, budget: f.budget, statut: f.statut });
@@ -1779,7 +1838,7 @@ export default function MipPpaApp() {
     const remplaces = data.projets.filter((p) => p && p.id && connus.has(p.id));
     const quand = data.le ? new Date(data.le).toLocaleString("fr-FR") : "date inconnue";
     if (!window.confirm(
-      `Sauvegarde du ${quand} — ${data.projets.length} projets.\n\n` +
+      `Sauvegarde du ${quand}, ${data.projets.length} projets.\n\n` +
       `${nouveaux.length} seront ajoutés.\n` +
       `${remplaces.length} déjà présents seront remplacés par la version sauvegardée.\n` +
       `Aucun projet ne sera supprimé.\n\n` +
@@ -1944,16 +2003,16 @@ export default function MipPpaApp() {
     const deja = a.lignes.length - nouveaux.length;
 
     if (!window.confirm(
-      `Reprise d'un classeur exporté — ${a.lignes.length} projets lus.\n\n` +
+      `Reprise d'un classeur exporté : ${a.lignes.length} projets lus.\n\n` +
       `${nouveaux.length} seront ajoutés.\n` +
       `${deja} sont déjà présents et seront laissés intacts.\n\n` +
       `SERONT REPRIS : intitulé, promoteur, secteur, matière première, domaine, ` +
       `zone, localité, apprenants, budget, statut.\n\n` +
       `NE PEUVENT PAS L'ÊTRE, car absents du classeur :\n` +
-      `— les notes des ${referentiel.reduce((n, d) => n + d.indicateurs.length, 0)} indicateurs ` +
+      `• les notes des ${referentiel.reduce((n, d) => n + d.indicateurs.length, 0)} indicateurs ` +
       `(le classeur ne porte que les moyennes par dimension) ;\n` +
-      `— l'opérateur et le bénéficiaire ;\n` +
-      `— les suivis et leurs pièces jointes.\n\n` +
+      `• l'opérateur et le bénéficiaire ;\n` +
+      `• les suivis et leurs pièces jointes.\n\n` +
       `Les scores lus seront conservés en repère sur la fiche d'évaluation, ` +
       `mais chaque projet devra être noté à nouveau.\n` +
       `Dimensions reconnues dans le fichier : ${a.dimensionsLues} sur ${referentiel.length}.` +
@@ -1994,7 +2053,7 @@ export default function MipPpaApp() {
       });
     });
     setSuivis((ss) => [...ss, ...suivisNeufs]);
-    notif(`${projets.length} projets repris — notes à ressaisir.`
+    notif(`${projets.length} projets repris. Notes à ressaisir.`
       + (a.manquantes.length ? ` Colonnes absentes du fichier : ${a.manquantes.join(", ")}.` : ""));
   };
 
@@ -2118,7 +2177,7 @@ export default function MipPpaApp() {
       notif("Classeur Excel téléchargé");
     } catch (e) {
       console.warn("Export XLSX indisponible :", e && e.message);
-      notif("Classeur Excel indisponible — export CSV à la place");
+      notif("Classeur Excel indisponible : export CSV à la place");
       exportCsv();
     }
   };
@@ -3170,10 +3229,10 @@ export default function MipPpaApp() {
                   Retirer les filtres
                 </button>
               )}
-              {P.exports && (
+              {(P.exportXlsx || P.exportCsv) && (
                 <div className="flex items-center gap-2">
-                  <button onClick={exportXlsx} className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50" title="Classeur Excel mis en forme, avec le bandeau de certification."><Icone n="telecharger" t={15} /> Excel</button>
-                  <button onClick={exportCsv} className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50" title="Données brutes séparées par des points-virgules, pour un outil d'analyse."><Icone n="fichier" t={15} /> CSV</button>
+                  {P.exportXlsx && <button onClick={exportXlsx} className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50" title="Classeur Excel mis en forme, avec le bandeau de certification."><Icone n="telecharger" t={15} /> Excel</button>}
+                  {P.exportCsv && <button onClick={exportCsv} className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50" title="Données brutes séparées par des points-virgules, pour un outil d'analyse."><Icone n="fichier" t={15} /> CSV</button>}
                 </div>
               )}
               {/* ⚠ Ce bouton REMPLACE le portefeuille : il supprime en base
@@ -3211,12 +3270,12 @@ export default function MipPpaApp() {
               {corbeille.length > 0 && (
                 <button onClick={() => setCorbeilleOuverte(true)}
                   className="text-sm text-stone-600 hover:text-stone-900"
-                  title="Projets mis à la corbeille — restaurables.">
+                  title="Projets mis à la corbeille, restaurables.">
                   <Icone n="poubelle" t={14} /> Corbeille ({corbeille.length})
                 </button>
               )}
               {/* Retour en arrière, tant que la copie de secours est là. */}
-              {P.creerFormation && secours && (
+              {P.sauvegarde && secours && (
                 <button
                   onClick={() => {
                     if (!window.confirm(
@@ -3234,7 +3293,7 @@ export default function MipPpaApp() {
                     notif(`${secours.projets.length} projets restaurés depuis la copie de secours`);
                   }}
                   className="text-sm font-medium hover:underline" style={{ color: C.vert }}
-                  title={`Copie prise le ${new Date(secours.le).toLocaleString("fr-FR")} — ${secours.projets.length} projets.`}>
+                  title={`Copie prise le ${new Date(secours.le).toLocaleString("fr-FR")}, ${secours.projets.length} projets.`}>
                   <Icone n="rotation" t={14} /> Restaurer la copie de secours
                 </button>
               )}
@@ -3311,7 +3370,7 @@ export default function MipPpaApp() {
                       on rappelle le montant groupé sous la saisie, pour repérer
                       un zéro de trop avant d'enregistrer. */}
                   <div className="text-xs mt-1 font-medium" style={{ color: C.vert }}>
-                    {String(nouvelle.budget).trim() === "" ? "—" : fmtFCFA(nouvelle.budget)}
+                    {String(nouvelle.budget).trim() === "" ? "Non renseigné" : fmtFCFA(nouvelle.budget)}
                   </div>
                 </label>
                 <label className="text-sm">Statut
@@ -3406,7 +3465,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
             <div className="flex items-center justify-between flex-wrap gap-3">
               <button onClick={() => setEvalId(null)} className="text-sm text-stone-600 hover:text-stone-900">← Retour</button>
               <div className="flex gap-3">
-                {P.exports && <button onClick={() => fichePDF(fEval)} className="bg-white border border-stone-200 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-50" title="Générer la fiche d'évaluation officielle en PDF."><Icone n="telecharger" t={15} /> Fiche PDF</button>}
+                {P.fichePdf && <button onClick={() => fichePDF(fEval)} className="bg-white border border-stone-200 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-50" title="Générer la fiche d'évaluation officielle en PDF."><Icone n="telecharger" t={15} /> Fiche PDF</button>}
                 {!P.lectureSeule && <button onClick={() => notif("Évaluation enregistrée")} className="text-white px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: C.vertFonce }} title="Enregistrer l'évaluation"><Icone n="disquette" t={15} /> Enregistrer</button>}
               </div>
             </div>
@@ -3469,7 +3528,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                     return (
                       <div className="text-xs mt-1.5 text-amber-200">
                         À <strong>{pts(m.versLeHaut)}</strong> du niveau {niveau(m.seuilHaut).txt}
-                        {m.crans ? ` — ${m.crans} cran${m.crans > 1 ? "s" : ""} sur un indicateur ${m.crans > 1 ? "suffisent" : "suffit"}.` : "."}
+                        {m.crans ? `, ${m.crans} cran${m.crans > 1 ? "s" : ""} sur un indicateur ${m.crans > 1 ? "suffisent" : "suffit"}.` : "."}
                         {rappel}
                       </div>
                     );
@@ -3519,12 +3578,12 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                     <div className="min-w-0">
                       <h3 className="font-bold">Situation du projet</h3>
                       <p className="text-sm text-stone-500 break-words">
-                        Zone d'occupation de {zone} — {voisines.length} localités couvertes.
+                        Zone d'occupation de {zone}, {voisines.length} localités couvertes.
                       </p>
                     </div>
                     <div className="text-right shrink-0">
                       <div className="text-xs uppercase tracking-wide text-stone-500 font-semibold">Localité</div>
-                      <div className="text-lg font-bold" style={{ color: couleurZone(zone) }}>{loc || "—"}</div>
+                      <div className="text-lg font-bold" style={{ color: couleurZone(zone) }}>{loc || "Non renseignée"}</div>
                       {dep && <div className="text-xs text-stone-500">{dep.r}</div>}
                     </div>
                   </div>
@@ -3618,11 +3677,11 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                             <td className="py-2.5 text-right font-semibold">{fmtPct(p.score)}</td>
                             <td className="py-2.5 text-right font-medium"
                               style={{ color: p.sens === "hausse" ? C.excellent : p.sens === "baisse" ? C.insuffisant : "#78716c" }}>
-                              {p.delta === null ? "—"
+                              {p.delta === null ? "Premier jalon"
                                 : `${p.delta > 0 ? "+" : p.delta < 0 ? "−" : "="} ${Math.abs(p.delta).toFixed(1).replace(".", ",")} pt`}
                             </td>
                             <td className="py-2.5 text-right text-stone-500">
-                              {p.couverture === null || p.couverture === undefined ? "—" : `${Math.round(p.couverture)} %`}
+                              {p.couverture === null || p.couverture === undefined ? "Non connue" : `${Math.round(p.couverture)} %`}
                             </td>
                             <td className="py-2.5 pl-4"><Badge score={p.score} /></td>
                           </tr>
@@ -3693,8 +3752,8 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
               <section className="bg-white rounded-2xl border border-stone-200 p-5">
                 <h3 className="font-bold flex items-center gap-2">{icone} {titre} <span className="text-xs bg-stone-100 px-2 py-0.5 rounded-full">{liste.length}</span></h3>
                 {!liste.length ? <p className="text-sm text-stone-400 mt-2">Aucun élément.</p> : liste.map((s) => (
-                  <div key={s.id} className="border-t border-stone-100 py-3.5 flex flex-wrap items-center justify-between gap-3 first:border-t-0 mt-1">
-                    <div>
+                  <div key={s.id} className="border-t border-stone-100 py-3.5 flex flex-col items-start gap-2.5 first:border-t-0 mt-1">
+                    <div className="min-w-0 w-full">
                       <span className="text-xs font-semibold px-2 py-0.5 rounded-full mr-2" style={{ background: teinte, color: "#1c1917" }}>{s.jalon}</span>
                       <span className="font-semibold">{s.f.titre}</span>
                       <div className="text-sm text-stone-500 mt-0.5">{s.f.entreprise} · {libelleSecteur(s.f, secteurs)} · échéance {s.echeance}{s.statut === "programmé" ? ` · ${joursRestants(s.echeance) < 0 ? Math.abs(joursRestants(s.echeance)) + " j de retard" : "dans " + joursRestants(s.echeance) + " j"}` : ""}</div>
@@ -3702,7 +3761,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                       {(s.docs || []).length > 0 && <div className="text-xs text-sky-700 mt-1"><Icone n="trombone" t={13} /> {s.docs.length} document{s.docs.length > 1 ? "s" : ""} de suivi rattaché{s.docs.length > 1 ? "s" : ""}</div>}
                     </div>
                     <div className="flex gap-2">
-                      {!P.lectureSeule && <button onClick={() => setSuiviEdit({ id: s.id, jalon: s.jalon, titreF: s.f.titre + " — " + s.f.entreprise, echeance: s.echeance, note: s.note, docs: s.docs || [] })}
+                      {!P.lectureSeule && <button onClick={() => setSuiviEdit({ id: s.id, jalon: s.jalon, titreF: s.f.titre + " · " + s.f.entreprise, echeance: s.echeance, note: s.note, docs: s.docs || [] })}
                         className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50" title="Modifier la date, les observations et les documents."><Icone n="crayon" t={14} /> Notes & date</button>}
                       {P.suiviValider && (s.statut === "programmé"
                         ? <button onClick={() => { setSuivis((ss) => ss.map((x) => x.id === s.id ? { ...x, statut: "effectué" } : x)); notif("Suivi marqué effectué"); }} className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50" title="Valider la réalisation de ce suivi."><Icone n="coche" t={14} /> Marquer effectué</button>
@@ -3730,7 +3789,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
           {page === "indicateurs" && (<>
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
               <h3 className="font-bold">Lecture du score global</h3>
-              <p className="text-sm text-stone-500">Quatre niveaux d'interprétation. Pondération totale actuelle : <b style={{ color: poidsTotal === 100 ? C.excellent : C.insuffisant }}>{poidsTotal} %</b>{poidsTotal !== 100 && " — ajustez pour revenir à 100 %"}</p>
+              <p className="text-sm text-stone-500">Quatre niveaux d'interprétation. Pondération totale actuelle : <b style={{ color: poidsTotal === 100 ? C.excellent : C.insuffisant }}>{poidsTotal} %</b>{poidsTotal !== 100 && ". Ajustez les poids pour revenir à 100 %"}</p>
               {admin && (
                 <div className="flex flex-wrap gap-3 mt-3">
                   <button onClick={() => setReferentiel((r) => {
@@ -3754,7 +3813,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
             {P.secteurs && (
               <section className="bg-white rounded-2xl border border-stone-200 p-5">
                 <h3 className="font-bold">Secteurs, matières premières et domaines</h3>
-                <p className="text-sm text-stone-500 mb-3">Trois niveaux : le grand secteur, ses matières premières, et les domaines de chacune. Tout est modifiable — cette hiérarchie alimente le formulaire de projet.</p>
+                <p className="text-sm text-stone-500 mb-3">Trois niveaux : le grand secteur, ses matières premières, et les domaines de chacune. Tout est modifiable, et cette hiérarchie alimente le formulaire de projet.</p>
                 {/* La hiérarchie est stockée en base : sans ce bouton, une mise
                     à jour de la nomenclature livrée avec l'application resterait
                     invisible sur une installation déjà en service. */}
@@ -3888,7 +3947,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                       const pris = new Set(r.flatMap((x) => x.indicateurs.map((i) => i.id)));
                       let k = dim.indicateurs.length + 1;
                       while (pris.has(d.id + k)) k++;
-                      return r.map((x) => x.id === d.id ? { ...x, indicateurs: [...x.indicateurs, { id: d.id + k, phase: "À définir", label: "Nouvel indicateur — à définir" }] } : x);
+                      return r.map((x) => x.id === d.id ? { ...x, indicateurs: [...x.indicateurs, { id: d.id + k, phase: "À définir", label: "Nouvel indicateur à définir" }] } : x);
                     })}
                       className="w-full border border-dashed border-stone-300 rounded-xl py-2.5 text-sm text-stone-500 hover:bg-stone-50">+ Ajouter un indicateur</button>
                   )}
@@ -3909,7 +3968,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                 <section key={f.id} className="bg-white rounded-2xl border-l-4 border border-stone-200 p-5" style={{ borderLeftColor: C.insuffisant }}>
                   <div className="flex justify-between items-center gap-3 flex-wrap">
                     <div>
-                      <div className="font-bold">Score critique — {f.titre}</div>
+                      <div className="font-bold">Score critique : {f.titre}</div>
                       <div className="text-sm text-stone-500">{f.entreprise} · score global inférieur à 40 %</div>
                     </div>
                     <button onClick={() => { setEvalId(f.id); setPage("evaluation"); }} className="text-sm font-medium hover:underline" style={{ color: C.vert }}>Ouvrir l'évaluation →</button>
@@ -3920,7 +3979,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                 const f = formations.find((x) => x.id === s.formationId);
                 return (
                   <section key={s.id} className="bg-white rounded-2xl border-l-4 border border-stone-200 p-5" style={{ borderLeftColor: C.dev }}>
-                    <div className="font-bold">Suivi {s.jalon} en retard — {f?.titre}</div>
+                    <div className="font-bold">Suivi {s.jalon} en retard : {f?.titre}</div>
                     <div className="text-sm text-stone-500">{f?.entreprise} · échéance dépassée : {s.echeance}</div>
                   </section>
                 );
@@ -3933,13 +3992,13 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                 <section key={"trou-" + t.formation.id} className="bg-white rounded-2xl border-l-4 border border-stone-200 p-5" style={{ borderLeftColor: C.gold }}>
                   <div className="flex justify-between items-start gap-3 flex-wrap">
                     <div className="min-w-0">
-                      <div className="font-bold break-words">Évaluation incomplète — {t.formation.titre}</div>
+                      <div className="font-bold break-words">Évaluation incomplète : {t.formation.titre}</div>
                       <div className="text-sm text-stone-500 break-words">
                         {t.formation.entreprise} · échéance {t.jalons} dépassée ·{" "}
                         <strong>{t.manquants.length} indicateur{t.manquants.length > 1 ? "s" : ""}</strong> restant à noter sur {t.couverture.indicateurs}
                       </div>
                       <div className="text-xs text-stone-400 mt-1">
-                        Couverture actuelle : {Math.round(t.couverture.pct)} % du modèle — le score n'est pas comparable à celui d'un projet évalué en entier.
+                        Couverture actuelle : {Math.round(t.couverture.pct)} % du modèle. Le score n'est pas comparable à celui d'un projet évalué en entier.
                       </div>
                     </div>
                     <button onClick={() => { setEvalId(t.formation.id); setPage("evaluation"); }} className="text-sm font-medium hover:underline shrink-0" style={{ color: C.vert }}>Compléter l'évaluation →</button>
@@ -3951,33 +4010,49 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
 
           {/* =========== EXPORTS =========== */}
           {page === "exports" && (<>
+            {(P.exportXlsx || P.exportCsv) && (
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <h3 className="font-bold">Export consolidé</h3>
               <p className="text-sm text-stone-500 mb-4">Tous les projets de formation de type apprentissage et leurs indicateurs, en une feuille.</p>
               <div className="flex flex-wrap items-center gap-3">
-                <button onClick={exportXlsx} className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm" style={{ background: C.vertFonce }} title="Classeur mis en forme : bandeau de certification, colonnes figées, filtres et niveaux en couleur.">
-                  <Icone n="telecharger" t={15} /> Classeur Excel ({formationsVisibles.length} projet{formationsVisibles.length > 1 ? "s" : ""})
-                </button>
-                <button onClick={exportCsv} className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50" title="Données brutes, séparées par des points-virgules — pour une relecture dans un outil statistique.">
-                  <Icone n="fichier" t={15} /> Données brutes (CSV)
+                {P.exportXlsx && (
+                  <button onClick={exportXlsx} className="text-white font-semibold px-5 py-2.5 rounded-xl text-sm" style={{ background: C.vertFonce }} title="Classeur mis en forme : bandeau de certification, colonnes figées, filtres et niveaux en couleur.">
+                    <Icone n="telecharger" t={15} /> Classeur Excel ({formationsVisibles.length} projet{formationsVisibles.length > 1 ? "s" : ""})
+                  </button>
+                )}
+                <button onClick={exportCsv}
+                  className={P.exportXlsx
+                    ? "bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50"
+                    : "text-white font-semibold px-5 py-2.5 rounded-xl text-sm"}
+                  style={P.exportXlsx ? undefined : { background: C.vertFonce }}
+                  title="Données brutes, séparées par des points-virgules, pour une relecture dans un outil statistique.">
+                  <Icone n="fichier" t={15} /> Données brutes (CSV) ({formationsVisibles.length} projet{formationsVisibles.length > 1 ? "s" : ""})
                 </button>
               </div>
+              {/* Le texte ne décrit que ce qui est réellement proposé : parler
+                  du classeur Excel à qui n'y a pas droit revient à annoncer un
+                  bouton absent. */}
               <p className="text-xs text-stone-400 mt-3">
-                Le classeur <b>.xlsx</b> porte le bandeau de certification et conserve les nombres comme nombres (tri, filtres et sommes immédiats).
+                {P.exportXlsx && <>Le classeur <b>.xlsx</b> porte le bandeau de certification et conserve les nombres comme nombres (tri, filtres et sommes immédiats). </>}
                 Le <b>.csv</b> ne contient que les données, au format le plus simple à relire dans un logiciel d'analyse.
               </p>
             </section>
+            )}
+
             {/* ---------- SAUVEGARDE ET RESTAURATION ----------
                 Distinguée de l'export : le classeur sert à communiquer, la
                 sauvegarde sert à remonter. Le 8 août, un portefeuille a été
-                perdu sans aucun moyen de le reconstituer — c'est ce trou
-                que cette section ferme. */}
+                perdu sans aucun moyen de le reconstituer ; c'est ce trou que
+                cette section ferme. Réservée aux administrateurs : sauvegarder
+                et restaurer sont des actes d'administration de la base, pas de
+                consultation. */}
+            {P.sauvegarde && (
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <h3 className="font-bold">Sauvegarde et restauration</h3>
               <p className="text-sm text-stone-500 mb-4">
                 Copie <b>complète et fidèle</b> : projets, notes de chaque indicateur, suivis,
-                jalons figés et référentiel. C'est ce fichier — et non le classeur Excel — qui
-                permet de tout remonter après une fausse manœuvre.
+                jalons figés et référentiel. C'est ce fichier, et non le classeur Excel, qui permet de tout
+                remonter après une fausse manœuvre.
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <button onClick={exporterSauvegarde}
@@ -3985,7 +4060,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                   title="Télécharge une copie complète du portefeuille, restaurable par le bouton voisin.">
                   <Icone n="disquette" t={15} /> Télécharger la sauvegarde ({formations.length} projet{formations.length > 1 ? "s" : ""})
                 </button>
-                {P.creerFormation && (
+                {P.sauvegarde && (
                   <label className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50 cursor-pointer"
                     title="Réinjecte une sauvegarde. Rien n'est supprimé : les projets absents sont ajoutés, ceux de même identifiant sont remplacés.">
                     <Icone n="rotation" t={15} /> Restaurer une sauvegarde
@@ -3997,17 +4072,17 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
               <p className="text-xs text-stone-400 mt-3">
                 La restauration <b>ne supprime jamais</b> : elle ajoute les projets absents et remplace ceux
                 qui portent le même identifiant. Le décompte exact vous est présenté avant toute écriture.
-                Gardez ce fichier hors du navigateur — une copie sur le poste ne survit pas à un effacement des données du site.
+                Gardez ce fichier hors du navigateur : une copie sur le poste ne survit pas à un effacement des données du site.
               </p>
 
               {/* Reprise d'un ancien classeur. Séparée de la restauration :
                   elle rend beaucoup moins, et il faut que cela se voie. */}
-              {P.creerFormation && (
+              {P.sauvegarde && (
                 <div className="mt-5 pt-4 border-t border-stone-200">
                   <h4 className="font-semibold text-sm">Reprendre un ancien classeur Excel ou CSV</h4>
                   <p className="text-sm text-stone-500 mt-1 mb-3">
                     À utiliser si vous n'avez qu'un export, et pas de sauvegarde. La fiche d'identité des
-                    projets est rétablie ; <b>les notes des indicateurs ne le sont pas</b> — le classeur ne
+                    projets est rétablie ; <b>les notes des indicateurs ne le sont pas</b> : le classeur ne
                     porte que les moyennes par dimension, dont on ne peut pas déduire les notes.
                     Ces moyennes sont conservées en repère, et chaque projet est à noter à nouveau.
                   </p>
@@ -4018,7 +4093,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                       onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ""; reprendreClasseur(f); }} />
                   </label>
                   <p className="text-xs text-stone-400 mt-3">
-                    Les projets déjà présents — même intitulé et même promoteur — sont laissés intacts :
+                    Les projets déjà présents (même intitulé et même promoteur) sont laissés intacts :
                     la reprise comble un trou, elle n'écrase pas ce qui a survécu.
                     Ne sont pas dans le classeur, donc perdus : l'opérateur, le bénéficiaire,
                     les suivis et leurs pièces jointes.
@@ -4026,6 +4101,12 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                 </div>
               )}
             </section>
+            )}
+
+            {/* La fiche d'un projet reste accessible au promoteur : c'est son
+                dossier. Seul le classeur de TOUT le portefeuille, lui, est un
+                document de pilotage réservé au FDFP. */}
+            {P.fichePdf && (
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <h3 className="font-bold">Fiches d'évaluation PDF</h3>
               <p className="text-sm text-stone-500">Une fiche officielle par projet de formation de type apprentissage.</p>
@@ -4041,6 +4122,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                 ))}
               </div>
             </section>
+            )}
           </>)}
 
           {/* =========== GUIDE =========== */}
@@ -4051,7 +4133,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
               <p className="mt-2 text-sky-100">Ce guide est conçu pour <b>tout public</b> : agents du FDFP, référents en entreprise, formateurs. Aucune connaissance technique n'est requise (prise en main ≈ 10 minutes).</p>
             </section>
             {(P.lectureSeule ? [
-              ["1. Votre accès en consultation", "Votre profil (" + roleActif + ") vous donne un accès en lecture seule aux projets dont votre organisation est promoteur ou opérateur. Vous consultez les évaluations, les suivis et les documents, sans pouvoir les modifier — la saisie est assurée par les équipes du FDFP."],
+              ["1. Votre accès en consultation", "Votre profil (" + roleActif + ") vous donne un accès en lecture seule aux projets dont votre organisation est promoteur ou opérateur. Vous consultez les évaluations, les suivis et les documents, sans pouvoir les modifier : la saisie est assurée par les équipes du FDFP."],
               ["2. Tableau de bord", "Vue d'ensemble de vos projets : nombre d'apprenants, score moyen MIP, radar des 5 dimensions, comparaison par secteur. Les chiffres sont recalculés en continu à partir des évaluations saisies par le FDFP."],
               ["3. Lire une évaluation", "Ouvrez un projet depuis la page Projets pour consulter sa fiche : score global (0-100 %), niveau (Insuffisant / En développement / Satisfaisant / Excellent), détail des 5 dimensions et des 23 indicateurs notés de 0 à 4."],
               ["4. Suivi post-formation", "Chaque projet comporte 3 jalons (M+3, M+6, M+12) : vous suivez leur état (programmé, effectué, en retard), lisez les observations de terrain et consultez les documents joints en cliquant dessus (visionneuse plein écran)."],
@@ -4153,7 +4235,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
           <PiedCertification />
         </main>
         <footer className="text-center text-[11px] text-stone-400 pb-5">
-          Prototype MIP-PPA — PFE ESA / INP-HB × FDFP · EHOUNI Luc-Emmanuel Behira Levy · Données de démonstration
+          Prototype MIP-PPA · PFE ESA / INP-HB × FDFP · EHOUNI Luc-Emmanuel Behira Levy · Données de démonstration
         </footer>
       </div>
 
@@ -4290,7 +4372,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
             </div>
             <p className="text-xs text-stone-400 mt-4 pt-3 border-t border-stone-100">
               La corbeille ne se vide pas toute seule. La purge se fait à la main
-              dans Supabase — la marche à suivre est en commentaire dans
+              dans Supabase : la marche à suivre est en commentaire dans
               « supabase-phase5.sql ».
             </p>
           </div>
@@ -4455,13 +4537,13 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                 className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600 resize-y" />
             </label>
             <div className="mt-4">
-              <div className="text-sm font-semibold text-stone-800">Documents de suivi <span className="font-normal text-stone-400">(rattachés à la fiche PDF — 2 Mo max par fichier)</span></div>
+              <div className="text-sm font-semibold text-stone-800">Documents de suivi <span className="font-normal text-stone-400">(rattachés à la fiche PDF, 2 Mo max par fichier)</span></div>
               <label className="mt-2 flex items-center justify-center gap-2 border-2 border-dashed border-stone-300 rounded-xl py-4 text-sm text-stone-500 cursor-pointer hover:bg-stone-50">
                 <Icone n="trombone" t={16} /> Choisir des fichiers (photos, rapports…)
                 <input type="file" multiple className="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
                   onChange={(e) => {
                     Array.from(e.target.files || []).forEach((fich) => {
-                      if (fich.size > 2 * 1024 * 1024) { notif(`« ${fich.name} » dépasse 2 Mo — ignoré`); return; }
+                      if (fich.size > 2 * 1024 * 1024) { notif(`« ${fich.name} » dépasse 2 Mo, fichier ignoré`); return; }
                       const lecteur = new FileReader();
                       lecteur.onload = () => setSuiviEdit((se) => se && ({ ...se, docs: [...se.docs, { nom: fich.name, type: fich.type, taille: fich.size, date: new Date().toISOString().slice(0, 10), data: lecteur.result }] }));
                       lecteur.readAsDataURL(fich);
