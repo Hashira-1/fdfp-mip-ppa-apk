@@ -115,6 +115,60 @@ function creerClientSupabase() {
 const sb = globalThis.__mipPpaSupabase || (globalThis.__mipPpaSupabase = creerClientSupabase());
 
 // ----------------- COMPTES & AUTHENTIFICATION ------
+
+/* Traduction des erreurs de Supabase Auth. Une seule table, pour tous les
+   écrans — c'est la leçon de la panne qu'elle corrige.
+   ---------------------------------------------------------------------------
+   Chaque écran traduisait de son côté, ou pas du tout, et l'un d'eux cherchait
+   le mot « same » là où Supabase écrit « New password should be different from
+   the old password ». Le test ne matchait donc jamais, et l'anglais brut
+   s'affichait dans un formulaire qui demande deux fois le même mot de passe.
+
+   Ce n'était pas qu'un défaut de langue : le message était activement
+   TROMPEUR. Lu au-dessus de deux champs identiques, « should be different »
+   se comprend comme « les deux saisies doivent différer ». L'utilisateur en
+   saisissait donc deux différentes et tombait sur « Les deux saisies
+   diffèrent » — deux erreurs qui se contredisent, sans issue apparente.
+
+   D'où la formulation retenue plus bas : elle dit explicitement lequel des
+   deux mots de passe pose problème, et rappelle que les deux champs doivent
+   bien rester identiques. */
+function messageAuth(error, defaut) {
+  const m = String((error && error.message) || "");
+  if (!m) return defaut || "Opération impossible.";
+  const est = (re) => re.test(m);
+
+  // Mot de passe identique à l'ancien : le cas qui a piégé les utilisateurs.
+  if (est(/different from the old password|should be different|same[_ ]password/i))
+    return "Ce mot de passe est déjà le vôtre. Choisissez-en un NOUVEAU, "
+      + "puis répétez-le à l'identique dans les deux champs.";
+
+  if (est(/Password should be at least|too short|weak[_ ]password/i))
+    return "Mot de passe trop court ou trop simple : 6 caractères au minimum.";
+  if (est(/leaked|pwned|compromis/i))
+    return "Ce mot de passe figure dans des fuites de données connues. Choisissez-en un autre.";
+
+  if (est(/Invalid login/i)) return "Email ou mot de passe incorrect.";
+  if (est(/Email not confirmed/i))
+    return "Email non confirmé : cliquez d'abord sur le lien reçu dans votre boîte mail (vérifiez les indésirables).";
+  if (est(/already registered|already been registered/i))
+    return "Un compte existe déjà pour cet email.";
+  if (est(/not authorized|not allowed for this email/i))
+    return "Cette adresse n'est pas autorisée par le serveur d'envoi. "
+      + "Un SMTP doit être configuré dans Supabase pour écrire à des adresses hors équipe.";
+
+  if (est(/expired|invalid.*token|token.*invalid|otp_expired/i))
+    return "Le lien a expiré ou a déjà servi. Redemandez-en un depuis l'écran de connexion.";
+  if (est(/rate|limit|seconds|too many/i))
+    return "Trop de demandes en peu de temps. Patientez une minute avant de réessayer.";
+  if (est(/invalid.*email|Unable to validate email/i))
+    return "Adresse email invalide.";
+  if (est(/Failed to fetch|NetworkError|network/i))
+    return "Serveur injoignable. Vérifiez votre connexion, puis réessayez.";
+
+  return defaut ? `${defaut} (${m})` : m;
+}
+
 function lireStock(cle, defaut) {
   try { const v = window.localStorage.getItem(cle); return v ? JSON.parse(v) : defaut; } catch (e) { return defaut; }
 }
@@ -1015,12 +1069,24 @@ function EcranFinalisation({ session, surTermine }) {
   const valider = async () => {
     if (!nom.trim() || !org.trim()) return setMsg("Renseignez votre nom complet et votre organisation.");
     if (mdp.length < 6) return setMsg("Mot de passe : 6 caractères minimum.");
-    setEnvoi(true);
-    const { error: e1 } = await sb.auth.updateUser({ password: mdp, data: { nom: nom.trim(), org: org.trim() } });
-    const { error: e2 } = await sb.from("profiles").update({ nom: nom.trim(), org: org.trim() }).eq("id", session.id);
+    setEnvoi(true); setMsg(null);
+    const profil = { nom: nom.trim(), org: org.trim() };
+    let { error: e1 } = await sb.auth.updateUser({ password: mdp, data: profil });
+    /* Cas fréquent, et jusqu'ici bloquant : l'invité saisit le mot de passe
+       qu'il utilise DÉJÀ. Supabase refuse alors la mise à jour entière —
+       profil compris — et l'écran restait fermé sur un message anglais.
+       Or il n'y a rien à corriger : garder son mot de passe est un choix
+       valable, seul le profil manquait. On rejoue donc sans le mot de passe
+       et on laisse entrer, au lieu d'exiger un changement dont personne
+       n'a besoin ici. */
+    if (e1 && /different from the old password|should be different|same[_ ]password/i.test(e1.message || "")) {
+      const r = await sb.auth.updateUser({ data: profil });
+      e1 = r.error;
+    }
+    const { error: e2 } = await sb.from("profiles").update(profil).eq("id", session.id);
     setEnvoi(false);
-    if (e1 || e2) return setMsg((e1 || e2).message);
-    surTermine({ nom: nom.trim(), org: org.trim() });
+    if (e1 || e2) return setMsg(messageAuth(e1 || e2, "Enregistrement impossible."));
+    surTermine(profil);
   };
   return (
     <CadreAccueil enfants={
@@ -1098,8 +1164,11 @@ function EcranConnexion() {
     const retour = window.location.origin + window.location.pathname;
     const { error } = await sb.auth.resetPasswordForEmail(adresse, { redirectTo: retour });
     setEnvoi(false);
-    if (error && /rate|limit|seconds/i.test(error.message || "")) {
-      return setMsg({ type: "erreur", txt: "Trop de demandes en peu de temps. Patientez une minute avant de réessayer." });
+    /* Seules les erreurs qui n'apprennent rien sur l'existence du compte sont
+       remontées : le plafond d'envoi et l'absence de SMTP sont des pannes de
+       configuration, pas des renseignements sur l'adresse saisie. */
+    if (error && /rate|limit|seconds|too many|not authorized|not allowed/i.test(error.message || "")) {
+      return setMsg({ type: "erreur", txt: messageAuth(error) });
     }
     setMsg({ type: "ok", txt: `Si un compte existe pour ${adresse}, un lien de réinitialisation vient d'y être envoyé. Il est valable une heure : ouvrez-le depuis ce même appareil, et pensez à regarder dans les indésirables.` });
   };
@@ -1108,12 +1177,7 @@ function EcranConnexion() {
     setEnvoi(true); setMsg(null);
     const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password: mdp });
     setEnvoi(false);
-    if (error) {
-      const t = error.message.includes("Invalid login") ? "Email ou mot de passe incorrect."
-        : error.message.includes("Email not confirmed") ? "Email non confirmé : cliquez d'abord sur le lien reçu dans votre boîte mail (vérifiez les spams)."
-        : error.message;
-      setMsg({ type: "erreur", txt: t });
-    }
+    if (error) setMsg({ type: "erreur", txt: messageAuth(error) });
   };
   const creer = async () => {
     if (!nom.trim() || !org.trim()) return setMsg({ type: "erreur", txt: "Renseignez votre nom complet et votre organisation." });
@@ -1121,7 +1185,7 @@ function EcranConnexion() {
     setEnvoi(true); setMsg(null);
     const { error } = await sb.auth.signUp({ email: email.trim(), password: mdp, options: { data: { nom: nom.trim(), org: org.trim() } } });
     setEnvoi(false);
-    if (error) return setMsg({ type: "erreur", txt: error.message.includes("already registered") ? "Un compte existe déjà pour cet email." : error.message });
+    if (error) return setMsg({ type: "erreur", txt: messageAuth(error) });
     setMsg({ type: "ok", txt: "Compte créé ! Un email de confirmation vient de vous être envoyé : cliquez sur le lien pour vérifier votre adresse, puis revenez vous connecter. L'administrateur lead activera ensuite votre accès." });
     setOnglet("connexion"); setMdp("");
   };
@@ -1202,6 +1266,21 @@ function EcranConnexion() {
   );
 }
 
+/* Témoin de concordance des deux champs de mot de passe.
+   Rien tant que la confirmation est vide : un « ne correspondent pas » affiché
+   dès le premier caractère tapé est un reproche adressé à quelqu'un qui n'a
+   pas fini d'écrire. */
+function ConcordanceMdp({ mdp, confirmation }) {
+  if (!confirmation) return null;
+  const ok = mdp === confirmation;
+  return (
+    <div className={"mt-2 text-xs font-medium flex items-center gap-1.5 " + (ok ? "text-emerald-700" : "text-amber-700")}>
+      <Icone n={ok ? "cocheCercle" : "alerte"} t={14} />
+      {ok ? "Les deux saisies sont identiques." : "Les deux saisies ne correspondent pas encore."}
+    </div>
+  );
+}
+
 /* Choix d'un nouveau mot de passe, après un lien de récupération.
    S'affiche AVANT toute autre garde d'accès : à ce stade la session existe
    déjà — c'est le lien qui l'a ouverte — mais elle n'a qu'un seul usage
@@ -1224,13 +1303,7 @@ function EcranNouveauMdp({ email, surTermine, surAnnuler }) {
     setEnvoi(true); setMsg(null);
     const { error } = await sb.auth.updateUser({ password: mdp });
     setEnvoi(false);
-    if (error) {
-      return setMsg(/same/i.test(error.message || "")
-        ? "Ce mot de passe est identique à l'ancien : choisissez-en un autre."
-        : /expired|invalid/i.test(error.message || "")
-          ? "Le lien a expiré ou a déjà servi. Redemandez-en un depuis l'écran de connexion."
-          : error.message);
-    }
+    if (error) return setMsg(messageAuth(error));
     surTermine();
   };
 
@@ -1254,9 +1327,19 @@ function EcranNouveauMdp({ email, surTermine, surAnnuler }) {
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-7 page-anim">
         <div className="flex items-center gap-2 font-bold text-stone-900"><Icone n="bouclier" t={18} /> Nouveau mot de passe</div>
         <p className="text-sm text-stone-500 mt-1">Choisissez le mot de passe du compte {email}. Il remplacera l'ancien immédiatement.</p>
+        {/* Dit d'emblée ce que le formulaire attend. Les deux champs identiques
+            sont une évidence pour qui l'a écrit, pas pour qui le remplit — et
+            c'est précisément cette évidence qui a rendu le message d'erreur de
+            Supabase si trompeur. */}
+        <p className="text-xs text-stone-400 mt-1.5">Saisissez le même mot de passe dans les deux champs. Il doit être différent de celui que vous utilisiez jusqu'ici.</p>
         {msg && <div className="mt-3 text-sm rounded-xl px-3.5 py-2.5 bg-red-50 text-red-700 border border-red-200">{msg}</div>}
         {champMdp("Nouveau mot de passe (6 caractères min.)", mdp, setMdp)}
         {champMdp("Confirmez le mot de passe", confirmation, setConfirmation)}
+        {/* Concordance annoncée EN DIRECT, et non au moment de valider. C'est ce
+            qui sépare définitivement les deux erreurs : celle qui porte sur les
+            deux champs se voit et se corrige avant l'envoi, si bien qu'un
+            message venu du serveur ne peut plus être pris pour elle. */}
+        <ConcordanceMdp mdp={mdp} confirmation={confirmation} />
         <button onClick={valider} disabled={envoi}
           className="w-full mt-6 text-white font-semibold py-3 rounded-xl disabled:opacity-60" style={{ background: C.vertFonce }}>
           {envoi ? "Un instant…" : "Enregistrer et accéder à la plateforme"}
@@ -4827,7 +4910,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
               <h3 className="text-xl font-bold">Changer mon mot de passe</h3>
               <button onClick={() => setChangeMdp(null)} className="text-stone-400 hover:text-stone-700" title="Fermer" aria-label="Fermer"><Icone n="fermer" t={18} /></button>
             </div>
-            <p className="text-sm text-stone-500 mt-1">Compte {session?.email}. Le nouveau mot de passe remplace l'ancien immédiatement.</p>
+            <p className="text-sm text-stone-500 mt-1">Compte {session?.email}. Saisissez le même mot de passe dans les deux champs ; il doit être différent de celui que vous utilisez aujourd'hui.</p>
             {changeMdp.msg && <div className="mt-3 text-sm rounded-xl px-3.5 py-2.5 bg-red-50 text-red-700 border border-red-200">{changeMdp.msg}</div>}
             <label className="block text-sm font-semibold text-stone-800 mt-4">Nouveau mot de passe <span className="font-normal text-stone-400">(6 caractères min.)</span>
               <input type="password" value={changeMdp.nouveau} onChange={(e) => setChangeMdp({ ...changeMdp, nouveau: e.target.value })}
@@ -4837,6 +4920,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
               <input type="password" value={changeMdp.confirmation} onChange={(e) => setChangeMdp({ ...changeMdp, confirmation: e.target.value })}
                 className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
             </label>
+            <ConcordanceMdp mdp={changeMdp.nouveau} confirmation={changeMdp.confirmation} />
             <div className="flex justify-end gap-3 mt-6">
               <button onClick={() => setChangeMdp(null)} className="border border-stone-300 px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50">Annuler</button>
               <button disabled={changeMdp.envoi} onClick={async () => {
@@ -4844,7 +4928,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                 if (changeMdp.nouveau !== changeMdp.confirmation) return setChangeMdp({ ...changeMdp, msg: "Les deux saisies diffèrent. Vérifiez avant de valider." });
                 setChangeMdp({ ...changeMdp, envoi: true, msg: null });
                 const { error } = await sb.auth.updateUser({ password: changeMdp.nouveau });
-                if (error) return setChangeMdp({ ...changeMdp, envoi: false, msg: error.message });
+                if (error) return setChangeMdp({ ...changeMdp, envoi: false, msg: messageAuth(error) });
                 setChangeMdp(null); notif("Mot de passe modifié.");
               }} className="text-white px-6 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-60" style={{ background: C.vertFonce }}>
                 {changeMdp.envoi ? "Un instant…" : "Enregistrer"}
