@@ -29,7 +29,7 @@ import {
   libelleSecteur, listeSecteursPlate, nomLibre, ANTENNES_FDFP, IMPLANTATIONS,
   normaliserRegion, LOCALITES_PAR_ZONE, DEP_PAR_LOCALITE, localitesDe,
   localiteParDefaut, normaliserLocalite, PROJET_VIERGE, PERMS, STATUTS_PROJET,
-  normaliserStatut,
+  normaliserStatut, memeNom,
 } from "./referentiel.js";
 /* « nettoyerPdf » est la seule partie purement calculatoire de la génération
    de fiches — et la plus délicate. Isolée pour être testée (pdf.test.js). */
@@ -1783,6 +1783,198 @@ export default function MipPpaApp() {
     notif(`${propres.length} projets restaurés (${nouveaux.length} ajoutés, ${remplaces.length} remplacés)`);
   };
 
+  /* ---------- REPRISE D'UN CLASSEUR EXPORTÉ ----------
+     Le classeur n'a jamais été prévu pour être relu : c'est un livrable de
+     communication. Ce qu'il contient et ce qu'il ne contient PAS décide de ce
+     que cette reprise peut rendre.
+
+     IL CONTIENT   intitulé, promoteur, secteur, matière première, domaine,
+                   zone, localité (depuis le 8 août), apprenants, budget,
+                   statut, et les scores PAR DIMENSION.
+     IL NE CONTIENT PAS  l'identifiant, l'opérateur, le bénéficiaire, les
+                   NOTES par indicateur, les suivis et leurs pièces jointes.
+
+     Les notes ne sont donc pas reconstituables, et elles ne sont PAS
+     inventées : un score de dimension est une moyenne de notes 0–4, et une
+     infinité de jeux de notes donnent la même moyenne. Fabriquer des notes
+     plausibles produirait une évaluation fausse mais d'apparence complète,
+     ce qui est pire que pas d'évaluation du tout.
+     Les scores lus sont en revanche conservés tels quels, en instantané
+     marqué « repris d'un export » : l'évaluateur voit où le projet en était
+     avant de le noter à nouveau. */
+
+  // Rapprochement des en-têtes : insensible aux accents, à la casse et aux
+  // espaces, pour accepter les classeurs des versions antérieures.
+  const clefColonne = (s) => String(s == null ? "" : s)
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/\(.*?\)/g, "").replace(/[^a-zA-Z]/g, "").toLowerCase();
+
+  const analyserTableau = (matrice) => {
+    // La ligne d'en-têtes est la première qui porte « Projet » ET « Promoteur ».
+    let iEnt = -1;
+    for (let i = 0; i < Math.min(matrice.length, 12); i++) {
+      const c = (matrice[i] || []).map(clefColonne);
+      if (c.includes("projet") && c.includes("promoteur")) { iEnt = i; break; }
+    }
+    if (iEnt < 0) return { erreur: "En-têtes introuvables : ce fichier ne vient pas de l'export MIP-PPA." };
+    const entetes = (matrice[iEnt] || []).map(clefColonne);
+    const col = (nom) => entetes.indexOf(clefColonne(nom));
+    const iDim = referentiel.map((d) => ({ id: d.id, i: entetes.indexOf(clefColonne(d.nom)) }));
+
+    const lignes = [];
+    for (let i = iEnt + 1; i < matrice.length; i++) {
+      const r = matrice[i] || [];
+      const titre = String(r[col("Projet")] ?? "").trim();
+      if (!titre) continue;                       // ligne vide ou pied de tableau
+      const nombre = (v) => {
+        const n = Number(String(v ?? "").replace(/[^\d.,-]/g, "").replace(",", "."));
+        return Number.isFinite(n) ? n : 0;
+      };
+      const dims = {};
+      iDim.forEach(({ id, i: j }) => {
+        if (j < 0) return;
+        const v = String(r[j] ?? "").trim();
+        if (v !== "") dims[id] = nombre(v);
+      });
+      const region = normaliserRegion(String(r[col("Zone")] ?? "").trim());
+      lignes.push({
+        titre,
+        entreprise: String(r[col("Promoteur")] ?? "").trim(),
+        secteurGrand: String(r[col("Secteur")] ?? "").trim(),
+        filiere: String(r[col("Matière première")] ?? "").trim(),
+        domaine: String(r[col("Domaine")] ?? "").trim(),
+        region,
+        localite: normaliserLocalite(String(r[col("Localité")] ?? "").trim(), region),
+        apprenants: nombre(r[col("Apprenants")]),
+        budget: nombre(r[col("Budget")]),
+        statut: normaliserStatut(String(r[col("Statut")] ?? "").trim()),
+        scoreLu: col("Score global") >= 0 && String(r[col("Score global")] ?? "").trim() !== ""
+          ? nombre(r[col("Score global")]) : null,
+        dimensions: dims,
+      });
+    }
+    const manquantes = ["Localité", "Domaine", "Secteur"].filter((c) => col(c) < 0);
+    return { lignes, manquantes, dimensionsLues: iDim.filter((d) => d.i >= 0).length };
+  };
+
+  const lireCsv = (texte) => {
+    /* Analyseur minimal mais correct : le point-virgule sépare, les
+       guillemets protègent, et « "" » est un guillemet littéral. La mention
+       institutionnelle de la première ligne contient des virgules et des
+       points — elle est simplement ignorée, faute d'en-têtes. */
+    const out = [];
+    let ligne = [], champ = "", dansGuillemets = false;
+    const t = texte.replace(/^﻿/, "").replace(/\r\n?/g, "\n");
+    for (let i = 0; i < t.length; i++) {
+      const c = t[i];
+      if (dansGuillemets) {
+        if (c === '"') { if (t[i + 1] === '"') { champ += '"'; i++; } else dansGuillemets = false; }
+        else champ += c;
+      } else if (c === '"') dansGuillemets = true;
+      else if (c === ";") { ligne.push(champ); champ = ""; }
+      else if (c === "\n") { ligne.push(champ); out.push(ligne); ligne = []; champ = ""; }
+      else champ += c;
+    }
+    if (champ !== "" || ligne.length) { ligne.push(champ); out.push(ligne); }
+    return out;
+  };
+
+  const lireXlsx = async (fichier) => {
+    const ExcelJS = (await import("exceljs")).default || (await import("exceljs"));
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await fichier.arrayBuffer());
+    const ws = wb.worksheets[0];
+    const out = [];
+    ws.eachRow({ includeEmpty: true }, (row) => {
+      const vals = [];
+      row.eachCell({ includeEmpty: true }, (cell, i) => {
+        const v = cell.value;
+        vals[i - 1] = v && typeof v === "object"
+          ? (v.result ?? v.text ?? v.richText?.map((x) => x.text).join("") ?? "")
+          : v;
+      });
+      out.push(vals);
+    });
+    return out;
+  };
+
+  const reprendreClasseur = async (fichier) => {
+    if (!fichier) return;
+    let matrice;
+    try {
+      matrice = /\.xlsx$/i.test(fichier.name)
+        ? await lireXlsx(fichier)
+        : lireCsv(await fichier.text());
+    } catch (e) {
+      notif("Fichier illisible : " + (e && e.message));
+      return;
+    }
+    const a = analyserTableau(matrice);
+    if (a.erreur) { notif(a.erreur); return; }
+    if (!a.lignes.length) { notif("Aucun projet trouvé dans ce fichier."); return; }
+
+    /* Rapprochement sur le couple intitulé + promoteur : l'export ne porte pas
+       d'identifiant. Un projet déjà présent est laissé intact — la reprise
+       sert à combler un trou, pas à écraser ce qui a survécu. */
+    const memeProjet = (a1, b1) => memeNom(a1.titre, b1.titre) && memeNom(a1.entreprise, b1.entreprise);
+    const nouveaux = a.lignes.filter((l) => !formations.some((f) => memeProjet(f, l)));
+    const deja = a.lignes.length - nouveaux.length;
+
+    if (!window.confirm(
+      `Reprise d'un classeur exporté — ${a.lignes.length} projets lus.\n\n` +
+      `${nouveaux.length} seront ajoutés.\n` +
+      `${deja} sont déjà présents et seront laissés intacts.\n\n` +
+      `SERONT REPRIS : intitulé, promoteur, secteur, matière première, domaine, ` +
+      `zone, localité, apprenants, budget, statut.\n\n` +
+      `NE PEUVENT PAS L'ÊTRE, car absents du classeur :\n` +
+      `— les notes des ${referentiel.reduce((n, d) => n + d.indicateurs.length, 0)} indicateurs ` +
+      `(le classeur ne porte que les moyennes par dimension) ;\n` +
+      `— l'opérateur et le bénéficiaire ;\n` +
+      `— les suivis et leurs pièces jointes.\n\n` +
+      `Les scores lus seront conservés en repère sur la fiche d'évaluation, ` +
+      `mais chaque projet devra être noté à nouveau.\n` +
+      `Dimensions reconnues dans le fichier : ${a.dimensionsLues} sur ${referentiel.length}.` +
+      (a.dimensionsLues < referentiel.length
+        ? ` Les autres ont dû être renommées depuis l'export : leurs scores ne seront pas repris.`
+        : "") + `\n\n` +
+      `Continuer ?`)) return;
+
+    sauvegardeSecours(formations, suivis);
+    const base = Date.now();
+    const projets = nouveaux.map((l, k) => ({
+      id: "imp" + base + k,
+      titre: l.titre, entreprise: l.entreprise, operateur: "", beneficiaire: "",
+      secteurGrand: l.secteurGrand, filiere: l.filiere, domaine: l.domaine,
+      region: l.region, localite: l.localite,
+      apprenants: l.apprenants, budget: l.budget, statut: l.statut,
+      notes: {},                                  // aucune note inventée
+      historique: Object.keys(l.dimensions).length || l.scoreLu !== null ? [{
+        jalon: "Initiale",
+        date: new Date().toISOString().slice(0, 10),
+        score: l.scoreLu,
+        couverture: null, notees: null,
+        dimensions: l.dimensions,
+        repris: true,                             // marque : lu, non recalculé
+      }] : [],
+    }));
+    setFormations((fs) => [...fs, ...projets]);
+    // Les trois jalons de suivi sont recréés, comme à la création d'un projet.
+    const suivisNeufs = [];
+    projets.forEach((p, k) => {
+      ["M+3", "M+6", "M+12"].forEach((j, i) => {
+        const d = new Date();
+        d.setMonth(d.getMonth() + [3, 6, 12][i]);
+        suivisNeufs.push({
+          id: "imps" + base + k + "_" + i, formationId: p.id, jalon: j,
+          echeance: d.toISOString().slice(0, 10), statut: "programmé", note: "",
+        });
+      });
+    });
+    setSuivis((ss) => [...ss, ...suivisNeufs]);
+    notif(`${projets.length} projets repris — notes à ressaisir.`
+      + (a.manquantes.length ? ` Colonnes absentes du fichier : ${a.manquantes.join(", ")}.` : ""));
+  };
+
   const colonnesExport = () => ["Projet", "Promoteur", "Secteur", "Matière première", "Domaine", "Zone", "Localité",
     "Apprenants", "Budget (FCFA)", "Statut",
     ...referentiel.map((d) => `${d.nom} (%)`), "Score global (%)", "Niveau"];
@@ -3382,7 +3574,21 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                       <tbody>
                         {t.map((p) => (
                           <tr key={p.jalon} className="border-b border-stone-50">
-                            <td className="py-2.5 font-semibold">{p.jalon}</td>
+                            <td className="py-2.5 font-semibold">
+                              {p.jalon}
+                              {/* Un instantané « repris » vient d'un ancien
+                                  classeur : les scores ont été LUS, pas
+                                  recalculés à partir de notes. Sans cette
+                                  mention, il se lirait comme une évaluation
+                                  faite dans l'application. */}
+                              {p.repris && (
+                                <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full align-middle"
+                                  style={{ background: "#fdf0da", color: "#b07515" }}
+                                  title="Scores repris d'un classeur exporté : les notes des indicateurs n'ont pas été retrouvées.">
+                                  repris
+                                </span>
+                              )}
+                            </td>
                             <td className="py-2.5 text-stone-500">{p.date}</td>
                             <td className="py-2.5 text-right font-semibold">{fmtPct(p.score)}</td>
                             <td className="py-2.5 text-right font-medium"
@@ -3390,7 +3596,9 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                               {p.delta === null ? "—"
                                 : `${p.delta > 0 ? "+" : p.delta < 0 ? "−" : "="} ${Math.abs(p.delta).toFixed(1).replace(".", ",")} pt`}
                             </td>
-                            <td className="py-2.5 text-right text-stone-500">{Math.round(p.couverture)} %</td>
+                            <td className="py-2.5 text-right text-stone-500">
+                              {p.couverture === null || p.couverture === undefined ? "—" : `${Math.round(p.couverture)} %`}
+                            </td>
                             <td className="py-2.5 pl-4"><Badge score={p.score} /></td>
                           </tr>
                         ))}
@@ -3766,6 +3974,32 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                 qui portent le même identifiant. Le décompte exact vous est présenté avant toute écriture.
                 Gardez ce fichier hors du navigateur — une copie sur le poste ne survit pas à un effacement des données du site.
               </p>
+
+              {/* Reprise d'un ancien classeur. Séparée de la restauration :
+                  elle rend beaucoup moins, et il faut que cela se voie. */}
+              {P.creerFormation && (
+                <div className="mt-5 pt-4 border-t border-stone-200">
+                  <h4 className="font-semibold text-sm">Reprendre un ancien classeur Excel ou CSV</h4>
+                  <p className="text-sm text-stone-500 mt-1 mb-3">
+                    À utiliser si vous n'avez qu'un export, et pas de sauvegarde. La fiche d'identité des
+                    projets est rétablie ; <b>les notes des indicateurs ne le sont pas</b> — le classeur ne
+                    porte que les moyennes par dimension, dont on ne peut pas déduire les notes.
+                    Ces moyennes sont conservées en repère, et chaque projet est à noter à nouveau.
+                  </p>
+                  <label className="bg-white border border-stone-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50 cursor-pointer inline-block"
+                    title="Lit un fichier produit par « Classeur Excel » ou « Données brutes (CSV) ».">
+                    <Icone n="fichier" t={15} /> Choisir un fichier .xlsx ou .csv
+                    <input type="file" accept=".xlsx,.csv,text/csv" className="sr-only"
+                      onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ""; reprendreClasseur(f); }} />
+                  </label>
+                  <p className="text-xs text-stone-400 mt-3">
+                    Les projets déjà présents — même intitulé et même promoteur — sont laissés intacts :
+                    la reprise comble un trou, elle n'écrase pas ce qui a survécu.
+                    Ne sont pas dans le classeur, donc perdus : l'opérateur, le bénéficiaire,
+                    les suivis et leurs pièces jointes.
+                  </p>
+                </div>
+              )}
             </section>
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <h3 className="font-bold">Fiches d'évaluation PDF</h3>
