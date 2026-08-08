@@ -144,6 +144,144 @@ export function trajectoire(historique) {
   });
 }
 
+/* ===========================================================================
+   CALENDRIER DU PROJET — date de lancement et date de fin
+   ---------------------------------------------------------------------------
+   Le modèle MIP-PPA annonce un suivi à M+3 / M+6 / M+12. Jusqu'ici, ces trois
+   échéances étaient calculées à partir du jour où le projet était SAISI dans
+   l'application, faute de savoir quoi que ce soit de son calendrier réel. Un
+   projet terminé en mars et enregistré en août recevait donc un « M+3 » en
+   novembre, soit huit mois après la fin de la formation : le jalon ne mesurait
+   plus ce que le modèle dit qu'il mesure.
+
+   Deux dates suffisent à rétablir cela, et elles n'existaient pas :
+   « dateDebut » (lancement) et « dateFin » (fin de projet). Le point d'origine
+   du suivi post-formation devient la date de FIN — c'est bien à partir de la
+   fin de la formation que se comptent trois, six et douze mois.
+
+   Convention : « AAAA-MM-JJ », sans heure, comme le champ « echeance » des
+   suivis, et lue à minuit UTC comme tout le reste de la plateforme. Une chaîne
+   vide vaut « non renseignée » : aucune des deux dates n'est obligatoire, un
+   projet peut être créé avant que son calendrier ne soit arrêté.
+   =========================================================================== */
+
+/* Vrai si la chaîne est une date « AAAA-MM-JJ » qui existe réellement.
+   « 2026-02-30 » a la bonne forme mais n'est pas un jour : Date.UTC le
+   reporterait au 2 mars sans rien dire, et l'application afficherait une date
+   que l'utilisateur n'a pas saisie. */
+export function estDateISO(v) {
+  const s = String(v || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const [a, m, j] = s.split("-").map(Number);
+  if (m < 1 || m > 12 || j < 1) return false;
+  const d = new Date(Date.UTC(a, m - 1, j));
+  return d.getUTCFullYear() === a && d.getUTCMonth() === m - 1 && d.getUTCDate() === j;
+}
+
+// Minuit UTC de la date, en millisecondes. null si la date est absente ou fausse.
+export function jourUTC(v) {
+  return estDateISO(v) ? Date.parse(String(v).slice(0, 10) + "T00:00:00Z") : null;
+}
+
+// « 2026-03-15 » → « 15/03/2026 ». Une date absente rend la chaîne de repli,
+// jamais un tiret : un tiret ne dit pas ce qu'il remplace.
+export function fmtDateFr(v, siVide = "Non renseignée") {
+  if (!estDateISO(v)) return siVide;
+  const [a, m, j] = String(v).slice(0, 10).split("-");
+  return `${j}/${m}/${a}`;
+}
+
+/* Ajoute n mois à une date ISO, en RESTANT dans le mois d'arrivée.
+   « setUTCMonth » déborde : 31 janvier + 1 mois donne le 3 mars, parce que le
+   31 février n'existe pas. On ramène donc au dernier jour du mois visé, ce que
+   fait n'importe quel calendrier — l'échéance à un mois du 31 janvier est le
+   28 (ou 29) février. */
+export function ajouterMois(v, n) {
+  if (!estDateISO(v)) return "";
+  const [a, m, j] = String(v).slice(0, 10).split("-").map(Number);
+  const total = (a * 12) + (m - 1) + n;
+  const an = Math.floor(total / 12), mois = total % 12;
+  const dernierJour = new Date(Date.UTC(an, mois + 1, 0)).getUTCDate();
+  const jour = Math.min(j, dernierJour);
+  return new Date(Date.UTC(an, mois, jour)).toISOString().slice(0, 10);
+}
+
+/* Durée du projet en jours pleins, bornes comprises : un projet du 1er au
+   1er dure un jour, pas zéro. null si l'une des dates manque ou si la fin
+   précède le début — dans ce cas il n'y a pas de durée, il y a une erreur de
+   saisie, et « -12 jours » ne l'expliquerait à personne. */
+export function dureeJours(debut, fin) {
+  const d = jourUTC(debut), f = jourUTC(fin);
+  if (d === null || f === null || f < d) return null;
+  return Math.round((f - d) / 86400000) + 1;
+}
+
+/* La même durée, dite comme on la dit : « 3 mois et 12 jours ».
+   En dessous d'un mois on reste en jours ; au-delà, les mois se comptent de
+   quantième à quantième et non par tranches de 30, sinon un projet du 1er
+   janvier au 31 mars durerait « 2 mois et 30 jours ». */
+export function dureeLisible(debut, fin) {
+  const j = dureeJours(debut, fin);
+  if (j === null) return null;
+  let mois = 0;
+  while (jourUTC(ajouterMois(debut, mois + 1)) <= jourUTC(fin)) mois++;
+  // Moins d'un mois plein : on reste en jours. « 0 mois et 30 jours » ne se dit pas.
+  if (mois === 0) return `${j} jour${j > 1 ? "s" : ""}`;
+  const reste = Math.round((jourUTC(fin) - jourUTC(ajouterMois(debut, mois))) / 86400000);
+  const partMois = `${mois} mois`;
+  return reste > 0 ? `${partMois} et ${reste} jour${reste > 1 ? "s" : ""}` : partMois;
+}
+
+/* Les trois échéances de suivi, à partir du point d'origine du modèle.
+   ---------------------------------------------------------------------------
+   L'origine est la date de FIN du projet : M+3 signifie « trois mois après la
+   fin de la formation ». Si elle n'est pas renseignée, on retombe sur le jour
+   de saisie, l'ancien comportement — mieux vaut une échéance approximative
+   qu'aucune, et elle se corrigera quand la date de fin sera connue.
+   « origine » est passée en paramètre plutôt que lue ici : la fonction reste
+   pure, donc testable. */
+export const JALONS_SUIVI = [["M+3", 3], ["M+6", 6], ["M+12", 12]];
+
+export function echeancesSuivi(dateFin, origineParDefaut) {
+  const base = estDateISO(dateFin) ? String(dateFin).slice(0, 10) : origineParDefaut;
+  if (!estDateISO(base)) return {};
+  return Object.fromEntries(JALONS_SUIVI.map(([j, n]) => [j, ajouterMois(base, n)]));
+}
+
+/* Incohérences de calendrier — ce que les deux dates permettent enfin de voir.
+   ---------------------------------------------------------------------------
+   Ce sont des ANOMALIES DE SAISIE, pas des jugements sur le projet : chacune
+   se corrige en une modification de fiche. Elles alimentent la page Alertes,
+   à côté des suivis en retard et des évaluations incomplètes.
+
+   « aujourdhui » est un paramètre, pour la même raison que ci-dessus.
+   Renvoie un tableau, éventuellement vide. */
+export function anomaliesCalendrier(projet, aujourdhui) {
+  const a = [];
+  const debut = projet?.dateDebut, fin = projet?.dateFin;
+  const statut = projet?.statut || "";
+  const jd = jourUTC(debut), jf = jourUTC(fin), jn = jourUTC(aujourdhui);
+
+  if (jd !== null && jf !== null && jf < jd) {
+    a.push({ code: "finAvantDebut", gravite: "erreur",
+      txt: `La date de fin (${fmtDateFr(fin)}) précède la date de lancement (${fmtDateFr(debut)}).` });
+  }
+  if (jn === null) return a;
+  if (jf !== null && jf < jn && statut !== "Terminé" && !(jd !== null && jf < jd)) {
+    a.push({ code: "finDepasseeNonTermine", gravite: "avertissement",
+      txt: `Date de fin dépassée depuis le ${fmtDateFr(fin)}, mais le statut reste « ${statut} ».` });
+  }
+  if (jd !== null && jd <= jn && statut === "Planifié") {
+    a.push({ code: "lanceMaisPlanifie", gravite: "avertissement",
+      txt: `Le lancement était prévu le ${fmtDateFr(debut)} et le statut est encore « Planifié ».` });
+  }
+  if (statut === "Terminé" && jf !== null && jf > jn) {
+    a.push({ code: "termineAvantLaFin", gravite: "avertissement",
+      txt: `Projet marqué « Terminé » alors que sa date de fin est le ${fmtDateFr(fin)}.` });
+  }
+  return a;
+}
+
 export const SEUILS_NIVEAU = [40, 60, 80];
 
 /* Distance du score aux paliers voisins, convertie en nombre de crans.

@@ -14,6 +14,8 @@ import {
 import {
   COULEURS_NIVEAU, scoreDimension, scoreGlobal, couvertureModele, margeSeuil,
   indicateursNonNotes, niveau, JALONS, instantane, ajouterInstantane, trajectoire,
+  estDateISO, fmtDateFr, dureeLisible, echeancesSuivi, anomaliesCalendrier,
+  JALONS_SUIVI,
 } from "./calculs.js";
 /* Géographie des zones de couverture, dans un fichier à part pour la même
    raison que « calculs.js » : ce sont des données engendrées (108 contours
@@ -51,18 +53,23 @@ const FORMATIONS_DEMO = [
     id: "f1", titre: "Maîtrise HACCP en ligne de conditionnement cacao",
     entreprise: "SACO", operateur: "A.C.A", beneficiaire: "SCINPA", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "Siège Abidjan", localite: "Abidjan",
     apprenants: 18, budget: 12500000, statut: "Terminé",
+    /* Dates cohérentes avec SUIVIS_DEMO : la date de fin est l'origine des
+       trois jalons, M+3 tombe donc bien trois mois après elle. */
+    dateDebut: "2025-11-03", dateFin: "2026-02-20",
     notes: { P1: 4, P2: 3, P3: 4, P4: 4, EP1: 3, EP2: 3, EP3: 4, EP4: 4, EP5: 3, EP6: 4, IE1: 3, IE2: 3, IE3: 4, IE4: 3, IO1: 3, IO2: 3, IO3: 4, IO4: 3, IO5: 3, DC1: 3, DC2: 2, DC3: 3, DC4: 3 },
   },
   {
     id: "f2", titre: "Conduite de séchoir industriel (fruits tropicaux)",
     entreprise: "AGROCI", operateur: "Emergence", beneficiaire: "AGROCI", secteurGrand: "Secteur secondaire", filiere: "Transformation des fruits et légumes", domaine: "Jus et concentrés", region: "Antenne Yamoussoukro", localite: "Toumodi",
     apprenants: 9, budget: 6800000, statut: "Terminé",
+    dateDebut: "2026-01-12", dateFin: "2026-04-17",
     notes: { P1: 3, P2: 2, P3: 3, P4: 2, EP1: 2, EP2: 2, EP3: 3, EP4: 4, EP5: 2, EP6: 2, IE1: 2, IE2: 3, IE3: 2, IE4: 2, IO1: 2, IO2: 2, IO3: 3, IO4: 2, IO5: 2, DC1: 3, DC2: 2, DC3: 2, DC4: 2 },
   },
   {
     id: "f3", titre: "Sécurité alimentaire & traçabilité ISO 22000",
     entreprise: "FrieslandCampina", operateur: "Domny", beneficiaire: "FrieslandCampina", secteurGrand: "Secteur secondaire", filiere: "Industrie laitière", domaine: "Lait et yaourts", region: "Antenne San-Pédro", localite: "San-Pédro",
     apprenants: 24, budget: 15200000, statut: "Terminé",
+    dateDebut: "2026-02-09", dateFin: "2026-06-02",
     notes: { P1: 4, P2: 4, P3: 4, P4: 4, EP1: 4, EP2: 3, EP3: 4, EP4: 4, EP5: 4, EP6: 4, IE1: 3, IE2: 3, IE3: 4, IE4: 3, IO1: 4, IO2: 3, IO3: 4, IO4: 4, IO5: 3, DC1: 3, DC2: 3, DC3: 4, DC4: 3 },
   },
 ];
@@ -328,6 +335,21 @@ function PuceStatut({ statut }) {
       {statut || "Statut non défini"}
     </span>
   );
+}
+/* Calendrier du projet, en une ligne — « Du 12/01/2026 au 30/06/2026 · 5 mois
+   et 19 jours ». Rien n'est affiché si aucune des deux dates n'est renseignée :
+   une ligne « Non renseignée · Non renseignée » n'apprendrait rien et alourdirait
+   toutes les listes. Quand une seule des deux est connue, on le dit en clair
+   plutôt que de laisser un tiret — un tiret ne dit pas ce qu'il remplace. */
+function PeriodeProjet({ projet, className = "" }) {
+  const { dateDebut: d, dateFin: f } = projet || {};
+  if (!estDateISO(d) && !estDateISO(f)) return null;
+  const duree = dureeLisible(d, f);
+  const txt = estDateISO(d) && estDateISO(f)
+    ? `Du ${fmtDateFr(d)} au ${fmtDateFr(f)}${duree ? ` · ${duree}` : ""}`
+    : estDateISO(d) ? `Lancement le ${fmtDateFr(d)} · fin non renseignée`
+      : `Fin le ${fmtDateFr(f)} · lancement non renseigné`;
+  return <div className={className}>{txt}</div>;
 }
 /* Avertissement de couverture partielle. Un score calculé sur 20 % du modèle
    s'affiche « Excellent » exactement comme un score complet : sans cette
@@ -1030,6 +1052,25 @@ function EcranFinalisation({ session, surTermine }) {
   );
 }
 
+/* ---------------------------------------------------------------------------
+   MOT DE PASSE OUBLIÉ — le parcours en deux temps
+   ---------------------------------------------------------------------------
+   Il n'y en avait aucun : un compte dont le mot de passe était perdu était un
+   compte perdu, sans autre recours que de demander à l'administrateur lead —
+   qui ne peut pas le réinitialiser non plus, la clé « anon » n'ouvrant pas
+   l'API d'administration. Créer un second compte n'aurait rien réglé, l'email
+   étant unique et le rôle attaché au compte d'origine.
+
+   1. « Demander un lien » envoie un courriel de récupération (Supabase Auth).
+   2. Le lien reçu ramène sur l'application avec un jeton de récupération ;
+      Supabase émet alors l'événement PASSWORD_RECOVERY, et l'application
+      affiche « EcranNouveauMdp » AVANT tout accès aux données.
+
+   ⚠ Côté Supabase : l'URL de l'application doit figurer dans
+   Authentication → URL Configuration → Redirect URLs, sinon le lien renvoie
+   sur localhost. C'est rappelé dans « supabase-phase7.sql ».
+   --------------------------------------------------------------------------- */
+
 function EcranConnexion() {
   const [onglet, setOnglet] = useState("connexion");
   const [email, setEmail] = useState("");
@@ -1039,6 +1080,29 @@ function EcranConnexion() {
   const [msg, setMsg] = useState(null);
   const [voirMdp, setVoirMdp] = useState(false);
   const [envoi, setEnvoi] = useState(false);
+
+  /* Envoi du lien de réinitialisation.
+     La réponse est VOLONTAIREMENT la même que le compte existe ou non : dire
+     « aucun compte pour cette adresse » transformerait l'écran de connexion en
+     annuaire, où l'on teste des adresses jusqu'à trouver celles qui sont
+     inscrites. C'est aussi ce que fait Supabase, qui ne distingue pas les deux
+     cas dans sa réponse. */
+  const reinitialiser = async () => {
+    const adresse = email.trim();
+    if (!adresse) return setMsg({ type: "erreur", txt: "Saisissez d'abord votre email professionnel." });
+    setEnvoi(true); setMsg(null);
+    /* Le lien doit revenir sur CETTE application, à sa racine : « origin +
+       pathname » et non « href », qui embarquerait la requête et le fragment
+       de l'URL courante — dont, justement, le jeton d'une récupération
+       précédente. */
+    const retour = window.location.origin + window.location.pathname;
+    const { error } = await sb.auth.resetPasswordForEmail(adresse, { redirectTo: retour });
+    setEnvoi(false);
+    if (error && /rate|limit|seconds/i.test(error.message || "")) {
+      return setMsg({ type: "erreur", txt: "Trop de demandes en peu de temps. Patientez une minute avant de réessayer." });
+    }
+    setMsg({ type: "ok", txt: `Si un compte existe pour ${adresse}, un lien de réinitialisation vient d'y être envoyé. Il est valable une heure : ouvrez-le depuis ce même appareil, et pensez à regarder dans les indésirables.` });
+  };
 
   const connecter = async () => {
     setEnvoi(true); setMsg(null);
@@ -1061,51 +1125,145 @@ function EcranConnexion() {
     setMsg({ type: "ok", txt: "Compte créé ! Un email de confirmation vient de vous être envoyé : cliquez sur le lien pour vérifier votre adresse, puis revenez vous connecter. L'administrateur lead activera ensuite votre accès." });
     setOnglet("connexion"); setMdp("");
   };
+  // La touche Entrée valide l'action de l'onglet courant, quel qu'il soit.
+  const valider = () => (onglet === "connexion" ? connecter() : onglet === "creation" ? creer() : reinitialiser());
   const champ = (label, type, val, set, aide) => (
     <label key={label} className="block text-sm font-semibold text-stone-800 mt-4">{label}{aide && <span className="font-normal text-stone-400"> {aide}</span>}
       <input type={type} value={val} onChange={(e) => set(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && (onglet === "connexion" ? connecter() : creer())}
+        onKeyDown={(e) => e.key === "Enter" && valider()}
         className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
     </label>
   );
+  const oubli = onglet === "oubli";
   return (
     <CadreAccueil enfants={
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-7 page-anim">
         <div className="flex items-center gap-2 font-bold text-stone-900"><Icone n="bouclier" t={18} /> Espace sécurisé</div>
-        <p className="text-sm text-stone-500 mt-1">Connectez-vous ou créez un compte. Un administrateur lead activera votre accès.</p>
-        <div className="grid grid-cols-2 bg-stone-100 rounded-full p-1 mt-5 text-sm font-semibold">
-          {[["connexion", "Connexion"], ["creation", "Créer un compte"]].map(([id, lbl]) => (
-            <button key={id} onClick={() => { setOnglet(id); setMsg(null); }}
-              className={`py-2 rounded-full ${onglet === id ? "bg-white shadow text-stone-900" : "text-stone-500"}`}>{lbl}</button>
-          ))}
-        </div>
+        <p className="text-sm text-stone-500 mt-1">
+          {oubli
+            ? "Indiquez l'adresse de votre compte : un lien vous sera envoyé pour choisir un nouveau mot de passe."
+            : "Connectez-vous ou créez un compte. Un administrateur lead activera votre accès."}
+        </p>
+        {/* La récupération n'est pas un troisième onglet : c'est un détour
+            depuis la connexion, on y entre par un lien et on en sort par un
+            lien. Trois onglets de même rang laisseraient croire à trois
+            manières d'entrer dans la plateforme. */}
+        {!oubli && (
+          <div className="grid grid-cols-2 bg-stone-100 rounded-full p-1 mt-5 text-sm font-semibold">
+            {[["connexion", "Connexion"], ["creation", "Créer un compte"]].map(([id, lbl]) => (
+              <button key={id} onClick={() => { setOnglet(id); setMsg(null); }}
+                className={`py-2 rounded-full ${onglet === id ? "bg-white shadow text-stone-900" : "text-stone-500"}`}>{lbl}</button>
+            ))}
+          </div>
+        )}
         {msg && <div className={`mt-4 text-sm rounded-xl px-3.5 py-2.5 ${msg.type === "erreur" ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-800 border border-emerald-200"}`}>{msg.txt}</div>}
         {onglet === "creation" && <>
           {champ("Nom complet", "text", nom, setNom)}
           {champ("Organisation", "text", org, setOrg, "(entreprise / cabinet)")}
         </>}
         {champ("Email professionnel", "email", email, setEmail)}
-        <label className="block text-sm font-semibold text-stone-800 mt-4">Mot de passe{onglet === "creation" && <span className="font-normal text-stone-400"> (6 caractères min.)</span>}
-          <div className="relative mt-1.5">
-            <input type={voirMdp ? "text" : "password"} value={mdp} onChange={(e) => setMdp(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && (onglet === "connexion" ? connecter() : creer())}
-              className="w-full border border-stone-300 rounded-xl px-3.5 py-2.5 pr-12 font-normal outline-none focus:border-sky-600" />
-            <button type="button" onClick={() => setVoirMdp(!voirMdp)} tabIndex={-1}
-              title={voirMdp ? "Masquer le mot de passe" : "Afficher le mot de passe"} aria-label={voirMdp ? "Masquer le mot de passe" : "Afficher le mot de passe"}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700">
-              {voirMdp ? <Icone n="oeilBarre" t={19} /> : <Icone n="oeil" t={19} />}
-            </button>
+        {!oubli && (
+          <label className="block text-sm font-semibold text-stone-800 mt-4">Mot de passe{onglet === "creation" && <span className="font-normal text-stone-400"> (6 caractères min.)</span>}
+            <div className="relative mt-1.5">
+              <input type={voirMdp ? "text" : "password"} value={mdp} onChange={(e) => setMdp(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && valider()}
+                className="w-full border border-stone-300 rounded-xl px-3.5 py-2.5 pr-12 font-normal outline-none focus:border-sky-600" />
+              <button type="button" onClick={() => setVoirMdp(!voirMdp)} tabIndex={-1}
+                title={voirMdp ? "Masquer le mot de passe" : "Afficher le mot de passe"} aria-label={voirMdp ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700">
+                {voirMdp ? <Icone n="oeilBarre" t={19} /> : <Icone n="oeil" t={19} />}
+              </button>
+            </div>
+          </label>
+        )}
+        {onglet === "connexion" && (
+          <div className="mt-2 text-right">
+            <button type="button" onClick={() => { setOnglet("oubli"); setMsg(null); setMdp(""); }}
+              className="text-xs font-medium hover:underline" style={{ color: C.vert }}>Mot de passe oublié ?</button>
           </div>
-        </label>
-        <button onClick={onglet === "connexion" ? connecter : creer} disabled={envoi}
+        )}
+        <button onClick={valider} disabled={envoi}
           className="w-full mt-6 text-white font-semibold py-3 rounded-xl disabled:opacity-60" style={{ background: C.vertFonce }}>
-          {envoi ? "Un instant…" : onglet === "connexion" ? "Se connecter" : "Créer le compte"}
+          {envoi ? "Un instant…" : oubli ? "Envoyer le lien de réinitialisation" : onglet === "connexion" ? "Se connecter" : "Créer le compte"}
         </button>
+        {oubli && (
+          <button type="button" onClick={() => { setOnglet("connexion"); setMsg(null); }}
+            className="w-full mt-3 text-sm text-stone-500 hover:text-stone-800">Revenir à la connexion</button>
+        )}
         <p className="text-xs text-stone-400 mt-4 text-center">
-          {onglet === "creation"
-            ? "Un email de confirmation vous sera envoyé pour vérifier votre adresse."
-            : "Votre accès dépend du rôle attribué par l'administrateur lead."}
+          {oubli
+            ? "Le lien est valable une heure et ne peut servir qu'une fois. Ouvrez-le depuis cet appareil : c'est lui qui portera la session de récupération."
+            : onglet === "creation"
+              ? "Un email de confirmation vous sera envoyé pour vérifier votre adresse."
+              : "Votre accès dépend du rôle attribué par l'administrateur lead."}
         </p>
+      </div>
+    } />
+  );
+}
+
+/* Choix d'un nouveau mot de passe, après un lien de récupération.
+   S'affiche AVANT toute autre garde d'accès : à ce stade la session existe
+   déjà — c'est le lien qui l'a ouverte — mais elle n'a qu'un seul usage
+   légitime, changer le mot de passe. Laisser passer l'utilisateur vers
+   l'application reviendrait à faire d'un lien reçu par courriel une porte
+   d'entrée ordinaire, alors qu'il traîne dans une boîte mail. */
+function EcranNouveauMdp({ email, surTermine, surAnnuler }) {
+  const [mdp, setMdp] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [voir, setVoir] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [envoi, setEnvoi] = useState(false);
+
+  const valider = async () => {
+    if (mdp.length < 6) return setMsg("Mot de passe : 6 caractères minimum.");
+    /* La confirmation n'est pas une formalité : une faute de frappe dans un
+       champ masqué enfermerait le compte dehors une deuxième fois, et le lien
+       de récupération, lui, ne sert qu'une fois. */
+    if (mdp !== confirmation) return setMsg("Les deux saisies diffèrent. Vérifiez avant de valider.");
+    setEnvoi(true); setMsg(null);
+    const { error } = await sb.auth.updateUser({ password: mdp });
+    setEnvoi(false);
+    if (error) {
+      return setMsg(/same/i.test(error.message || "")
+        ? "Ce mot de passe est identique à l'ancien : choisissez-en un autre."
+        : /expired|invalid/i.test(error.message || "")
+          ? "Le lien a expiré ou a déjà servi. Redemandez-en un depuis l'écran de connexion."
+          : error.message);
+    }
+    surTermine();
+  };
+
+  const champMdp = (label, val, set) => (
+    <label className="block text-sm font-semibold text-stone-800 mt-4">{label}
+      <div className="relative mt-1.5">
+        <input type={voir ? "text" : "password"} value={val} onChange={(e) => set(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && valider()}
+          className="w-full border border-stone-300 rounded-xl px-3.5 py-2.5 pr-12 font-normal outline-none focus:border-sky-600" />
+        <button type="button" onClick={() => setVoir(!voir)} tabIndex={-1}
+          title={voir ? "Masquer le mot de passe" : "Afficher le mot de passe"} aria-label={voir ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700">
+          {voir ? <Icone n="oeilBarre" t={19} /> : <Icone n="oeil" t={19} />}
+        </button>
+      </div>
+    </label>
+  );
+
+  return (
+    <CadreAccueil enfants={
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-7 page-anim">
+        <div className="flex items-center gap-2 font-bold text-stone-900"><Icone n="bouclier" t={18} /> Nouveau mot de passe</div>
+        <p className="text-sm text-stone-500 mt-1">Choisissez le mot de passe du compte {email}. Il remplacera l'ancien immédiatement.</p>
+        {msg && <div className="mt-3 text-sm rounded-xl px-3.5 py-2.5 bg-red-50 text-red-700 border border-red-200">{msg}</div>}
+        {champMdp("Nouveau mot de passe (6 caractères min.)", mdp, setMdp)}
+        {champMdp("Confirmez le mot de passe", confirmation, setConfirmation)}
+        <button onClick={valider} disabled={envoi}
+          className="w-full mt-6 text-white font-semibold py-3 rounded-xl disabled:opacity-60" style={{ background: C.vertFonce }}>
+          {envoi ? "Un instant…" : "Enregistrer et accéder à la plateforme"}
+        </button>
+        <button type="button" onClick={surAnnuler} className="w-full mt-3 text-sm text-stone-500 hover:text-stone-800">
+          Annuler et revenir à la connexion
+        </button>
       </div>
     } />
   );
@@ -1127,6 +1285,16 @@ export default function MipPpaApp() {
      peut ne pas exister si le script « supabase-phase3-trajectoire.sql » n'a
      pas encore été exécuté — d'où le repli sur un tableau vide des deux côtés,
      qui laisse l'application fonctionner sans la trajectoire. */
+  /* Les colonnes de calendrier (phase 7) existent-elles ? Détecté à la lecture,
+     sur la première ligne reçue, comme la corbeille de la phase 5. Tant
+     qu'elles manquent, on ne les envoie PAS : une base non migrée continue
+     d'accepter les enregistrements, et l'application reste utilisable sans son
+     calendrier plutôt que de refuser toute écriture. Dès que l'utilisateur
+     saisit vraiment une date, l'écriture part quand même — et l'échec porte
+     alors un message qui dit quel script exécuter. */
+  const datesDispoRef = useRef(false);
+  const [datesDispo, setDatesDispo] = useState(true);
+
   const projetVersRow = (f) => {
     const row = { id: f.id, titre: f.titre || "", promoteur: f.entreprise || f.promoteur || "", operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", secteur: f.filiere || f.secteur || "", secteur_grand: f.secteurGrand || "", domaine: f.domaine || "", region: f.region || "", apprenants: Number(f.apprenants) || 0, budget: Number(f.budget) || 0, statut: normaliserStatut(f.statut), notes: f.notes || {}, maj_le: new Date().toISOString() };
     /* « historique » n'est envoyé que s'il contient quelque chose : tant qu'aucun
@@ -1139,12 +1307,24 @@ export default function MipPpaApp() {
        « supabase-phase4.sql » n'a pas encore été passé continue d'accepter les
        enregistrements. */
     if (f.localite) row.localite = f.localite;
+    /* « date_debut » / « date_fin » (phase 7). Contrairement à « localite »,
+       les deux colonnes partent ENSEMBLE et acceptent null : effacer une date
+       doit s'enregistrer, sans quoi elle réapparaîtrait au rechargement. */
+    if (datesDispoRef.current || estDateISO(f.dateDebut) || estDateISO(f.dateFin)) {
+      row.date_debut = estDateISO(f.dateDebut) ? f.dateDebut : null;
+      row.date_fin = estDateISO(f.dateFin) ? f.dateFin : null;
+    }
     return row;
   };
   /* La localité est ramenée au périmètre de sa zone à la lecture : une base
      antérieure à la phase 4 ne renvoie rien, et le chef-lieu de l'implantation
      prend alors le relais. La carte a donc toujours un point à montrer. */
-  const rowVersProjet = (r) => ({ id: r.id, titre: r.titre, entreprise: r.promoteur, operateur: r.operateur, beneficiaire: r.beneficiaire, filiere: r.secteur, secteurGrand: r.secteur_grand || "", domaine: r.domaine || "", region: normaliserRegion(r.region), localite: normaliserLocalite(r.localite, r.region), apprenants: r.apprenants, budget: r.budget, statut: normaliserStatut(r.statut), notes: r.notes || {}, historique: Array.isArray(r.historique) ? r.historique : [] });
+  /* Les dates sont ramenées à « AAAA-MM-JJ » : PostgreSQL peut rendre un
+     « date » tel quel, mais un « timestamptz » ajouterait une heure et un
+     fuseau que l'application ne saurait pas quoi faire. La coupe est donc
+     faite ici, une fois pour toutes. */
+  const dateDeRow = (v) => (estDateISO(v) ? String(v).slice(0, 10) : "");
+  const rowVersProjet = (r) => ({ id: r.id, titre: r.titre, entreprise: r.promoteur, operateur: r.operateur, beneficiaire: r.beneficiaire, filiere: r.secteur, secteurGrand: r.secteur_grand || "", domaine: r.domaine || "", region: normaliserRegion(r.region), localite: normaliserLocalite(r.localite, r.region), apprenants: r.apprenants, budget: r.budget, statut: normaliserStatut(r.statut), dateDebut: dateDeRow(r.date_debut), dateFin: dateDeRow(r.date_fin), notes: r.notes || {}, historique: Array.isArray(r.historique) ? r.historique : [] });
   const suiviVersRow = (s) => ({ id: s.id, projet_id: s.formationId, jalon: s.jalon, echeance: s.echeance || null, statut: s.statut || "programmé", note: s.note || "", docs: s.docs || [], maj_le: new Date().toISOString() });
   /* Le statut d'un SUIVI est « programmé » / « effectué » : rien à voir avec
      celui d'un projet, il ne passe donc pas par « normaliserStatut ». */
@@ -1187,6 +1367,10 @@ export default function MipPpaApp() {
     }
     if (/localite/i.test(error.message || "")) {
       notif("Localité indisponible : exécutez « supabase-phase4.sql » dans Supabase.");
+      return true;
+    }
+    if (/date_debut|date_fin/i.test(error.message || "")) {
+      notif("Dates de projet indisponibles : exécutez « supabase-phase7.sql » dans Supabase.");
       return true;
     }
     notif(`Enregistrement impossible (${quoi}) : ${error.message}`);
@@ -1313,6 +1497,10 @@ export default function MipPpaApp() {
   const [comptes, setComptes] = useState([]);          // liste chargée depuis Supabase (page Utilisateurs)
   const [session, setSession] = useState(null);         // { id, email, nom, org, role }
   const [chargementAuth, setChargementAuth] = useState(true);
+  /* Session ouverte par un lien « mot de passe oublié ». Tant que ce drapeau
+     est levé, l'application n'affiche que l'écran de changement — voir la
+     garde d'accès plus bas et le commentaire d'« EcranNouveauMdp ». */
+  const [recuperationMdp, setRecuperationMdp] = useState(false);
   const roleActif = session?.role ?? "";
 
   /* Charger le profil et le rôle de l'utilisateur connecté.
@@ -1360,7 +1548,18 @@ export default function MipPpaApp() {
        données et recréait l'abonnement temps réel, plusieurs fois par heure. */
     const { data: abo } = sb.auth.onAuthStateChange((ev, s) => {
       if (ev === "TOKEN_REFRESHED" || ev === "INITIAL_SESSION") return;
-      if (ev === "SIGNED_OUT") { setSession(null); setChargementAuth(false); return; }
+      if (ev === "SIGNED_OUT") { setSession(null); setRecuperationMdp(false); setChargementAuth(false); return; }
+      /* Retour d'un lien « mot de passe oublié ». Supabase a déjà ouvert une
+         session à partir du jeton contenu dans le fragment de l'URL : c'est
+         voulu, il faut être authentifié pour changer son mot de passe. On
+         retient donc l'événement pour verrouiller l'application sur le seul
+         écran de changement, et on nettoie l'URL — le jeton n'a plus à y
+         figurer, ni dans l'historique du navigateur, ni dans un lien
+         recopié. */
+      if (ev === "PASSWORD_RECOVERY") {
+        setRecuperationMdp(true);
+        try { window.history.replaceState(null, "", window.location.pathname + window.location.search); } catch { /* navigateur restrictif */ }
+      }
       if (s?.user) chargerProfil(s.user);
     });
     return () => abo.subscription.unsubscribe();
@@ -1384,6 +1583,7 @@ export default function MipPpaApp() {
   const [filtreLocalite, setFiltreLocalite] = useState(""); // "" = toutes
   const [formOuvert, setFormOuvert] = useState(false);
   const [menuCompte, setMenuCompte] = useState(false);
+  const [changeMdp, setChangeMdp] = useState(null);   // fenêtre « Changer mon mot de passe »
   const [menuMobile, setMenuMobile] = useState(false);
   const [sombre, setSombre] = useState(() => { try { return localStorage.getItem("mip-ppa-theme") === "sombre"; } catch { return false; } });
   const basculerTheme = () => setSombre((v) => { const n = !v; try { localStorage.setItem("mip-ppa-theme", n ? "sombre" : "clair"); } catch {} return n; });
@@ -1458,6 +1658,10 @@ export default function MipPpaApp() {
       const lignes = projs || [];
       const avecCorbeille = lignes.length === 0 || "supprime_le" in lignes[0];
       setCorbeilleDispo(avecCorbeille);
+      // Même détection pour le calendrier (phase 7).
+      const avecDates = lignes.length === 0 || "date_debut" in lignes[0];
+      datesDispoRef.current = avecDates;
+      setDatesDispo(avecDates);
       const actives = lignes.filter((r) => !r.supprime_le);
       const jetees = lignes.filter((r) => r.supprime_le);
       setCorbeille(jetees.map((r) => ({ ...rowVersProjet(r), supprimeLe: r.supprime_le, supprimePar: r.supprime_par })));
@@ -1633,12 +1837,21 @@ export default function MipPpaApp() {
         couverture: couvertureModele(referentiel, f.notes),
       };
     }).filter(Boolean);
+    /* Incohérences de calendrier. Ce sont des défauts de SAISIE, pas des
+       jugements sur le projet : une date de fin dépassée alors que le statut
+       reste « En cours » signifie seulement que personne n'est revenu clore la
+       fiche. C'est précisément ce que les deux dates permettent de voir, et
+       que rien ne signalait tant que le calendrier n'était pas connu. */
+    const aujourdhui = new Date(aujourdhuiUTC()).toISOString().slice(0, 10);
+    const calendrier = formationsVisibles
+      .map((f) => ({ formation: f, anomalies: anomaliesCalendrier(f, aujourdhui) }))
+      .filter((x) => x.anomalies.length);
     return {
       nb: formationsVisibles.length,
       apprenants: formationsVisibles.reduce((a, f) => a + Number(f.apprenants || 0), 0),
       budget: formationsVisibles.reduce((a, f) => a + Number(f.budget || 0), 0),
-      moy, alertes: alertesScore.length + enRetard.length + trousEval.length,
-      alertesScore, enRetard, trousEval,
+      moy, alertes: alertesScore.length + enRetard.length + trousEval.length + calendrier.length,
+      alertesScore, enRetard, trousEval, calendrier,
     };
   }, [formationsVisibles, suivis, referentiel]);
 
@@ -1762,27 +1975,60 @@ export default function MipPpaApp() {
       return { ...f, notes };
     }));
   };
+  // Jour courant au format « AAAA-MM-JJ », en UTC comme tout le reste.
+  const jourISO = () => new Date(aujourdhuiUTC()).toISOString().slice(0, 10);
+
+  /* Recale les trois échéances de suivi d'un projet sur son calendrier.
+     Un jalon déjà EFFECTUÉ n'est pas touché : sa date est un fait constaté,
+     pas une prévision, et la déplacer réécrirait l'historique du projet. */
+  const recalerEcheances = (projetId, dateFin) => {
+    const ech = echeancesSuivi(dateFin, jourISO());
+    if (!Object.keys(ech).length) return 0;
+    let touches = 0;
+    setSuivis((ss) => ss.map((s) => {
+      if (s.formationId !== projetId || s.statut === "effectué") return s;
+      const neuve = ech[s.jalon];
+      if (!neuve || neuve === s.echeance) return s;
+      touches++;
+      return { ...s, echeance: neuve };
+    }));
+    return touches;
+  };
+
   const ajouterFormation = () => {
     if (!nouvelle.titre.trim() || !nouvelle.entreprise.trim()) { notif("Renseignez au minimum l'intitulé et le promoteur"); return; }
+    /* Une fin antérieure au lancement est refusée à la saisie, et pas
+       seulement signalée après coup : toute la suite en dépend — la durée
+       affichée, les trois échéances, la lecture de la fiche. */
+    if (estDateISO(nouvelle.dateDebut) && estDateISO(nouvelle.dateFin)
+      && nouvelle.dateFin < nouvelle.dateDebut) {
+      notif("La date de fin ne peut pas précéder la date de lancement."); return;
+    }
     if (editionId) {
       setFormations((fs) => fs.map((f) => f.id === editionId ? { ...f, ...nouvelle } : f));
+      const n = recalerEcheances(editionId, nouvelle.dateFin);
       setEditionId(null); setFormOuvert(false);
       setNouvelle(PROJET_VIERGE());
-      notif("Formation mise à jour"); return;
+      notif("Projet mis à jour" + (n ? `, ${n} échéance${n > 1 ? "s" : ""} de suivi recalée${n > 1 ? "s" : ""}` : "")); return;
     }
     const id = "f" + Date.now();
     setFormations((fs) => [...fs, { id, ...nouvelle, notes: {} }]);
-    ["M+3", "M+6", "M+12"].forEach((j, i) => {
-      // Échéances calculées à partir de la date réelle du jour, en UTC.
-      const d = new Date(aujourdhuiUTC()); d.setUTCMonth(d.getUTCMonth() + [3, 6, 12][i]);
-      setSuivis((ss) => [...ss, { id: "s" + Date.now() + i, formationId: id, jalon: j, echeance: d.toISOString().slice(0, 10), statut: "programmé", note: "", docs: [] }]);
+    /* Point d'origine du suivi post-formation : la date de FIN du projet.
+       « M+3 » veut dire trois mois après la fin de la formation, pas trois
+       mois après la saisie de la fiche — c'est ce que dit le modèle MIP-PPA,
+       et ce que l'application faisait faute de connaître le calendrier. À
+       défaut de date de fin, on retombe sur le jour courant, comme avant. */
+    const ech = echeancesSuivi(nouvelle.dateFin, jourISO());
+    JALONS_SUIVI.forEach(([j], i) => {
+      setSuivis((ss) => [...ss, { id: "s" + Date.now() + i, formationId: id, jalon: j, echeance: ech[j] || "", statut: "programmé", note: "", docs: [] }]);
     });
     setFormOuvert(false);
     setNouvelle(PROJET_VIERGE());
-    notif("Projet créé, avec 3 suivis planifiés (M+3, M+6, M+12)");
+    notif("Projet créé, avec 3 suivis planifiés (M+3, M+6, M+12"
+      + (estDateISO(nouvelle.dateFin) ? " après la fin du projet)" : " à compter d'aujourd'hui, faute de date de fin)"));
   };
   const editerFormation = (f) => {
-    setNouvelle({ titre: f.titre, entreprise: f.entreprise, operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", secteurGrand: f.secteurGrand || grandSecteurDe(secteurs, f.filiere), filiere: f.filiere, domaine: f.domaine || "", region: normaliserRegion(f.region), localite: normaliserLocalite(f.localite, f.region), apprenants: f.apprenants, budget: f.budget, statut: f.statut });
+    setNouvelle({ titre: f.titre, entreprise: f.entreprise, operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", secteurGrand: f.secteurGrand || grandSecteurDe(secteurs, f.filiere), filiere: f.filiere, domaine: f.domaine || "", region: normaliserRegion(f.region), localite: normaliserLocalite(f.localite, f.region), apprenants: f.apprenants, budget: f.budget, statut: f.statut, dateDebut: f.dateDebut || "", dateFin: f.dateFin || "" });
     setEditionId(f.id); setFormOuvert(true); setPage("formations");
   };
 
@@ -1918,6 +2164,24 @@ export default function MipPpaApp() {
         const v = String(r[j] ?? "").trim();
         if (v !== "") dims[id] = nombre(v);
       });
+      /* Une cellule de date revient sous trois formes selon le chemin
+         emprunté : un objet Date (classeur XLSX relu par ExcelJS), la chaîne
+         ISO écrite par le CSV, ou une date déjà mise en forme à la française
+         si quelqu'un a retouché le fichier. Les trois sont acceptées, et tout
+         ce qui n'est aucune des trois est simplement ignoré — mieux vaut une
+         date absente qu'une date fausse. */
+      const dateCellule = (v) => {
+        if (v instanceof Date && !Number.isNaN(v.getTime())) return v.toISOString().slice(0, 10);
+        const s = String(v ?? "").trim();
+        if (!s) return "";
+        if (estDateISO(s)) return s.slice(0, 10);
+        const fr = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/);
+        if (fr) {
+          const iso = `${fr[3]}-${fr[2].padStart(2, "0")}-${fr[1].padStart(2, "0")}`;
+          return estDateISO(iso) ? iso : "";
+        }
+        return "";
+      };
       const region = normaliserRegion(String(r[col("Zone")] ?? "").trim());
       lignes.push({
         titre,
@@ -1930,12 +2194,14 @@ export default function MipPpaApp() {
         apprenants: nombre(r[col("Apprenants")]),
         budget: nombre(r[col("Budget")]),
         statut: normaliserStatut(String(r[col("Statut")] ?? "").trim()),
+        dateDebut: col(COL_DATE_DEBUT) >= 0 ? dateCellule(r[col(COL_DATE_DEBUT)]) : "",
+        dateFin: col(COL_DATE_FIN) >= 0 ? dateCellule(r[col(COL_DATE_FIN)]) : "",
         scoreLu: col("Score global") >= 0 && String(r[col("Score global")] ?? "").trim() !== ""
           ? nombre(r[col("Score global")]) : null,
         dimensions: dims,
       });
     }
-    const manquantes = ["Localité", "Domaine", "Secteur"].filter((c) => col(c) < 0);
+    const manquantes = ["Localité", "Domaine", "Secteur", COL_DATE_DEBUT, COL_DATE_FIN].filter((c) => col(c) < 0);
     return { lignes, manquantes, dimensionsLues: iDim.filter((d) => d.i >= 0).length };
   };
 
@@ -2007,7 +2273,7 @@ export default function MipPpaApp() {
       `${nouveaux.length} seront ajoutés.\n` +
       `${deja} sont déjà présents et seront laissés intacts.\n\n` +
       `SERONT REPRIS : intitulé, promoteur, secteur, matière première, domaine, ` +
-      `zone, localité, apprenants, budget, statut.\n\n` +
+      `zone, localité, apprenants, budget, statut, dates de lancement et de fin.\n\n` +
       `NE PEUVENT PAS L'ÊTRE, car absents du classeur :\n` +
       `• les notes des ${referentiel.reduce((n, d) => n + d.indicateurs.length, 0)} indicateurs ` +
       `(le classeur ne porte que les moyennes par dimension) ;\n` +
@@ -2029,6 +2295,7 @@ export default function MipPpaApp() {
       secteurGrand: l.secteurGrand, filiere: l.filiere, domaine: l.domaine,
       region: l.region, localite: l.localite,
       apprenants: l.apprenants, budget: l.budget, statut: l.statut,
+      dateDebut: l.dateDebut || "", dateFin: l.dateFin || "",
       notes: {},                                  // aucune note inventée
       historique: Object.keys(l.dimensions).length || l.scoreLu !== null ? [{
         jalon: "Initiale",
@@ -2043,12 +2310,13 @@ export default function MipPpaApp() {
     // Les trois jalons de suivi sont recréés, comme à la création d'un projet.
     const suivisNeufs = [];
     projets.forEach((p, k) => {
-      ["M+3", "M+6", "M+12"].forEach((j, i) => {
-        const d = new Date();
-        d.setMonth(d.getMonth() + [3, 6, 12][i]);
+      // Même origine qu'à la création : la date de fin du projet si le
+      // classeur la portait, le jour courant sinon.
+      const ech = echeancesSuivi(p.dateFin, jourISO());
+      JALONS_SUIVI.forEach(([j], i) => {
         suivisNeufs.push({
           id: "imps" + base + k + "_" + i, formationId: p.id, jalon: j,
-          echeance: d.toISOString().slice(0, 10), statut: "programmé", note: "",
+          echeance: ech[j] || "", statut: "programmé", note: "",
         });
       });
     });
@@ -2057,8 +2325,13 @@ export default function MipPpaApp() {
       + (a.manquantes.length ? ` Colonnes absentes du fichier : ${a.manquantes.join(", ")}.` : ""));
   };
 
+  /* Les deux colonnes de calendrier sont posées APRÈS « Statut » et AVANT les
+     scores : « iPremierScore » se déduit de la position de la dernière colonne
+     descriptive, et non d'un index écrit en dur. C'est la leçon de la colonne
+     « Localité », qui avait décalé les formats de nombre d'un cran. */
+  const COL_DATE_DEBUT = "Date de lancement", COL_DATE_FIN = "Date de fin";
   const colonnesExport = () => ["Projet", "Promoteur", "Secteur", "Matière première", "Domaine", "Zone", "Localité",
-    "Apprenants", "Budget (FCFA)", "Statut",
+    "Apprenants", "Budget (FCFA)", "Statut", COL_DATE_DEBUT, COL_DATE_FIN,
     ...referentiel.map((d) => `${d.nom} (%)`), "Score global (%)", "Niveau"];
 
   // Valeurs typées : les nombres restent des nombres, pour que le tableur
@@ -2070,6 +2343,12 @@ export default function MipPpaApp() {
       f.secteurGrand || grandSecteurDe(secteurs, f.filiere), f.filiere, f.domaine || "", f.region,
       normaliserLocalite(f.localite, f.region),
       Number(f.apprenants) || 0, Number(f.budget) || 0, f.statut,
+      /* Dates au format ISO « AAAA-MM-JJ » dans la donnée partagée : c'est la
+         seule écriture qui se trie correctement en texte et que la reprise
+         relit sans ambiguïté. Le classeur les convertit ensuite en vraies
+         dates Excel, affichées en JJ/MM/AAAA (voir « exportXlsx »). */
+      estDateISO(f.dateDebut) ? f.dateDebut : "",
+      estDateISO(f.dateFin) ? f.dateFin : "",
       ...referentiel.map((d) => { const sc = scoreDimension(referentiel, d.id, f.notes); return sc === null ? null : Math.round(sc); }),
       g === null ? null : Math.round(g), niveau(g).txt,
     ];
@@ -2142,7 +2421,9 @@ export default function MipPpaApp() {
          Un budget se serait affiché en pourcentage. */
       const iApprenants = entetes.indexOf("Apprenants");
       const iBudget = entetes.indexOf("Budget (FCFA)");
-      const iPremierScore = entetes.indexOf("Statut") + 1;   // index 0
+      const iDateDebut = entetes.indexOf(COL_DATE_DEBUT);
+      const iDateFin = entetes.indexOf(COL_DATE_FIN);
+      const iPremierScore = entetes.indexOf(COL_DATE_FIN) + 1;   // index 0
       donnees.forEach((ligne) => {
         const r = ws.addRow(ligne);
         r.eachCell({ includeEmpty: true }, (c, numCol) => {
@@ -2150,7 +2431,17 @@ export default function MipPpaApp() {
           c.alignment = { vertical: "middle", wrapText: i === 0 };
           if (i === iApprenants) c.numFmt = "#,##0";
           else if (i === iBudget) c.numFmt = '#,##0 "FCFA"';
-          else if (i >= iPremierScore && i < entetes.length - 1) c.numFmt = '0" %"';
+          else if (i === iDateDebut || i === iDateFin) {
+            /* Vraie date Excel, pas du texte : le classeur doit pouvoir trier
+               le portefeuille par date de fin et calculer des écarts. Midi UTC
+               plutôt que minuit — Excel raisonne en heure locale, et minuit
+               bascule d'un jour dans les fuseaux à l'ouest. */
+            if (estDateISO(c.value)) {
+              c.value = new Date(String(c.value) + "T12:00:00Z");
+              c.numFmt = "dd/mm/yyyy";
+              c.alignment = { vertical: "middle", horizontal: "center" };
+            }
+          } else if (i >= iPremierScore && i < entetes.length - 1) c.numFmt = '0" %"';
         });
         // Pastille de niveau, aux couleurs de l'application
         const cellNiveau = r.getCell(entetes.length);
@@ -2161,7 +2452,7 @@ export default function MipPpaApp() {
       });
 
       // -- Largeurs de colonnes --
-      const largeurs = [42, 20, 18, 24, 22, 20, 16, 12, 18, 13];
+      const largeurs = [42, 20, 18, 24, 22, 20, 16, 12, 18, 13, 16, 14];
       entetes.forEach((_, i) => { ws.getColumn(i + 1).width = largeurs[i] || 14; });
 
       if (donnees.length) {
@@ -2257,7 +2548,23 @@ export default function MipPpaApp() {
     const locPdf = normaliserLocalite(f.localite, f.region);
     ligne(`Promoteur : ${f.entreprise}  -  ${f.filiere}  -  ${f.region}${locPdf ? ` (${locPdf})` : ""}`);
     if (f.operateur || f.beneficiaire) ligne(`${f.operateur ? "Opérateur : " + f.operateur : ""}${f.operateur && f.beneficiaire ? "  -  " : ""}${f.beneficiaire ? "Bénéficiaire : " + f.beneficiaire : ""}`);
-    doc.text(nettoyerPdf(`${f.apprenants} apprenants  -  Budget : ${fmtFCFA(f.budget)}  -  Statut : ${f.statut}`), M, y); y += 9;
+    ligne(`${f.apprenants} apprenants  -  Budget : ${fmtFCFA(f.budget)}  -  Statut : ${f.statut}`);
+    /* Calendrier du projet. La fiche circule seule, souvent imprimée : sans
+       cette ligne, un lecteur ne sait pas si le « M+12 » qu'il a sous les yeux
+       est attendu le mois prochain ou l'an dernier. Posée par « ligne() »
+       comme les deux precedentes, donc decoupee si elle deborde : la variante
+       la plus longue mesuree — deux dates, la duree et la mention des jalons —
+       tient en 121 mm pour 178 mm utiles, mais un libelle de statut renomme
+       peut la faire grandir. */
+    if (estDateISO(f.dateDebut) || estDateISO(f.dateFin)) {
+      const duree = dureeLisible(f.dateDebut, f.dateFin);
+      ligne(estDateISO(f.dateDebut) && estDateISO(f.dateFin)
+        ? `Periode : du ${fmtDateFr(f.dateDebut)} au ${fmtDateFr(f.dateFin)}${duree ? `  -  duree : ${duree}` : ""}`
+        : estDateISO(f.dateDebut)
+          ? `Lancement le ${fmtDateFr(f.dateDebut)}  -  fin non renseignee`
+          : `Fin le ${fmtDateFr(f.dateFin)}  -  lancement non renseigne`);
+    }
+    y += 3.5;
 
     // ------ Score global ------
     doc.setFillColor(...hexRgb(nv.bg === "#e7e5e4" ? "#a8a29e" : nv.bg)); doc.roundedRect(M, y, W - 2 * M, 16, 2.5, 2.5, "F");
@@ -2622,6 +2929,17 @@ export default function MipPpaApp() {
     return <CadreAccueil enfants={<div className="text-sky-100 text-sm page-anim">Connexion au serveur…</div>} />;
   }
   if (!session) return (<><EcranConnexion /><Toast msg={toast} /></>);
+  /* Avant toute autre garde : une session ouverte par un lien de récupération
+     ne sert qu'à changer le mot de passe. Placé ici, l'écran s'impose même à
+     un compte déjà activé et même si le profil est complet. */
+  if (recuperationMdp) {
+    return (<>
+      <EcranNouveauMdp email={session.email}
+        surTermine={() => { setRecuperationMdp(false); notif("Mot de passe modifié."); }}
+        surAnnuler={() => { setRecuperationMdp(false); sb.auth.signOut(); setSession(null); }} />
+      <Toast msg={toast} />
+    </>);
+  }
   if (session?.aFinaliser) {
     return <EcranFinalisation session={session} surTermine={(maj) => setSession({ ...session, ...maj, aFinaliser: false })} />;
   }
@@ -2970,6 +3288,11 @@ export default function MipPpaApp() {
                   </div>
                   {P.users && <button onClick={() => { setPage("users"); setMenuCompte(false); }}
                     className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-stone-50 flex items-center gap-2"><Icone n="utilisateurs" t={15} /> Utilisateurs & rôles</button>}
+                  {/* Changer son mot de passe sans passer par l'oubli. Sinon
+                      le seul chemin pour en changer serait de prétendre
+                      l'avoir perdu, et de dépendre de sa boîte mail. */}
+                  <button onClick={() => { setChangeMdp({ nouveau: "", confirmation: "", msg: null, envoi: false }); setMenuCompte(false); }}
+                    className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-stone-50 flex items-center gap-2"><Icone n="bouclier" t={15} /> Changer mon mot de passe</button>
                   <button onClick={() => { setPage("guide"); setMenuCompte(false); }}
                     className="sm:hidden w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-stone-50 flex items-center gap-2"><Icone n="livre" t={15} /> Guide d'utilisation</button>
                   <button onClick={() => { basculerTheme(); }}
@@ -3378,6 +3701,46 @@ export default function MipPpaApp() {
                     {STATUTS_PROJET.map((s) => <option key={s}>{s}</option>)}
                   </select>
                 </label>
+
+                {/* ---------- CALENDRIER DU PROJET ----------
+                    Les deux dates sont FACULTATIVES : un projet s'enregistre
+                    souvent avant que son calendrier ne soit arrêté. Ce qui ne
+                    l'est pas, c'est leur ordre — une fin antérieure au
+                    lancement fausserait la durée et les trois échéances. Le
+                    « min » de l'input barre les jours impossibles dans le
+                    calendrier du navigateur, et le contrôle est refait à
+                    l'enregistrement : un champ date reste saisissable au
+                    clavier. */}
+                <label className="text-sm">Date de lancement <span className="text-stone-400">(facultative)</span>
+                  <input type="date" value={nouvelle.dateDebut || ""} max={nouvelle.dateFin || undefined}
+                    onChange={(e) => setNouvelle({ ...nouvelle, dateDebut: e.target.value })}
+                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white" />
+                </label>
+                <label className="text-sm">Date de fin de projet <span className="text-stone-400">(facultative)</span>
+                  <input type="date" value={nouvelle.dateFin || ""} min={nouvelle.dateDebut || undefined}
+                    onChange={(e) => setNouvelle({ ...nouvelle, dateFin: e.target.value })}
+                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white" />
+                </label>
+                {/* Ce que les deux dates produisent, dit tout de suite : la
+                    durée, et surtout le déplacement des trois échéances de
+                    suivi. Un agent qui change la date de fin doit savoir
+                    avant de valider que M+3, M+6 et M+12 vont bouger. */}
+                <div className="md:col-span-2 -mt-1 text-xs">
+                  {estDateISO(nouvelle.dateDebut) && estDateISO(nouvelle.dateFin) && nouvelle.dateFin < nouvelle.dateDebut ? (
+                    <span className="text-red-600 font-semibold">La date de fin précède la date de lancement : corrigez l'une des deux avant d'enregistrer.</span>
+                  ) : estDateISO(nouvelle.dateFin) ? (
+                    <span className="text-stone-500">
+                      {dureeLisible(nouvelle.dateDebut, nouvelle.dateFin)
+                        ? `Durée : ${dureeLisible(nouvelle.dateDebut, nouvelle.dateFin)}. ` : ""}
+                      Suivis post-formation calés sur la fin du projet :{" "}
+                      {JALONS_SUIVI.map(([j]) => `${j} le ${fmtDateFr(echeancesSuivi(nouvelle.dateFin, "")[j])}`).join(" · ")}.
+                    </span>
+                  ) : (
+                    <span className="text-stone-400">Sans date de fin, les suivis M+3 / M+6 / M+12 sont calés sur le jour de la saisie. Renseigner la date de fin les recale sur la fin réelle de la formation.</span>
+                  )}
+                  {!datesDispo && <span className="block mt-1 text-amber-700 font-medium">Les dates ne pourront pas être enregistrées tant que « supabase-phase7.sql » n'a pas été exécuté dans Supabase.</span>}
+                </div>
+
                 <div className="md:col-span-2 flex gap-3">
                   <button onClick={ajouterFormation} className="text-white font-semibold px-5 py-2 rounded-xl text-sm" style={{ background: C.vertFonce }}>{editionId ? "Enregistrer les modifications" : "Créer le projet"}</button>
                   <button onClick={() => setFormOuvert(false)} className="text-sm text-stone-500">Annuler</button>
@@ -3407,6 +3770,7 @@ export default function MipPpaApp() {
                     <div className="font-semibold break-words">{f.titre}</div>
                     <div className="text-sm text-stone-500 break-words">Promoteur : {f.entreprise}{f.operateur ? ` · Opérateur : ${f.operateur}` : ""} · {f.region}{normaliserLocalite(f.localite, f.region) ? ` (${normaliserLocalite(f.localite, f.region)})` : ""}</div>
                     {f.beneficiaire && <div className="text-xs text-stone-400 break-words">Bénéficiaire : {f.beneficiaire}</div>}
+                    <PeriodeProjet projet={f} className="text-xs text-stone-400 break-words" />
                   </div>
                   <div className="col-span-2 text-sm min-w-0"><div className="font-medium break-words">{f.secteurGrand || grandSecteurDe(secteurs, f.filiere)}</div><div className="text-stone-500 text-xs break-words">{f.filiere}{f.domaine ? " · " + f.domaine : ""}</div></div>
                   <div className="col-span-2 flex flex-wrap items-center gap-1.5"><Badge score={scoreGlobal(referentiel, f.notes)} /><PuceStatut statut={f.statut} /><PuceCouverture referentiel={referentiel} notes={f.notes} /></div>
@@ -3431,6 +3795,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                     </div>
                     <div className="text-sm text-stone-500 break-words mt-1">Promoteur : {f.entreprise}{f.operateur ? ` · Opérateur : ${f.operateur}` : ""} · {f.region}{normaliserLocalite(f.localite, f.region) ? ` (${normaliserLocalite(f.localite, f.region)})` : ""}</div>
                     {f.beneficiaire && <div className="text-xs text-stone-400 break-words mt-0.5">Bénéficiaire : {f.beneficiaire}</div>}
+                    <PeriodeProjet projet={f} className="text-xs text-stone-400 break-words mt-0.5" />
                     <div className="text-xs text-stone-500 break-words mt-1.5">
                       <span className="font-medium">{f.secteurGrand || grandSecteurDe(secteurs, f.filiere)}</span>{f.filiere ? " · " + f.filiere : ""}{f.domaine ? " · " + f.domaine : ""}
                     </div>
@@ -3483,6 +3848,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                 <h2 className="text-2xl font-bold mt-1 break-words">{fEval.titre}</h2>
                 <div className="text-sm text-sky-100 mt-1 break-words">{libelleSecteur(fEval, secteurs)} · {fEval.region}{normaliserLocalite(fEval.localite, fEval.region) ? ` (${normaliserLocalite(fEval.localite, fEval.region)})` : ""} · {fEval.apprenants} apprenants · {fmtFCFA(fEval.budget)}</div>
                 {(fEval.operateur || fEval.beneficiaire) && <div className="text-xs text-sky-200 mt-1 break-words">{[fEval.operateur ? `Opérateur : ${fEval.operateur}` : "", fEval.beneficiaire ? `Bénéficiaire : ${fEval.beneficiaire}` : ""].filter(Boolean).join(" · ")}</div>}
+                <PeriodeProjet projet={fEval} className="text-xs text-sky-200 mt-1 break-words" />
               </div>
               <div className="max-w-3xl">
                 <div className="text-xs uppercase tracking-wider text-sky-200">Score global MIP-PPA</div>
@@ -4005,6 +4371,24 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                   </div>
                 </section>
               ))}
+              {/* Incohérences de calendrier. Elles ne remettent en cause ni le
+                  score ni le suivi : elles disent qu'une fiche n'a pas été
+                  tenue à jour. Le bouton mène donc à la modification du
+                  projet, pas à son évaluation. */}
+              {stats.calendrier.map((c) => (
+                <section key={"cal-" + c.formation.id} className="bg-white rounded-2xl border-l-4 border border-stone-200 p-5" style={{ borderLeftColor: C.satisfaisant }}>
+                  <div className="flex justify-between items-start gap-3 flex-wrap">
+                    <div className="min-w-0">
+                      <div className="font-bold break-words">Calendrier à revoir : {c.formation.titre}</div>
+                      {c.anomalies.map((a) => (
+                        <div key={a.code} className={"text-sm break-words " + (a.gravite === "erreur" ? "text-red-600 font-medium" : "text-stone-500")}>{a.txt}</div>
+                      ))}
+                      <div className="text-xs text-stone-400 mt-1">{c.formation.entreprise}</div>
+                    </div>
+                    {P.editerFormation && <button onClick={() => editerFormation(c.formation)} className="text-sm font-medium hover:underline shrink-0" style={{ color: C.vert }}>Corriger la fiche →</button>}
+                  </div>
+                </section>
+              ))}
             </>)
           )}
 
@@ -4140,13 +4524,13 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
               ["5. Exports", "Le bouton Fiche PDF génère la fiche officielle d'évaluation d'un projet (avec les images et PDF joints en annexe) ; l'export Excel produit la synthèse de vos projets. Ces documents sont partageables en interne."],
               ["6. Besoin d'une correction ?", "Si une information vous semble inexacte (score, échéance, document), contactez votre interlocuteur FDFP ou l'administrateur de la plateforme : lui seul peut modifier les données."],
             ] : [
-              ["1. Démarrer", "Créez votre compte (nom, organisation, email, mot de passe), attendez l'activation par l'administrateur lead qui vous attribue un rôle, puis connectez-vous. Le tout premier compte créé devient automatiquement Administrateur lead."],
+              ["1. Démarrer", "Créez votre compte (nom, organisation, email, mot de passe), attendez l'activation par l'administrateur lead qui vous attribue un rôle, puis connectez-vous. Le tout premier compte créé devient automatiquement Administrateur lead. Mot de passe perdu : le lien « Mot de passe oublié ? » de l'écran de connexion envoie un courriel de réinitialisation, valable une heure et utilisable une seule fois. Une fois connecté, le menu du compte permet aussi d'en changer à tout moment."],
               ["2. Comptes & rôles", "Cinq niveaux d'accès : Administrateur lead (tous les droits, distribue les accès) ; Administrateur FDFP (pilotage global, validation, configuration) ; Agent FDFP (évaluation MIP-PPA, suivis, exports) ; Promoteur (consultation en lecture seule de l'ensemble du portefeuille) ; Opérateur (saisie des indicateurs pédagogiques et suivi des apprenants). Les rôles sont protégés côté serveur : aucun utilisateur ne peut s'auto-attribuer un accès."],
-              ["3. Gérer les projets", "Créez un projet de formation de type apprentissage (intitulé, entreprise bénéficiaire, secteur, zone, apprenants, budget FCFA), suivez son statut (Planifiée / En cours / Terminée), puis cliquez dessus pour ouvrir sa fiche d'évaluation."],
+              ["3. Gérer les projets", "Créez un projet de formation de type apprentissage (intitulé, entreprise bénéficiaire, secteur, zone, localité, apprenants, budget FCFA, dates de lancement et de fin), suivez son statut (Planifié / En cours / Terminé), puis cliquez dessus pour ouvrir sa fiche d'évaluation. Les deux dates sont facultatives, mais la date de fin commande les échéances de suivi : renseignez-la dès qu'elle est connue."],
               ["4. Évaluer (modèle MIP-PPA)", "Le modèle mesure la valeur réelle d'une formation à travers 5 dimensions et 23 indicateurs notés de 0 à 4. Les indicateurs non encore mesurables peuvent rester vides ; le score se calcule automatiquement et l'enregistrement est instantané."],
-              ["5. Suivi à 3, 6 et 12 mois", "Chaque formation déclenche automatiquement 3 points de suivi : à 3 mois (transfert des acquis au poste), 6 mois (effets organisationnels mesurables) et 12 mois (pérennité et retour sur investissement). Les jalons sont regroupés en 4 piles : En retard, À faire sous 14 j, Programmés, Effectués. Ces suivis alimentent directement les dimensions Impact organisationnel et Durabilité des compétences."],
+              ["5. Suivi à 3, 6 et 12 mois", "Chaque formation déclenche automatiquement 3 points de suivi, comptés à partir de la DATE DE FIN du projet : à 3 mois (transfert des acquis au poste), 6 mois (effets organisationnels mesurables) et 12 mois (pérennité et retour sur investissement). Sans date de fin, ils sont calés sur le jour de la saisie ; la renseigner ensuite recale les échéances, sauf celles des jalons déjà marqués effectués. Les jalons sont regroupés en 4 piles : En retard, À faire sous 14 j, Programmés, Effectués. Ces suivis alimentent directement les dimensions Impact organisationnel et Durabilité des compétences."],
               ["6. Tableaux de bord & référentiel", "Le tableau de bord offre la vision consolidée (formations, apprenants, score moyen, radar des 5 dimensions, comparaison par secteur). L'administrateur lead peut ajouter, modifier ou supprimer dimensions et indicateurs ; la somme des pondérations doit rester à 100 %. Un bouton permet de restaurer le référentiel MIP-PPA d'origine."],
-              ["7. Alertes", "Deux événements remontent automatiquement : formations dont le score global est inférieur à 40 %, et suivis post-formation en retard sur leur échéance."],
+              ["7. Alertes", "Quatre événements remontent automatiquement : projets dont le score global est inférieur à 40 % ; suivis post-formation en retard sur leur échéance ; évaluations incomplètes, dont l'échéance est passée alors que des indicateurs restent à noter ; et calendriers incohérents, par exemple une fiche restée « En cours » après sa date de fin."],
               ["8. Exports PDF & Excel", "PDF : fiche d'évaluation individuelle par formation (comités de pilotage, transmission aux entreprises). Excel : synthèse globale du portefeuille pour le reporting institutionnel."],
             ]).map(([t, txt]) => (
               <section key={t} className="bg-white rounded-2xl border border-stone-200 p-6">
@@ -4433,6 +4817,42 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
           </div>
         );
       })()}
+
+      {/* ---------- FENÊTRE : CHANGER MON MOT DE PASSE ---------- */}
+      {changeMdp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(10,25,38,.55)" }}
+          onClick={(e) => e.target === e.currentTarget && setChangeMdp(null)}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-5 md:p-7 page-anim">
+            <div className="flex items-start justify-between">
+              <h3 className="text-xl font-bold">Changer mon mot de passe</h3>
+              <button onClick={() => setChangeMdp(null)} className="text-stone-400 hover:text-stone-700" title="Fermer" aria-label="Fermer"><Icone n="fermer" t={18} /></button>
+            </div>
+            <p className="text-sm text-stone-500 mt-1">Compte {session?.email}. Le nouveau mot de passe remplace l'ancien immédiatement.</p>
+            {changeMdp.msg && <div className="mt-3 text-sm rounded-xl px-3.5 py-2.5 bg-red-50 text-red-700 border border-red-200">{changeMdp.msg}</div>}
+            <label className="block text-sm font-semibold text-stone-800 mt-4">Nouveau mot de passe <span className="font-normal text-stone-400">(6 caractères min.)</span>
+              <input type="password" value={changeMdp.nouveau} onChange={(e) => setChangeMdp({ ...changeMdp, nouveau: e.target.value })}
+                className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
+            </label>
+            <label className="block text-sm font-semibold text-stone-800 mt-4">Confirmez le mot de passe
+              <input type="password" value={changeMdp.confirmation} onChange={(e) => setChangeMdp({ ...changeMdp, confirmation: e.target.value })}
+                className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
+            </label>
+            <div className="flex justify-end gap-3 mt-6">
+              <button onClick={() => setChangeMdp(null)} className="border border-stone-300 px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50">Annuler</button>
+              <button disabled={changeMdp.envoi} onClick={async () => {
+                if (changeMdp.nouveau.length < 6) return setChangeMdp({ ...changeMdp, msg: "Mot de passe : 6 caractères minimum." });
+                if (changeMdp.nouveau !== changeMdp.confirmation) return setChangeMdp({ ...changeMdp, msg: "Les deux saisies diffèrent. Vérifiez avant de valider." });
+                setChangeMdp({ ...changeMdp, envoi: true, msg: null });
+                const { error } = await sb.auth.updateUser({ password: changeMdp.nouveau });
+                if (error) return setChangeMdp({ ...changeMdp, envoi: false, msg: error.message });
+                setChangeMdp(null); notif("Mot de passe modifié.");
+              }} className="text-white px-6 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-60" style={{ background: C.vertFonce }}>
+                {changeMdp.envoi ? "Un instant…" : "Enregistrer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ---------- FENÊTRE : MODIFIER LA DIMENSION ---------- */}
       {dimEdit && (

@@ -9,6 +9,8 @@ import { describe, it, expect } from "vitest";
 import {
   scoreDimension, scoreGlobal, couvertureModele, niveau, margeSeuil,
   indicateursNonNotes, instantane, ajouterInstantane, trajectoire,
+  estDateISO, jourUTC, fmtDateFr, ajouterMois, dureeJours, dureeLisible,
+  echeancesSuivi, anomaliesCalendrier,
 } from "./calculs.js";
 
 /* Référentiel réduit, aux poids et volumes du modèle réel : cinq dimensions
@@ -281,5 +283,182 @@ describe("niveau", () => {
     // la frontière « Insuffisant ».
     expect(niveau(39.99).txt).toBe("Insuffisant");
     expect(niveau(40).txt).not.toBe("Insuffisant");
+  });
+});
+
+/* ===========================================================================
+   CALENDRIER DU PROJET
+   ---------------------------------------------------------------------------
+   Ces fonctions décident de la date des trois jalons du modèle. Une erreur
+   d'un mois sur « M+3 » se voit à peine à l'écran et fausse tout le suivi
+   post-formation : c'est exactement le genre de calcul qui doit être tenu par
+   des tests plutôt que par la relecture.
+   =========================================================================== */
+
+describe("estDateISO", () => {
+  it("accepte une date bien formée", () => {
+    expect(estDateISO("2026-03-15")).toBe(true);
+    expect(estDateISO("2026-03-15T00:00:00Z")).toBe(true);   // horodatage tronqué
+  });
+
+  it("refuse ce qui a la bonne forme mais n'est pas un jour", () => {
+    // Date.UTC reporterait silencieusement au 2 mars : l'application
+    // afficherait une date que personne n'a saisie.
+    expect(estDateISO("2026-02-30")).toBe(false);
+    expect(estDateISO("2026-13-01")).toBe(false);
+    expect(estDateISO("2026-00-10")).toBe(false);
+  });
+
+  it("connaît les années bissextiles", () => {
+    expect(estDateISO("2024-02-29")).toBe(true);
+    expect(estDateISO("2026-02-29")).toBe(false);
+    expect(estDateISO("1900-02-29")).toBe(false);   // divisible par 100, non bissextile
+    expect(estDateISO("2000-02-29")).toBe(true);    // divisible par 400, bissextile
+  });
+
+  it("refuse le vide et l'absence", () => {
+    expect(estDateISO("")).toBe(false);
+    expect(estDateISO(null)).toBe(false);
+    expect(estDateISO(undefined)).toBe(false);
+    expect(estDateISO("15/03/2026")).toBe(false);
+  });
+});
+
+describe("jourUTC et fmtDateFr", () => {
+  it("lit la date à minuit UTC, sans dérive de fuseau", () => {
+    expect(jourUTC("2026-03-15")).toBe(Date.UTC(2026, 2, 15));
+  });
+
+  it("rend null plutôt qu'une date inventée", () => {
+    expect(jourUTC("2026-02-30")).toBe(null);
+    expect(jourUTC("")).toBe(null);
+  });
+
+  it("écrit la date à la française, et dit ce qu'il remplace quand elle manque", () => {
+    expect(fmtDateFr("2026-03-05")).toBe("05/03/2026");
+    expect(fmtDateFr("")).toBe("Non renseignée");
+    expect(fmtDateFr("", "Fin inconnue")).toBe("Fin inconnue");
+  });
+});
+
+describe("ajouterMois", () => {
+  it("ajoute un mois sans déborder sur le suivant", () => {
+    // « setUTCMonth » donnerait le 3 mars : le 31 février n'existe pas.
+    expect(ajouterMois("2026-01-31", 1)).toBe("2026-02-28");
+    expect(ajouterMois("2024-01-31", 1)).toBe("2024-02-29");   // bissextile
+    expect(ajouterMois("2026-03-31", 1)).toBe("2026-04-30");
+  });
+
+  it("franchit correctement les fins d'année", () => {
+    expect(ajouterMois("2026-11-15", 3)).toBe("2027-02-15");
+    expect(ajouterMois("2026-01-15", 12)).toBe("2027-01-15");
+    expect(ajouterMois("2026-12-31", 12)).toBe("2027-12-31");
+  });
+
+  it("rend une chaîne vide sur une date absente ou fausse", () => {
+    expect(ajouterMois("", 3)).toBe("");
+    expect(ajouterMois("2026-02-30", 3)).toBe("");
+  });
+});
+
+describe("dureeJours et dureeLisible", () => {
+  it("compte les deux bornes : un projet d'un jour dure un jour", () => {
+    expect(dureeJours("2026-03-15", "2026-03-15")).toBe(1);
+    expect(dureeJours("2026-03-01", "2026-03-31")).toBe(31);
+  });
+
+  it("refuse de rendre une durée quand la fin précède le début", () => {
+    // Ce n'est pas une durée négative, c'est une erreur de saisie : la
+    // signaler comme telle vaut mieux que d'afficher « -12 jours ».
+    expect(dureeJours("2026-03-15", "2026-03-01")).toBe(null);
+  });
+
+  it("rend null tant qu'une des deux dates manque", () => {
+    expect(dureeJours("2026-03-15", "")).toBe(null);
+    expect(dureeJours("", "2026-03-15")).toBe(null);
+  });
+
+  it("dit la durée en jours en dessous d'un mois plein", () => {
+    expect(dureeLisible("2026-01-01", "2026-01-31")).toBe("31 jours");
+    expect(dureeLisible("2026-03-15", "2026-03-15")).toBe("1 jour");
+  });
+
+  it("compte les mois de quantième à quantième, pas par tranches de 30", () => {
+    expect(dureeLisible("2026-01-01", "2026-03-31")).toBe("2 mois et 30 jours");
+    expect(dureeLisible("2026-01-01", "2026-04-01")).toBe("3 mois");
+    expect(dureeLisible("2025-11-03", "2026-02-20")).toBe("3 mois et 17 jours");
+  });
+});
+
+describe("echeancesSuivi", () => {
+  it("cale les trois jalons sur la date de FIN du projet", () => {
+    // Le point du modèle : M+3 veut dire trois mois après la fin de la
+    // formation, pas trois mois après la saisie de la fiche.
+    const e = echeancesSuivi("2026-02-20", "2026-08-09");
+    expect(e["M+3"]).toBe("2026-05-20");
+    expect(e["M+6"]).toBe("2026-08-20");
+    expect(e["M+12"]).toBe("2027-02-20");
+  });
+
+  it("retombe sur le jour courant quand la date de fin manque", () => {
+    const e = echeancesSuivi("", "2026-08-09");
+    expect(e["M+3"]).toBe("2026-11-09");
+    expect(e["M+12"]).toBe("2027-08-09");
+  });
+
+  it("ne rend rien si aucune origine n'est exploitable", () => {
+    expect(echeancesSuivi("", "")).toEqual({});
+  });
+
+  it("ne déborde pas sur le mois suivant en fin de mois", () => {
+    expect(echeancesSuivi("2026-08-31", "")["M+6"]).toBe("2027-02-28");
+  });
+});
+
+describe("anomaliesCalendrier", () => {
+  const AUJ = "2026-08-09";
+  const codes = (p) => anomaliesCalendrier(p, AUJ).map((a) => a.code);
+
+  it("ne dit rien d'un projet cohérent", () => {
+    expect(codes({ dateDebut: "2026-01-05", dateFin: "2026-05-30", statut: "Terminé" })).toEqual([]);
+    expect(codes({ dateDebut: "2026-09-01", dateFin: "2026-12-01", statut: "Planifié" })).toEqual([]);
+  });
+
+  it("ne dit rien d'un projet sans dates", () => {
+    expect(codes({ statut: "En cours" })).toEqual([]);
+  });
+
+  it("signale une fin antérieure au lancement", () => {
+    expect(codes({ dateDebut: "2026-05-30", dateFin: "2026-01-05", statut: "En cours" }))
+      .toContain("finAvantDebut");
+  });
+
+  it("ne cumule pas « fin dépassée » avec « fin avant début »", () => {
+    // Les deux dates sont inversées : une seule anomalie, celle qui explique
+    // l'autre. Deux lignes pour une seule erreur de saisie noieraient la page.
+    expect(codes({ dateDebut: "2026-05-30", dateFin: "2026-01-05", statut: "En cours" }))
+      .toEqual(["finAvantDebut"]);
+  });
+
+  it("signale une fiche restée « En cours » après sa date de fin", () => {
+    expect(codes({ dateDebut: "2026-01-05", dateFin: "2026-05-30", statut: "En cours" }))
+      .toContain("finDepasseeNonTermine");
+  });
+
+  it("signale un projet encore « Planifié » alors que le lancement est passé", () => {
+    expect(codes({ dateDebut: "2026-06-01", dateFin: "2026-12-01", statut: "Planifié" }))
+      .toContain("lanceMaisPlanifie");
+  });
+
+  it("signale un projet « Terminé » dont la fin est encore à venir", () => {
+    expect(codes({ dateDebut: "2026-06-01", dateFin: "2026-12-01", statut: "Terminé" }))
+      .toEqual(["termineAvantLaFin"]);
+  });
+
+  it("ne juge rien sans savoir quel jour on est", () => {
+    // Sauf l'ordre des deux dates, qui ne dépend pas de la date du jour.
+    expect(anomaliesCalendrier({ dateDebut: "2026-01-05", dateFin: "2026-05-30", statut: "En cours" }, "")).toEqual([]);
+    expect(anomaliesCalendrier({ dateDebut: "2026-05-30", dateFin: "2026-01-05", statut: "En cours" }, "").map((a) => a.code))
+      .toEqual(["finAvantDebut"]);
   });
 });

@@ -235,6 +235,12 @@ export const PROJET_VIERGE = () => ({
   domaine: "Fèves et masse de cacao",
   region: "Siège Abidjan", localite: localiteParDefaut("Siège Abidjan"),
   apprenants: 10, budget: 5000000, statut: "Planifié",
+  /* Calendrier du projet. Vides par défaut, et volontairement facultatifs :
+     un projet s'enregistre souvent avant que ses dates ne soient arrêtées.
+     Format « AAAA-MM-JJ », celui du champ « echeance » des suivis et celui
+     que rend un <input type="date">. La date de fin sert de point d'origine
+     aux échéances M+3 / M+6 / M+12 : voir « echeancesSuivi » dans calculs.js. */
+  dateDebut: "", dateFin: "",
 });
 
 // ----------------- MATRICE DES PERMISSIONS PAR RÔLE -------------
