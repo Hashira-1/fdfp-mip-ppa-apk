@@ -1821,10 +1821,31 @@ export default function MipPpaApp() {
     chargerComptes();
   };
 
+  /* Attribution d'un rôle. Troisième occurrence du même défaut, et la plus
+     grave : un compte ACTIVÉ restait bloqué sur l'écran d'attente.
+     ---------------------------------------------------------------------------
+     Un compte invité n'a pas de ligne dans « user_roles » — elle n'est créée
+     qu'à l'inscription ordinaire. Un UPDATE ne touchait donc aucune ligne,
+     PostgREST répondait 204 comme pour une réussite, et l'application annonçait
+     « Rôle mis à jour » sans que rien n'ait été écrit. L'administrateur croyait
+     avoir activé l'accès ; l'utilisateur restait devant « Compte en attente
+     d'activation », et aucun des deux ne pouvait comprendre pourquoi.
+     UPSERT crée la ligne si elle manque, et « .select() » vérifie qu'une ligne
+     a bien été écrite. L'écriture reste réservée à l'administrateur lead, en
+     base : voir « supabase-phase8.sql », qui ajoute la politique INSERT
+     manquante avec « with check (est_admin_lead()) ». Personne ne peut donc
+     s'attribuer un rôle — la propriété vérifiée le 7 août est préservée. */
   const attribuerRole = async (userId, role) => {
-    const { error } = await sb.from("user_roles").update({ role }).eq("user_id", userId);
+    const { data: ecrit, error } = await sb.from("user_roles")
+      .upsert({ user_id: userId, role }, { onConflict: "user_id" })
+      .select("user_id");
     if (error) { notif("Échec : " + error.message); return; }
-    notif("Rôle mis à jour"); chargerComptes();
+    if (!ecrit || !ecrit.length) {
+      notif("Aucune ligne écrite : la base refuse la création d'un rôle. "
+        + "Exécutez « supabase-phase8.sql » dans Supabase.");
+      return;
+    }
+    notif(`Rôle attribué : ${role}`); chargerComptes();
   };
   const [evalId, setEvalId] = useState(null);
   const [jalonAFiger, setJalonAFiger] = useState(JALONS[0]);   // trajectoire
