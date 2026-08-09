@@ -1133,13 +1133,19 @@ function EcranFinalisation({ session, surTermine }) {
        voyait encore l'ancienne ligne et renvoyait l'utilisateur sur ce même
        écran. L'ordre à lui seul ne suffit pas — l'événement USER_UPDATED est
        aussi ignoré, voir onAuthStateChange — mais il supprime la fenêtre. */
-    /* « .select() » fait renvoyer les lignes réellement modifiées. Sans lui,
-       PostgREST répond 204 aussi bien quand l'écriture a eu lieu que quand une
-       politique RLS l'a écartée : on laisserait alors entrer quelqu'un dont le
-       profil est resté vide, et l'écran reviendrait à la connexion suivante
-       sans que rien n'ait signalé l'échec. */
+    /* UPSERT, et non UPDATE — c'est ce qui bloquait les invitations.
+       Un compte créé par lien d'invitation n'a pas forcément de ligne dans
+       « profiles » : le déclencheur qui la crée est attaché à l'inscription
+       ordinaire. Un UPDATE ne touchait donc AUCUNE ligne, et le contrôle
+       « .select() » posé plus haut le signalait — à juste titre — comme un
+       refus de la base. Le message était exact, le geste était le mauvais :
+       il n'y avait rien à mettre à jour, il fallait créer.
+       « upsert » couvre les deux cas d'un seul appel. Le déclencheur
+       « profils_geler_org » est un BEFORE UPDATE : une création ne le
+       déclenche pas, l'invité peut donc bien renseigner son organisation. */
     const { data: ecrit, error: e2 } = await sb.from("profiles")
-      .update(profil).eq("id", session.id).select("id");
+      .upsert({ id: session.id, email: session.email, ...profil }, { onConflict: "id" })
+      .select("id");
     // Le mot de passe n'est envoyé que s'il a été saisi.
     let { error: e1 } = await sb.auth.updateUser(mdp ? { password: mdp, data: profil } : { data: profil });
     /* Cas fréquent, et jusqu'ici bloquant : l'invité saisit le mot de passe
@@ -1157,7 +1163,8 @@ function EcranFinalisation({ session, surTermine }) {
     if (e1 || e2) return setMsg(messageAuth(e1 || e2, "Enregistrement impossible."));
     if (!ecrit || !ecrit.length) {
       return setMsg("Le profil n'a pas pu être enregistré : la base a refusé l'écriture. "
-        + "Signalez-le à l'administrateur lead, votre compte reste en l'état.");
+        + "L'administrateur doit exécuter « supabase-phase8.sql » dans Supabase, "
+        + "qui pose les politiques d'accès manquantes sur la table des profils.");
     }
     surTermine(profil);
   };
@@ -1788,11 +1795,26 @@ export default function MipPpaApp() {
     const org = saisie.trim();
     if (org.length < 2) { notif("Organisation : 2 caractères au minimum."); return; }
     if (org === compte.org) return;
-    const { error } = await sb.from("profiles").update({ org }).eq("id", compte.id);
+    /* « .select() » est indispensable ici, et son absence est ce qui faisait
+       échouer la fonction EN SILENCE. La politique RLS de la phase 1 porte
+       « using (id = auth.uid()) » : elle laisse chacun modifier SA ligne, et
+       personne d'autre. La ligne d'un tiers n'est donc même pas atteinte —
+       PostgREST répond « 0 ligne modifiée », sans erreur, et l'application
+       annonçait « Organisation mise à jour » alors que rien n'avait bougé.
+       Le déclencheur « profils_geler_org » ménage bien une exception pour
+       l'administrateur lead, mais il ne s'exécute jamais : la politique filtre
+       la ligne avant lui. C'est « supabase-phase8.sql » qui ouvre ce droit. */
+    const { data: ecrit, error } = await sb.from("profiles")
+      .update({ org }).eq("id", compte.id).select("id");
     if (error) {
       notif(/42501|ne peut plus/i.test(error.message || "")
         ? "Refusé par la base : seul l'administrateur lead peut modifier une organisation déjà renseignée."
         : "Échec : " + error.message);
+      return;
+    }
+    if (!ecrit || !ecrit.length) {
+      notif("Aucune ligne modifiée : la base n'autorise pas encore la correction "
+        + "du profil d'un tiers. Exécutez « supabase-phase8.sql » dans Supabase.");
       return;
     }
     notif(`Organisation de ${compte.nom} : « ${org} »`);
@@ -3518,7 +3540,7 @@ export default function MipPpaApp() {
                   {/* Changer son mot de passe sans passer par l'oubli. Sinon
                       le seul chemin pour en changer serait de prétendre
                       l'avoir perdu, et de dépendre de sa boîte mail. */}
-                  <button onClick={() => { setChangeMdp({ nouveau: "", confirmation: "", msg: null, envoi: false }); setMenuCompte(false); }}
+                  <button onClick={() => { setChangeMdp({ actuel: "", nouveau: "", confirmation: "", msg: null, envoi: false }); setMenuCompte(false); }}
                     className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-stone-50 flex items-center gap-2"><Icone n="bouclier" t={15} /> Changer mon mot de passe</button>
                   <button onClick={() => { setPage("guide"); setMenuCompte(false); }}
                     className="sm:hidden w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-stone-50 flex items-center gap-2"><Icone n="livre" t={15} /> Guide d'utilisation</button>
@@ -5130,8 +5152,19 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
               <h3 className="text-xl font-bold">Changer mon mot de passe</h3>
               <button onClick={() => setChangeMdp(null)} className="text-stone-400 hover:text-stone-700" title="Fermer" aria-label="Fermer"><Icone n="fermer" t={18} /></button>
             </div>
-            <p className="text-sm text-stone-500 mt-1">Compte {session?.email}. Saisissez le même mot de passe dans les deux champs ; il doit être différent de celui que vous utilisez aujourd'hui.</p>
+            <p className="text-sm text-stone-500 mt-1">Compte {session?.email}. Saisissez votre mot de passe actuel, puis deux fois le nouveau.</p>
             {changeMdp.msg && <div className="mt-3 text-sm rounded-xl px-3.5 py-2.5 bg-red-50 text-red-700 border border-red-200">{changeMdp.msg}</div>}
+            {/* Le mot de passe ACTUEL est exigé. Sans lui, un poste laissé
+                déverrouillé quelques secondes suffisait à s'approprier le
+                compte : « updateUser » ne vérifie rien, il fait confiance à la
+                session ouverte. On revalide donc l'identité avec
+                « signInWithPassword » avant d'écrire — c'est le seul moyen,
+                côté client, de prouver que la personne devant l'écran est bien
+                celle qui a ouvert la session. */}
+            <label className="block text-sm font-semibold text-stone-800 mt-4">Mot de passe actuel <span className="text-red-500">*</span>
+              <input type="password" value={changeMdp.actuel} onChange={(e) => setChangeMdp({ ...changeMdp, actuel: e.target.value })}
+                className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
+            </label>
             <label className="block text-sm font-semibold text-stone-800 mt-4">Nouveau mot de passe <span className="font-normal text-stone-400">(6 caractères min.)</span>
               <input type="password" value={changeMdp.nouveau} onChange={(e) => setChangeMdp({ ...changeMdp, nouveau: e.target.value })}
                 className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
@@ -5144,9 +5177,21 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
             <div className="flex justify-end gap-3 mt-6">
               <button onClick={() => setChangeMdp(null)} className="border border-stone-300 px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50">Annuler</button>
               <button disabled={changeMdp.envoi} onClick={async () => {
-                if (changeMdp.nouveau.length < 6) return setChangeMdp({ ...changeMdp, msg: "Mot de passe : 6 caractères minimum." });
-                if (changeMdp.nouveau !== changeMdp.confirmation) return setChangeMdp({ ...changeMdp, msg: "Les deux saisies diffèrent. Vérifiez avant de valider." });
+                if (!changeMdp.actuel) return setChangeMdp({ ...changeMdp, msg: "Saisissez d'abord votre mot de passe actuel." });
+                if (changeMdp.nouveau.length < 6) return setChangeMdp({ ...changeMdp, msg: "Nouveau mot de passe : 6 caractères minimum." });
+                if (changeMdp.nouveau !== changeMdp.confirmation) return setChangeMdp({ ...changeMdp, msg: "Les deux saisies du nouveau mot de passe diffèrent." });
+                if (changeMdp.nouveau === changeMdp.actuel) return setChangeMdp({ ...changeMdp, msg: "Le nouveau mot de passe est identique à l'actuel." });
                 setChangeMdp({ ...changeMdp, envoi: true, msg: null });
+                /* Revalidation de l'identité. Cet appel ne consomme aucun
+                   courriel : c'est une connexion, pas un envoi. */
+                const { error: eVerif } = await sb.auth.signInWithPassword({
+                  email: session.email, password: changeMdp.actuel });
+                if (eVerif) {
+                  return setChangeMdp({ ...changeMdp, envoi: false,
+                    msg: /Invalid login/i.test(eVerif.message || "")
+                      ? "Mot de passe actuel incorrect."
+                      : messageAuth(eVerif) });
+                }
                 const { error } = await sb.auth.updateUser({ password: changeMdp.nouveau });
                 if (error) return setChangeMdp({ ...changeMdp, envoi: false, msg: messageAuth(error) });
                 setChangeMdp(null); notif("Mot de passe modifié.");
