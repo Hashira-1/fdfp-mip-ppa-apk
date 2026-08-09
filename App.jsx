@@ -169,6 +169,31 @@ function messageAuth(error, defaut) {
   return defaut ? `${defaut} (${m})` : m;
 }
 
+/* Contrôle des champs d'identité, partagé par la création de compte et l'écran
+   de complétion. Rend une phrase à afficher, ou null si tout est bon.
+   ---------------------------------------------------------------------------
+   Les deux écrans se contentaient d'un « champ non vide » : une espace
+   passait, « a » aussi. Or « org » n'est pas un champ d'état civil, c'est ce
+   qui fixe le PÉRIMÈTRE DE DONNÉES du compte — « mon_org() » commande
+   « peut_voir_projet() ». Une organisation mal saisie rattache quelqu'un au
+   mauvais portefeuille ; une organisation vide ne le rattache à rien.
+   D'où un contrôle réel, et le même des deux côtés. */
+const EMAIL_VALIDE = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
+
+function champsProfilIncomplets({ nom, org, email }) {
+  const n = String(nom || "").trim(), o = String(org || "").trim();
+  if (email !== undefined) {
+    const e = String(email || "").trim();
+    if (!e) return "Renseignez votre email professionnel.";
+    if (!EMAIL_VALIDE.test(e)) return "Cette adresse email n'est pas valide.";
+  }
+  if (!n) return "Renseignez votre nom complet.";
+  if (n.length < 3) return "Le nom complet doit comporter au moins 3 caractères.";
+  if (!o) return "Renseignez votre organisation : elle détermine les projets auxquels vous aurez accès.";
+  if (o.length < 2) return "L'organisation doit comporter au moins 2 caractères.";
+  return null;
+}
+
 function lireStock(cle, defaut) {
   try { const v = window.localStorage.getItem(cle); return v ? JSON.parse(v) : defaut; } catch (e) { return defaut; }
 }
@@ -1060,18 +1085,45 @@ function EcranAttente({ session, surActualiser, surDeconnexion }) {
 }
 
 function EcranFinalisation({ session, surTermine }) {
-  const [nom, setNom] = useState("");
-  const [org, setOrg] = useState("");
+  /* Deux situations aboutissent ici, et l'écran doit servir les deux :
+       - une INVITATION : le compte n'a encore ni nom ni mot de passe ;
+       - un PROFIL INCOMPLET : le compte existe, s'est déjà connecté, mais il
+         lui manque son organisation. C'est le cas qui passait à travers.
+     Dans le second cas, redemander un mot de passe n'a pas de sens : on
+     préremplit ce qui est connu et on laisse le champ facultatif. */
+  const completion = Boolean(String(session.nom || "").trim());
+  const [nom, setNom] = useState(session.nom || "");
+  const [org, setOrg] = useState(session.org || "");
   const [mdp, setMdp] = useState("");
   const [voir, setVoir] = useState(false);
   const [msg, setMsg] = useState(null);
   const [envoi, setEnvoi] = useState(false);
+
+  const erreurChamps = champsProfilIncomplets({ nom, org });
+  const mdpRequis = !completion;
+  const complet = !erreurChamps && (!mdpRequis ? (!mdp || mdp.length >= 6) : mdp.length >= 6);
+
   const valider = async () => {
-    if (!nom.trim() || !org.trim()) return setMsg("Renseignez votre nom complet et votre organisation.");
-    if (mdp.length < 6) return setMsg("Mot de passe : 6 caractères minimum.");
+    if (erreurChamps) return setMsg(erreurChamps);
+    if (mdpRequis && mdp.length < 6) return setMsg("Mot de passe : 6 caractères minimum.");
+    if (!mdpRequis && mdp && mdp.length < 6) return setMsg("Mot de passe : 6 caractères minimum, ou laissez le champ vide.");
     setEnvoi(true); setMsg(null);
     const profil = { nom: nom.trim(), org: org.trim() };
-    let { error: e1 } = await sb.auth.updateUser({ password: mdp, data: profil });
+    /* La table « profiles » est écrite EN PREMIER, et c'est délibéré : c'est
+       elle que l'application relit pour décider si le profil est complet.
+       Écrite après « updateUser », toute relecture déclenchée entre-temps
+       voyait encore l'ancienne ligne et renvoyait l'utilisateur sur ce même
+       écran. L'ordre à lui seul ne suffit pas — l'événement USER_UPDATED est
+       aussi ignoré, voir onAuthStateChange — mais il supprime la fenêtre. */
+    /* « .select() » fait renvoyer les lignes réellement modifiées. Sans lui,
+       PostgREST répond 204 aussi bien quand l'écriture a eu lieu que quand une
+       politique RLS l'a écartée : on laisserait alors entrer quelqu'un dont le
+       profil est resté vide, et l'écran reviendrait à la connexion suivante
+       sans que rien n'ait signalé l'échec. */
+    const { data: ecrit, error: e2 } = await sb.from("profiles")
+      .update(profil).eq("id", session.id).select("id");
+    // Le mot de passe n'est envoyé que s'il a été saisi.
+    let { error: e1 } = await sb.auth.updateUser(mdp ? { password: mdp, data: profil } : { data: profil });
     /* Cas fréquent, et jusqu'ici bloquant : l'invité saisit le mot de passe
        qu'il utilise DÉJÀ. Supabase refuse alors la mise à jour entière —
        profil compris — et l'écran restait fermé sur un message anglais.
@@ -1083,35 +1135,55 @@ function EcranFinalisation({ session, surTermine }) {
       const r = await sb.auth.updateUser({ data: profil });
       e1 = r.error;
     }
-    const { error: e2 } = await sb.from("profiles").update(profil).eq("id", session.id);
     setEnvoi(false);
     if (e1 || e2) return setMsg(messageAuth(e1 || e2, "Enregistrement impossible."));
+    if (!ecrit || !ecrit.length) {
+      return setMsg("Le profil n'a pas pu être enregistré : la base a refusé l'écriture. "
+        + "Signalez-le à l'administrateur lead, votre compte reste en l'état.");
+    }
     surTermine(profil);
   };
   return (
     <CadreAccueil enfants={
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-7 page-anim">
-        <div className="flex items-center gap-2 font-bold text-stone-900"><Icone n="bouclier" t={18} /> Bienvenue !</div>
-        <p className="text-sm text-stone-500 mt-1">Votre invitation est validée ({session.email}). Complétez votre profil et choisissez votre mot de passe pour terminer.</p>
+        <div className="flex items-center gap-2 font-bold text-stone-900"><Icone n="bouclier" t={18} /> {completion ? "Profil à compléter" : "Bienvenue !"}</div>
+        <p className="text-sm text-stone-500 mt-1">
+          {completion
+            ? `Il manque une information à votre profil (${session.email}). L'organisation détermine les projets auxquels vous avez accès : elle ne peut pas rester vide.`
+            : `Votre invitation est validée (${session.email}). Présentez-vous en deux lignes — qui vous êtes, et pour quelle structure — puis choisissez votre mot de passe.`}
+        </p>
         {msg && <div className="mt-3 text-sm rounded-xl px-3.5 py-2.5 bg-red-50 text-red-700 border border-red-200">{msg}</div>}
-        <label className="block text-sm font-semibold text-stone-800 mt-4">Nom complet
-          <input value={nom} onChange={(e) => setNom(e.target.value)} className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
+        {/* « Nom complet » seul ne dit pas DE QUI. Sur un écran ouvert depuis
+            une invitation, à côté d'un champ « Organisation », il se lit aussi
+            bien comme « raison sociale complète ». Le libellé nomme donc la
+            personne, et l'aide donne la forme attendue. */}
+        <label className="block text-sm font-semibold text-stone-800 mt-4">Votre nom et prénom <span className="text-red-500">*</span>
+          <input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Ex. KOUAME Adjoua Marie"
+            className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
+          <span className="block text-xs font-normal text-stone-400 mt-1">Le nom de la personne qui utilisera ce compte. Il apparaîtra dans la liste des utilisateurs.</span>
         </label>
-        <label className="block text-sm font-semibold text-stone-800 mt-4">Organisation <span className="font-normal text-stone-400">(entreprise / cabinet)</span>
-          <input value={org} onChange={(e) => setOrg(e.target.value)} className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
+        <label className="block text-sm font-semibold text-stone-800 mt-4">Votre organisation <span className="text-red-500">*</span> <span className="font-normal text-stone-400">(entreprise / cabinet)</span>
+          <input value={org} onChange={(e) => setOrg(e.target.value)} placeholder="Ex. FDFP, ou nom de votre entreprise"
+            className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
+          <span className="block text-xs font-normal text-stone-400 mt-1">Elle fixe le périmètre des projets que vous verrez. Seul l'administrateur lead pourra la corriger ensuite.</span>
         </label>
-        <label className="block text-sm font-semibold text-stone-800 mt-4">Mot de passe <span className="font-normal text-stone-400">(6 caractères min.)</span>
+        <label className="block text-sm font-semibold text-stone-800 mt-4">Mot de passe {mdpRequis
+          ? <><span className="text-red-500">*</span> <span className="font-normal text-stone-400">(6 caractères min.)</span></>
+          : <span className="font-normal text-stone-400">(laissez vide pour conserver le vôtre)</span>}
           <div className="relative mt-1.5">
             <input type={voir ? "text" : "password"} value={mdp} onChange={(e) => setMdp(e.target.value)}
               className="w-full border border-stone-300 rounded-xl px-3.5 py-2.5 pr-12 font-normal outline-none focus:border-sky-600" />
-            <button type="button" onClick={() => setVoir(!voir)} tabIndex={-1} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700">
+            <button type="button" onClick={() => setVoir(!voir)} tabIndex={-1}
+              title={voir ? "Masquer le mot de passe" : "Afficher le mot de passe"} aria-label={voir ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700">
               {voir ? <Icone n="oeilBarre" t={19} /> : <Icone n="oeil" t={19} />}
             </button>
           </div>
         </label>
-        <button onClick={valider} disabled={envoi}
-          className="w-full mt-6 text-white font-semibold py-3 rounded-xl disabled:opacity-60" style={{ background: C.vertFonce }}>
-          {envoi ? "Un instant…" : "Terminer et accéder à la plateforme"}
+        {erreurChamps && <p className="text-xs text-amber-700 mt-3">{erreurChamps}</p>}
+        <button onClick={valider} disabled={envoi || !complet}
+          className="w-full mt-6 text-white font-semibold py-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed" style={{ background: C.vertFonce }}>
+          {envoi ? "Un instant…" : completion ? "Enregistrer et accéder à la plateforme" : "Terminer et accéder à la plateforme"}
         </button>
       </div>
     } />
@@ -1180,7 +1252,8 @@ function EcranConnexion() {
     if (error) setMsg({ type: "erreur", txt: messageAuth(error) });
   };
   const creer = async () => {
-    if (!nom.trim() || !org.trim()) return setMsg({ type: "erreur", txt: "Renseignez votre nom complet et votre organisation." });
+    const manque = champsProfilIncomplets({ nom, org, email });
+    if (manque) return setMsg({ type: "erreur", txt: manque });
     if (mdp.length < 6) return setMsg({ type: "erreur", txt: "Mot de passe : 6 caractères minimum." });
     setEnvoi(true); setMsg(null);
     const { error } = await sb.auth.signUp({ email: email.trim(), password: mdp, options: { data: { nom: nom.trim(), org: org.trim() } } });
@@ -1191,14 +1264,23 @@ function EcranConnexion() {
   };
   // La touche Entrée valide l'action de l'onglet courant, quel qu'il soit.
   const valider = () => (onglet === "connexion" ? connecter() : onglet === "creation" ? creer() : reinitialiser());
-  const champ = (label, type, val, set, aide) => (
-    <label key={label} className="block text-sm font-semibold text-stone-800 mt-4">{label}{aide && <span className="font-normal text-stone-400"> {aide}</span>}
+  const champ = (label, type, val, set, aide, requis, sous) => (
+    <label key={label} className="block text-sm font-semibold text-stone-800 mt-4">
+      {label}{requis && <span className="text-red-500"> *</span>}{aide && <span className="font-normal text-stone-400"> {aide}</span>}
       <input type={type} value={val} onChange={(e) => set(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && valider()}
         className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
+      {sous && <span className="block text-xs font-normal text-stone-400 mt-1">{sous}</span>}
     </label>
   );
   const oubli = onglet === "oubli";
+  /* Tous les champs sont obligatoires à la création : le bouton reste éteint
+     tant qu'il en manque un. Un bouton actif qui refuse au clic oblige à
+     deviner ce qui cloche ; un bouton éteint accompagné de la phrase qui
+     manque le dit d'avance. Le contrôle est refait dans « creer » — un bouton
+     désactivé n'est pas une validation, la touche Entrée y échappe. */
+  const manqueCreation = onglet === "creation" ? champsProfilIncomplets({ nom, org, email }) : null;
+  const creationPrete = !manqueCreation && mdp.length >= 6;
   return (
     <CadreAccueil enfants={
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-7 page-anim">
@@ -1222,12 +1304,14 @@ function EcranConnexion() {
         )}
         {msg && <div className={`mt-4 text-sm rounded-xl px-3.5 py-2.5 ${msg.type === "erreur" ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-800 border border-emerald-200"}`}>{msg.txt}</div>}
         {onglet === "creation" && <>
-          {champ("Nom complet", "text", nom, setNom)}
-          {champ("Organisation", "text", org, setOrg, "(entreprise / cabinet)")}
+          {champ("Votre nom et prénom", "text", nom, setNom, null, true,
+            "Le nom de la personne qui utilisera ce compte.")}
+          {champ("Votre organisation", "text", org, setOrg, "(entreprise / cabinet)", true,
+            "Elle fixe le périmètre des projets que vous verrez. Seul l'administrateur lead pourra la corriger ensuite.")}
         </>}
-        {champ("Email professionnel", "email", email, setEmail)}
+        {champ("Email professionnel", "email", email, setEmail, null, onglet === "creation")}
         {!oubli && (
-          <label className="block text-sm font-semibold text-stone-800 mt-4">Mot de passe{onglet === "creation" && <span className="font-normal text-stone-400"> (6 caractères min.)</span>}
+          <label className="block text-sm font-semibold text-stone-800 mt-4">Mot de passe{onglet === "creation" && <><span className="text-red-500"> *</span><span className="font-normal text-stone-400"> (6 caractères min.)</span></>}
             <div className="relative mt-1.5">
               <input type={voirMdp ? "text" : "password"} value={mdp} onChange={(e) => setMdp(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && valider()}
@@ -1246,8 +1330,11 @@ function EcranConnexion() {
               className="text-xs font-medium hover:underline" style={{ color: C.vert }}>Mot de passe oublié ?</button>
           </div>
         )}
-        <button onClick={valider} disabled={envoi}
-          className="w-full mt-6 text-white font-semibold py-3 rounded-xl disabled:opacity-60" style={{ background: C.vertFonce }}>
+        {onglet === "creation" && (manqueCreation
+          ? <p className="text-xs text-amber-700 mt-3">{manqueCreation}</p>
+          : mdp.length < 6 && <p className="text-xs text-amber-700 mt-3">Mot de passe : 6 caractères minimum.</p>)}
+        <button onClick={valider} disabled={envoi || (onglet === "creation" && !creationPrete)}
+          className="w-full mt-6 text-white font-semibold py-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed" style={{ background: C.vertFonce }}>
           {envoi ? "Un instant…" : oubli ? "Envoyer le lien de réinitialisation" : onglet === "connexion" ? "Se connecter" : "Créer le compte"}
         </button>
         {oubli && (
@@ -1613,7 +1700,16 @@ export default function MipPpaApp() {
       const org = eP ? (memeCompte ? avant.org : "") : (p?.org || "");
       const neuf = {
         id: utilisateur.id, email: utilisateur.email, nom, org, role,
-        aFinaliser: eP ? (memeCompte ? avant.aFinaliser : false) : !(p && p.nom),
+        /* Un profil est incomplet s'il manque le nom OU l'organisation.
+           La condition ne portait que sur le nom : un compte nommé mais sans
+           organisation entrait donc directement dans l'application, et rien
+           ne le rattachait à une structure. Or « org » commande la visibilité
+           des projets (« mon_org() » → « peut_voir_projet() ») : un compte sans
+           organisation est un compte dont le périmètre n'est pas défini.
+           Corrigé ici plutôt qu'en base : la vérification s'applique aux
+           comptes DÉJÀ créés, sans migration, dès leur prochaine connexion. */
+        aFinaliser: eP ? (memeCompte ? avant.aFinaliser : false)
+          : !(p && String(p.nom || "").trim() && String(p.org || "").trim()),
       };
       // Référence conservée si rien n'a bougé : pas de rendu inutile.
       if (avant && ["id", "email", "nom", "org", "role", "aFinaliser"].every((k) => avant[k] === neuf[k])) return avant;
@@ -1630,7 +1726,21 @@ export default function MipPpaApp() {
        Le traiter comme une reconnexion relançait le chargement complet des
        données et recréait l'abonnement temps réel, plusieurs fois par heure. */
     const { data: abo } = sb.auth.onAuthStateChange((ev, s) => {
-      if (ev === "TOKEN_REFRESHED" || ev === "INITIAL_SESSION") return;
+      /* « USER_UPDATED » est ignoré au même titre que « TOKEN_REFRESHED », et
+         pour une raison précise : il survient dès que l'application appelle
+         « updateUser », donc au beau milieu d'une opération qu'elle est en
+         train de faire. Elle sait déjà ce qu'elle vient de changer.
+
+         C'est ce qui bloquait l'écran de finalisation. La séquence était :
+           1. updateUser(...) réussit et émet USER_UPDATED ;
+           2. l'événement relance chargerProfil, qui relit « profiles » ;
+           3. cette lecture part AVANT que la ligne « profiles » n'ait été
+              écrite, et rend donc l'ancien profil, sans nom ni organisation ;
+           4. surTermine pose aFinaliser: false ;
+           5. la lecture de l'étape 3 arrive après et repose aFinaliser: true.
+         L'utilisateur remplissait le formulaire et le voyait revenir vide,
+         sans message d'erreur : l'enregistrement avait pourtant réussi. */
+      if (ev === "TOKEN_REFRESHED" || ev === "INITIAL_SESSION" || ev === "USER_UPDATED") return;
       if (ev === "SIGNED_OUT") { setSession(null); setRecuperationMdp(false); setChargementAuth(false); return; }
       /* Retour d'un lien « mot de passe oublié ». Supabase a déjà ouvert une
          session à partir du jeton contenu dans le fragment de l'URL : c'est
@@ -1654,6 +1764,34 @@ export default function MipPpaApp() {
     const { data: roles } = await sb.from("user_roles").select("*");
     setComptes((profils || []).map((p) => ({ id: p.id, email: p.email, nom: p.nom || p.email, org: p.org || "Non renseignée", role: (roles || []).find((r) => r.user_id === p.id)?.role || "En attente d'activation" })));
   };
+  /* Corriger l'organisation d'un compte. Réservé à l'administrateur lead — et
+     pas seulement par l'interface : le déclencheur « profils_geler_org » de la
+     phase 3 fige « org » dès qu'il est renseigné, en ménageant une exception
+     pour « est_admin_lead() ». C'est ce qui permet cette correction sans
+     rouvrir la porte à l'escalade de périmètre qu'il ferme.
+     Corriger vaut mieux que supprimer : le compte garde son identifiant, son
+     rôle, son historique, et la personne n'a rien à refaire. */
+  const corrigerOrganisation = async (compte) => {
+    const saisie = window.prompt(
+      `Organisation de ${compte.nom} (${compte.email}).\n\n`
+      + `Elle fixe le périmètre des projets visibles par ce compte : `
+      + `une valeur erronée lui montrerait le portefeuille d'un tiers.`,
+      compte.org === "Non renseignée" ? "" : compte.org);
+    if (saisie === null) return;                       // annulé
+    const org = saisie.trim();
+    if (org.length < 2) { notif("Organisation : 2 caractères au minimum."); return; }
+    if (org === compte.org) return;
+    const { error } = await sb.from("profiles").update({ org }).eq("id", compte.id);
+    if (error) {
+      notif(/42501|ne peut plus/i.test(error.message || "")
+        ? "Refusé par la base : seul l'administrateur lead peut modifier une organisation déjà renseignée."
+        : "Échec : " + error.message);
+      return;
+    }
+    notif(`Organisation de ${compte.nom} : « ${org} »`);
+    chargerComptes();
+  };
+
   const attribuerRole = async (userId, role) => {
     const { error } = await sb.from("user_roles").update({ role }).eq("user_id", userId);
     if (error) { notif("Échec : " + error.message); return; }
@@ -2635,17 +2773,16 @@ export default function MipPpaApp() {
     /* Calendrier du projet. La fiche circule seule, souvent imprimée : sans
        cette ligne, un lecteur ne sait pas si le « M+12 » qu'il a sous les yeux
        est attendu le mois prochain ou l'an dernier. Posée par « ligne() »
-       comme les deux precedentes, donc decoupee si elle deborde : la variante
-       la plus longue mesuree — deux dates, la duree et la mention des jalons —
-       tient en 121 mm pour 178 mm utiles, mais un libelle de statut renomme
-       peut la faire grandir. */
+       comme les deux précédentes, donc découpée si elle déborde.
+       Accentuée comme ses voisines : « nettoyerPdf » ne translittère plus les
+       accents, et les polices standard de jsPDF les rendent parfaitement. */
     if (estDateISO(f.dateDebut) || estDateISO(f.dateFin)) {
       const duree = dureeLisible(f.dateDebut, f.dateFin);
       ligne(estDateISO(f.dateDebut) && estDateISO(f.dateFin)
-        ? `Periode : du ${fmtDateFr(f.dateDebut)} au ${fmtDateFr(f.dateFin)}${duree ? `  -  duree : ${duree}` : ""}`
+        ? `Période : du ${fmtDateFr(f.dateDebut)} au ${fmtDateFr(f.dateFin)}${duree ? `  -  durée : ${duree}` : ""}`
         : estDateISO(f.dateDebut)
-          ? `Lancement le ${fmtDateFr(f.dateDebut)}  -  fin non renseignee`
-          : `Fin le ${fmtDateFr(f.dateFin)}  -  lancement non renseigne`);
+          ? `Lancement le ${fmtDateFr(f.dateDebut)}  -  fin non renseignée`
+          : `Fin le ${fmtDateFr(f.dateFin)}  -  lancement non renseigné`);
     }
     y += 3.5;
 
@@ -4646,9 +4783,20 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                       <div className="w-10 h-10 rounded-full text-white flex items-center justify-center text-sm font-semibold" style={{ background: u.role === "En attente d'activation" ? "#a8a29e" : C.vert }}>
                         {u.nom.split(" ").map((m) => m[0]).slice(0, 2).join("").toUpperCase()}
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <div className="font-semibold break-words">{u.nom} {session?.id === u.id && <span className="text-xs font-normal text-stone-400">(vous)</span>}</div>
-                        <div className="text-sm text-stone-500 break-words">{u.email} · {u.org}</div>
+                        <div className="text-sm text-stone-500 break-words">
+                          {u.email} ·{" "}
+                          {/* Une organisation absente est signalée, pas noyée
+                              dans la ligne : c'est elle qui décide de ce que
+                              le compte voit. */}
+                          <span className={u.org === "Non renseignée" ? "text-amber-700 font-semibold" : ""}>{u.org}</span>
+                          {roleActif === "Administrateur lead" && (
+                            <button onClick={() => corrigerOrganisation(u)}
+                              title="Corriger l'organisation de ce compte."
+                              className="ml-1.5 text-xs font-medium hover:underline" style={{ color: C.vert }}>modifier</button>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
