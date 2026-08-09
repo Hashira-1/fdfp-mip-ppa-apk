@@ -267,13 +267,27 @@ export const PERMS = {
   "Administrateur FDFP":     { pages: ["dashboard", "formations", "evaluation", "suivi", "indicateurs", "alertes", "exports", "guide"],          evalDims: "toutes", creerFormation: true,  editerFormation: true,  supprimerFormation: false, referentiel: true,  secteurs: false, users: false, fichePdf: true,  exportXlsx: true,  exportCsv: true,  sauvegarde: true,  suivisJalons: "tous", suiviValider: true,  portee: "tous" },
   "Agent FDFP":              { pages: ["dashboard", "formations", "evaluation", "suivi", "indicateurs", "alertes", "exports", "guide"],          evalDims: "toutes", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, fichePdf: true,  exportXlsx: true,  exportCsv: true,  sauvegarde: false,  suivisJalons: "tous", suiviValider: true,  portee: "tous" },
   "Promoteur":               { pages: ["dashboard", "formations", "evaluation", "suivi", "exports", "guide"],                          evalDims: "aucune", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, fichePdf: true,  exportXlsx: false, exportCsv: true, sauvegarde: false,  suivisJalons: "tous", suiviValider: false, portee: "entreprise", lectureSeule: true },
-  /* « exports » a été rendue accessible à l'Opérateur : il portait
-     « exportCsv: true » sans avoir la page où se trouve le bouton, si bien que
-     le droit ne s'exerçait nulle part. La page reste cloisonnée section par
-     section — le classeur Excel dépend d'« exportXlsx » et la sauvegarde de
-     « sauvegarde », tous deux à false ici : l'Opérateur n'y voit que le CSV
-     de ses propres projets. */
-  "Opérateur":               { pages: ["dashboard", "formations", "evaluation", "suivi", "exports", "guide"],                          evalDims: "aucune", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, fichePdf: false, exportXlsx: false, exportCsv: true, sauvegarde: false, suivisJalons: "tous", suiviValider: false, portee: "entreprise", lectureSeule: true },
+  /* OPÉRATEUR — aligné sur le Promoteur, fiche PDF comprise.
+     Deux corrections successives, et la seconde explique la première.
+     1. Il portait « exportCsv: true » sans avoir la page « exports » : le
+        droit ne s'exerçait nulle part.
+     2. Il gardait « fichePdf: false » alors que le CSV lui donnait DÉJÀ les
+        mêmes chiffres — score par dimension, score global, niveau. La
+        restriction ne protégeait donc aucune information, elle retirait
+        seulement la mise en forme. Or l'opérateur est JUGÉ par cette fiche :
+        la dimension « Efficacité pédagogique » pèse 25 % du modèle et ses six
+        indicateurs portent sur son travail. L'évaluer sans lui donner accès à
+        l'évaluation ne se défend pas.
+     Le périmètre reste borné par « portee: entreprise », qui ne rend que les
+     projets dont son organisation est promoteur OU opérateur.
+
+     Conséquence assumée : Promoteur et Opérateur portent désormais des droits
+     RIGOUREUSEMENT identiques. Le cloisonnement ne passe pas par le rôle mais
+     par l'organisation ; le rôle documente qui est la personne. Les deux
+     entrées restent distinctes pour que la matrice puisse diverger plus tard —
+     notamment si l'opérateur devait un jour saisir la seule dimension
+     pédagogique, ce qui supposerait de rouvrir l'écriture côté RLS. */
+  "Opérateur":               { pages: ["dashboard", "formations", "evaluation", "suivi", "exports", "guide"],                          evalDims: "aucune", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, fichePdf: true,  exportXlsx: false, exportCsv: true, sauvegarde: false, suivisJalons: "tous", suiviValider: false, portee: "entreprise", lectureSeule: true },
   "En attente d'activation": { pages: ["guide"], evalDims: null, creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, fichePdf: false, exportXlsx: false, exportCsv: false, sauvegarde: false, suivisJalons: "aucun", suiviValider: false, portee: "aucune" },
 };
 

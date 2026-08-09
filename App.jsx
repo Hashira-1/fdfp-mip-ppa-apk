@@ -4743,28 +4743,93 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
               <h2 className="text-3xl font-bold mt-3">Bienvenue sur MIP-PPA</h2>
               <p className="mt-2 text-sky-100">Ce guide est conçu pour <b>tout public</b> : agents du FDFP, référents en entreprise, formateurs. Aucune connaissance technique n'est requise (prise en main ≈ 10 minutes).</p>
             </section>
-            {(P.lectureSeule ? [
-              ["1. Votre accès en consultation", "Votre profil (" + roleActif + ") vous donne un accès en lecture seule aux projets dont votre organisation est promoteur ou opérateur. Vous consultez les évaluations, les suivis et les documents, sans pouvoir les modifier : la saisie est assurée par les équipes du FDFP."],
-              ["2. Tableau de bord", "Vue d'ensemble de vos projets : nombre d'apprenants, score moyen MIP, radar des 5 dimensions, comparaison par secteur. Les chiffres sont recalculés en continu à partir des évaluations saisies par le FDFP."],
-              ["3. Lire une évaluation", "Ouvrez un projet depuis la page Projets pour consulter sa fiche : score global (0-100 %), niveau (Insuffisant / En développement / Satisfaisant / Excellent), détail des 5 dimensions et des 23 indicateurs notés de 0 à 4."],
-              ["4. Suivi post-formation", "Chaque projet comporte 3 jalons (M+3, M+6, M+12) : vous suivez leur état (programmé, effectué, en retard), lisez les observations de terrain et consultez les documents joints en cliquant dessus (visionneuse plein écran)."],
-              ["5. Exports", "Le bouton Fiche PDF génère la fiche officielle d'évaluation d'un projet (avec les images et PDF joints en annexe) ; l'export Excel produit la synthèse de vos projets. Ces documents sont partageables en interne."],
-              ["6. Besoin d'une correction ?", "Si une information vous semble inexacte (score, échéance, document), contactez votre interlocuteur FDFP ou l'administrateur de la plateforme : lui seul peut modifier les données."],
-            ] : [
-              ["1. Démarrer", "Créez votre compte : organisation, email professionnel et mot de passe, les trois obligatoires. L'organisation fixe le périmètre des projets que vous verrez ; seul l'administrateur lead pourra la corriger ensuite. Attendez l'activation par l'administrateur lead qui vous attribue un rôle, puis connectez-vous. Le tout premier compte créé devient automatiquement Administrateur lead. Mot de passe perdu : le lien « Mot de passe oublié ? » de l'écran de connexion envoie un courriel de réinitialisation, valable une heure et utilisable une seule fois. Une fois connecté, le menu du compte permet aussi d'en changer à tout moment."],
-              ["2. Comptes & rôles", "Cinq niveaux d'accès : Administrateur lead (tous les droits, distribue les accès) ; Administrateur FDFP (pilotage global, validation, configuration) ; Agent FDFP (évaluation MIP-PPA, suivis, exports) ; Promoteur (consultation en lecture seule des projets dont son organisation est promoteur ou opérateur, avec fiche PDF et export CSV) ; Opérateur (mêmes projets en lecture seule, avec export CSV). Promoteur et Opérateur ne saisissent rien : l'évaluation est réservée au FDFP, et cette règle est appliquée côté serveur par les politiques RLS, pas seulement par l'interface. Les rôles sont eux aussi protégés côté serveur : aucun utilisateur ne peut s'auto-attribuer un accès."],
-              ["3. Gérer les projets", "Créez un projet de formation de type apprentissage (intitulé, entreprise bénéficiaire, secteur, zone, localité, apprenants, budget FCFA, dates de lancement et de fin), suivez son statut (Planifié / En cours / Terminé), puis cliquez dessus pour ouvrir sa fiche d'évaluation. Les deux dates sont facultatives, mais la date de fin commande les échéances de suivi : renseignez-la dès qu'elle est connue."],
-              ["4. Évaluer (modèle MIP-PPA)", "Le modèle mesure la valeur réelle d'une formation à travers 5 dimensions et 23 indicateurs notés de 0 à 4. Les indicateurs non encore mesurables peuvent rester vides ; le score se calcule automatiquement et l'enregistrement est instantané."],
-              ["5. Suivi à 3, 6 et 12 mois", "Chaque formation déclenche automatiquement 3 points de suivi, comptés à partir de la DATE DE FIN du projet : à 3 mois (transfert des acquis au poste), 6 mois (effets organisationnels mesurables) et 12 mois (pérennité et retour sur investissement). Sans date de fin, ils sont calés sur le jour de la saisie ; la renseigner ensuite recale les échéances, sauf celles des jalons déjà marqués effectués. Les jalons sont regroupés en 4 piles : En retard, À faire sous 14 j, Programmés, Effectués. Ces suivis alimentent directement les dimensions Impact organisationnel et Durabilité des compétences."],
-              ["6. Tableaux de bord & référentiel", "Le tableau de bord offre la vision consolidée (formations, apprenants, score moyen, radar des 5 dimensions, comparaison par secteur). L'administrateur lead peut ajouter, modifier ou supprimer dimensions et indicateurs ; la somme des pondérations doit rester à 100 %. Un bouton permet de restaurer le référentiel MIP-PPA d'origine."],
-              ["7. Alertes", "Quatre événements remontent automatiquement : projets dont le score global est inférieur à 40 % ; suivis post-formation en retard sur leur échéance ; évaluations incomplètes, dont l'échéance est passée alors que des indicateurs restent à noter ; et calendriers incohérents, par exemple une fiche restée « En cours » après sa date de fin."],
-              ["8. Exports PDF & Excel", "PDF : fiche d'évaluation individuelle par formation (comités de pilotage, transmission aux entreprises). Excel : synthèse globale du portefeuille pour le reporting institutionnel."],
-            ]).map(([t, txt]) => (
-              <section key={t} className="bg-white rounded-2xl border border-stone-200 p-6">
-                <h3 className="font-bold mb-2">{t}</h3>
-                <p className="text-sm text-stone-600 leading-relaxed">{txt}</p>
-              </section>
-            ))}
+            {/* ---------- GUIDE CONSTRUIT À PARTIR DES DROITS ----------
+                Il existait deux textes figés — « lecture seule » et « le
+                reste » — et les deux mentaient. Le premier annonçait un export
+                Excel que ni le promoteur ni l'opérateur ne possèdent, et un
+                palier « En développement » qui n'existe plus depuis que
+                l'échelle dit « Moyen ». Le second, servi indistinctement à
+                trois rôles, disait « Créez un projet » à l'agent FDFP, qui ne
+                le peut pas.
+
+                Un guide qui décrit des boutons absents est pire qu'un guide
+                absent : le lecteur croit avoir mal cherché. Chaque rubrique
+                est donc conditionnée par le droit qu'elle décrit, et la
+                numérotation se calcule à l'affichage plutôt que d'être écrite
+                dans les titres — sans quoi masquer une rubrique laisserait un
+                trou dans la suite des numéros. */}
+            {(() => {
+              const g = [];
+              const listeDroits = (paires) => paires.filter(([ok]) => ok).map(([, txt]) => txt);
+
+              g.push(["Votre accès", `Votre profil est « ${roleActif} ». `
+                + (P.portee === "entreprise"
+                  ? "Vous voyez les projets dont votre organisation est promoteur ou opérateur, et eux seuls. "
+                  : "Vous voyez l'ensemble du portefeuille. ")
+                + (P.lectureSeule
+                  ? "Votre accès est en consultation : la saisie et l'évaluation sont assurées par les équipes du FDFP. Cette règle est appliquée par la base de données elle-même, pas seulement par les boutons de l'écran."
+                  : "Vous pouvez saisir et faire évoluer les données selon les droits attachés à votre rôle.")
+                + " Pour changer de mot de passe, ouvrez le menu de votre compte, en haut à droite : c'est immédiat et sans email."]);
+
+              if ((P.pages || []).includes("dashboard")) {
+                g.push(["Tableau de bord", "Vue d'ensemble : nombre de projets et d'apprenants, budget engagé, score moyen MIP, radar des 5 dimensions, comparaison par secteur et carte d'implantation. Chaque carte est cliquable et ouvre le détail projet par projet."]);
+              }
+
+              if ((P.pages || []).includes("evaluation")) {
+                g.push([P.evalDims === "toutes" ? "Évaluer un projet" : "Lire une évaluation",
+                "Le modèle MIP-PPA mesure la valeur d'un projet par 5 dimensions et 23 indicateurs notés de 0 à 4. "
+                + (P.evalDims === "toutes"
+                  ? "Notez chaque indicateur depuis la fiche du projet ; le score se recalcule et s'enregistre aussitôt. Les indicateurs non encore mesurables peuvent rester vides. "
+                  : "Ouvrez un projet depuis la page Projets pour consulter sa fiche. ")
+                + "Le score global va de 0 à 100 % et se lit sur quatre paliers : Insuffisant (0–40 %), Moyen (40–60 %), Satisfaisant (60–80 %), Excellent (80–100 %). "
+                + "La fiche affiche aussi la COUVERTURE du modèle : un score de 100 % obtenu sur 4 indicateurs sur 23 n'a pas la même portée qu'un score complet, et la mention le dit."]);
+              }
+
+              if (P.creerFormation || P.editerFormation) {
+                g.push(["Gérer les projets", "Créez ou modifiez un projet depuis la page Projets : intitulé, promoteur, opérateur, bénéficiaire, secteur, zone, localité, apprenants, budget en FCFA, statut, et les dates de lancement et de fin. Les deux dates sont facultatives, mais la date de fin commande les échéances de suivi : renseignez-la dès qu'elle est connue."
+                  + (P.supprimerFormation ? " Un projet supprimé part à la corbeille et reste restaurable depuis la page Projets." : "")]);
+              }
+
+              if ((P.pages || []).includes("suivi")) {
+                g.push(["Suivi à 3, 6 et 12 mois", "Chaque projet porte 3 jalons, comptés à partir de sa DATE DE FIN : M+3 (transfert des acquis au poste), M+6 (effets organisationnels), M+12 (pérennité et retour sur investissement). Sans date de fin, ils sont calés sur le jour de la saisie ; la renseigner ensuite recale les échéances, sauf celles des jalons déjà effectués. Les jalons sont regroupés en 4 piles : En retard, À faire sous 14 jours, Programmés, Effectués."
+                  + (P.suiviValider ? " Vous pouvez marquer un jalon effectué, y consigner vos observations et y joindre des documents." : " Vous pouvez lire les observations de terrain et ouvrir les documents joints.")]);
+              }
+
+              if (P.referentiel) {
+                g.push(["Référentiel", "La page Indicateurs expose les 5 dimensions, leurs pondérations et les 23 indicateurs. Vous pouvez les ajouter, les modifier ou les supprimer ; la somme des pondérations doit rester à 100 %. Renommer une dimension, un secteur ou une phase met à jour tous les projets concernés. Un bouton restaure le référentiel MIP-PPA d'origine."
+                  + (P.secteurs ? " Vous gérez également la nomenclature sectorielle." : "")]);
+              }
+
+              if ((P.pages || []).includes("alertes")) {
+                g.push(["Alertes", "Quatre événements remontent automatiquement : projets dont le score global est inférieur à 40 % ; suivis en retard sur leur échéance ; évaluations incomplètes, dont l'échéance est passée alors que des indicateurs restent à noter ; et calendriers incohérents, par exemple une fiche restée « En cours » après sa date de fin."]);
+              }
+
+              const sorties = listeDroits([
+                [P.fichePdf, "la fiche d'évaluation d'un projet en PDF, avec ses pièces jointes en annexe"],
+                [P.exportCsv, "les données brutes en CSV, pour une relecture dans un tableur ou un outil statistique"],
+                [P.exportXlsx, "le classeur Excel mis en forme, avec bandeau de certification, colonnes figées et filtres"],
+                [P.sauvegarde, "la sauvegarde complète de la base et sa restauration, ainsi que la reprise d'un ancien classeur"],
+              ]);
+              if (sorties.length) {
+                g.push(["Exports", "Depuis la page Exports, vous pouvez produire : " + sorties.join(" ; ") + ". "
+                  + "Les exports portent toujours sur l'ensemble des projets qui vous sont visibles, jamais sur le résultat d'un filtre d'écran : un export est un livrable, il ne doit pas dépendre de l'état de votre recherche."]);
+              }
+
+              if (P.users) {
+                g.push(["Utilisateurs & rôles", "La page Utilisateurs liste les comptes et permet d'attribuer un rôle. Un compte sans rôle n'a aucun accès. Vous pouvez aussi corriger l'organisation d'un compte : c'est elle qui fixe le périmètre des projets qu'il verra. Les rôles sont protégés côté serveur : aucun utilisateur ne peut s'auto-attribuer un accès."]);
+              }
+
+              if (P.lectureSeule) {
+                g.push(["Une information vous semble inexacte ?", "Score, échéance, document : contactez votre interlocuteur FDFP ou l'administrateur de la plateforme. Seules les équipes du FDFP peuvent modifier les données d'évaluation."]);
+              }
+
+              return g.map(([t, txt], i) => (
+                <section key={t} className="bg-white rounded-2xl border border-stone-200 p-6">
+                  <h3 className="font-bold mb-2">{i + 1}. {t}</h3>
+                  <p className="text-sm text-stone-600 leading-relaxed">{txt}</p>
+                </section>
+              ));
+            })()}
           </>)}
 
           {/* =========== UTILISATEURS & RÔLES =========== */}
