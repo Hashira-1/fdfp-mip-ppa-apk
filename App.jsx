@@ -180,18 +180,35 @@ function messageAuth(error, defaut) {
    D'où un contrôle réel, et le même des deux côtés. */
 const EMAIL_VALIDE = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
 
-function champsProfilIncomplets({ nom, org, email }) {
-  const n = String(nom || "").trim(), o = String(org || "").trim();
+function champsProfilIncomplets({ org, email }) {
+  const o = String(org || "").trim();
   if (email !== undefined) {
     const e = String(email || "").trim();
     if (!e) return "Renseignez votre email professionnel.";
     if (!EMAIL_VALIDE.test(e)) return "Cette adresse email n'est pas valide.";
   }
-  if (!n) return "Renseignez votre nom complet.";
-  if (n.length < 3) return "Le nom complet doit comporter au moins 3 caractères.";
   if (!o) return "Renseignez votre organisation : elle détermine les projets auxquels vous aurez accès.";
   if (o.length < 2) return "L'organisation doit comporter au moins 2 caractères.";
   return null;
+}
+
+/* Nom d'affichage, déduit de l'adresse email.
+   ---------------------------------------------------------------------------
+   Le formulaire ne demande plus de nom : l'email suffit à identifier un compte,
+   et un champ de moins est un champ de moins à remplir. Mais l'application
+   affiche un nom à plusieurs endroits — initiales de l'avatar, liste des
+   utilisateurs, accueil de l'écran d'attente — et « (?) » partout serait pire
+   que le champ supprimé. On dérive donc un libellé lisible de la partie locale
+   de l'adresse : « adjoua.kouame@fdfp.ci » devient « Adjoua Kouame ».
+   Ce n'est qu'un affichage. L'administrateur lead peut le corriger, comme il
+   corrige déjà l'organisation. */
+function nomDepuisEmail(email) {
+  const local = String(email || "").split("@")[0];
+  if (!local) return "Utilisateur";
+  const mots = local.replace(/[._-]+/g, " ").trim().split(/\s+/)
+    .map((m) => (m ? m[0].toUpperCase() + m.slice(1) : ""))
+    .filter(Boolean);
+  return mots.join(" ") || "Utilisateur";
 }
 
 function lireStock(cle, defaut) {
@@ -1086,20 +1103,21 @@ function EcranAttente({ session, surActualiser, surDeconnexion }) {
 
 function EcranFinalisation({ session, surTermine }) {
   /* Deux situations aboutissent ici, et l'écran doit servir les deux :
-       - une INVITATION : le compte n'a encore ni nom ni mot de passe ;
+       - une INVITATION : le compte n'a pas encore de mot de passe choisi ;
        - un PROFIL INCOMPLET : le compte existe, s'est déjà connecté, mais il
          lui manque son organisation. C'est le cas qui passait à travers.
      Dans le second cas, redemander un mot de passe n'a pas de sens : on
-     préremplit ce qui est connu et on laisse le champ facultatif. */
-  const completion = Boolean(String(session.nom || "").trim());
-  const [nom, setNom] = useState(session.nom || "");
+     préremplit ce qui est connu et on laisse le champ facultatif.
+     Le nom n'est plus demandé : il est déduit de l'adresse email. */
+  const completion = Boolean(String(session.org || "").trim()) || Boolean(String(session.nom || "").trim());
+  const nom = String(session.nom || "").trim() || nomDepuisEmail(session.email);
   const [org, setOrg] = useState(session.org || "");
   const [mdp, setMdp] = useState("");
   const [voir, setVoir] = useState(false);
   const [msg, setMsg] = useState(null);
   const [envoi, setEnvoi] = useState(false);
 
-  const erreurChamps = champsProfilIncomplets({ nom, org });
+  const erreurChamps = champsProfilIncomplets({ org });
   const mdpRequis = !completion;
   const complet = !erreurChamps && (!mdpRequis ? (!mdp || mdp.length >= 6) : mdp.length >= 6);
 
@@ -1108,7 +1126,7 @@ function EcranFinalisation({ session, surTermine }) {
     if (mdpRequis && mdp.length < 6) return setMsg("Mot de passe : 6 caractères minimum.");
     if (!mdpRequis && mdp && mdp.length < 6) return setMsg("Mot de passe : 6 caractères minimum, ou laissez le champ vide.");
     setEnvoi(true); setMsg(null);
-    const profil = { nom: nom.trim(), org: org.trim() };
+    const profil = { nom, org: org.trim() };
     /* La table « profiles » est écrite EN PREMIER, et c'est délibéré : c'est
        elle que l'application relit pour décider si le profil est complet.
        Écrite après « updateUser », toute relecture déclenchée entre-temps
@@ -1150,22 +1168,16 @@ function EcranFinalisation({ session, surTermine }) {
         <p className="text-sm text-stone-500 mt-1">
           {completion
             ? `Il manque une information à votre profil (${session.email}). L'organisation détermine les projets auxquels vous avez accès : elle ne peut pas rester vide.`
-            : `Votre invitation est validée (${session.email}). Présentez-vous en deux lignes — qui vous êtes, et pour quelle structure — puis choisissez votre mot de passe.`}
+            : `Votre invitation est validée (${session.email}). Complétez votre profil et choisissez votre mot de passe pour terminer.`}
         </p>
         {msg && <div className="mt-3 text-sm rounded-xl px-3.5 py-2.5 bg-red-50 text-red-700 border border-red-200">{msg}</div>}
-        {/* « Nom complet » seul ne dit pas DE QUI. Sur un écran ouvert depuis
-            une invitation, à côté d'un champ « Organisation », il se lit aussi
-            bien comme « raison sociale complète ». Le libellé nomme donc la
-            personne, et l'aide donne la forme attendue. */}
-        <label className="block text-sm font-semibold text-stone-800 mt-4">Votre nom et prénom <span className="text-red-500">*</span>
-          <input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Ex. KOUAME Adjoua Marie"
+        {/* Libellés d'origine, volontairement courts. L'astérisque rouge porte
+            à lui seul l'information « obligatoire » : la contrainte est dans la
+            validation et dans le bouton éteint, pas dans une notice sous
+            chaque champ. */}
+        <label className="block text-sm font-semibold text-stone-800 mt-4">Organisation <span className="text-red-500">*</span> <span className="font-normal text-stone-400">(entreprise / cabinet)</span>
+          <input value={org} onChange={(e) => setOrg(e.target.value)}
             className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
-          <span className="block text-xs font-normal text-stone-400 mt-1">Le nom de la personne qui utilisera ce compte. Il apparaîtra dans la liste des utilisateurs.</span>
-        </label>
-        <label className="block text-sm font-semibold text-stone-800 mt-4">Votre organisation <span className="text-red-500">*</span> <span className="font-normal text-stone-400">(entreprise / cabinet)</span>
-          <input value={org} onChange={(e) => setOrg(e.target.value)} placeholder="Ex. FDFP, ou nom de votre entreprise"
-            className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
-          <span className="block text-xs font-normal text-stone-400 mt-1">Elle fixe le périmètre des projets que vous verrez. Seul l'administrateur lead pourra la corriger ensuite.</span>
         </label>
         <label className="block text-sm font-semibold text-stone-800 mt-4">Mot de passe {mdpRequis
           ? <><span className="text-red-500">*</span> <span className="font-normal text-stone-400">(6 caractères min.)</span></>
@@ -1213,7 +1225,6 @@ function EcranConnexion() {
   const [onglet, setOnglet] = useState("connexion");
   const [email, setEmail] = useState("");
   const [mdp, setMdp] = useState("");
-  const [nom, setNom] = useState("");
   const [org, setOrg] = useState("");
   const [msg, setMsg] = useState(null);
   const [voirMdp, setVoirMdp] = useState(false);
@@ -1252,11 +1263,11 @@ function EcranConnexion() {
     if (error) setMsg({ type: "erreur", txt: messageAuth(error) });
   };
   const creer = async () => {
-    const manque = champsProfilIncomplets({ nom, org, email });
+    const manque = champsProfilIncomplets({ org, email });
     if (manque) return setMsg({ type: "erreur", txt: manque });
     if (mdp.length < 6) return setMsg({ type: "erreur", txt: "Mot de passe : 6 caractères minimum." });
     setEnvoi(true); setMsg(null);
-    const { error } = await sb.auth.signUp({ email: email.trim(), password: mdp, options: { data: { nom: nom.trim(), org: org.trim() } } });
+    const { error } = await sb.auth.signUp({ email: email.trim(), password: mdp, options: { data: { nom: nomDepuisEmail(email), org: org.trim() } } });
     setEnvoi(false);
     if (error) return setMsg({ type: "erreur", txt: messageAuth(error) });
     setMsg({ type: "ok", txt: "Compte créé ! Un email de confirmation vient de vous être envoyé : cliquez sur le lien pour vérifier votre adresse, puis revenez vous connecter. L'administrateur lead activera ensuite votre accès." });
@@ -1264,13 +1275,12 @@ function EcranConnexion() {
   };
   // La touche Entrée valide l'action de l'onglet courant, quel qu'il soit.
   const valider = () => (onglet === "connexion" ? connecter() : onglet === "creation" ? creer() : reinitialiser());
-  const champ = (label, type, val, set, aide, requis, sous) => (
+  const champ = (label, type, val, set, aide, requis) => (
     <label key={label} className="block text-sm font-semibold text-stone-800 mt-4">
       {label}{requis && <span className="text-red-500"> *</span>}{aide && <span className="font-normal text-stone-400"> {aide}</span>}
       <input type={type} value={val} onChange={(e) => set(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && valider()}
         className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
-      {sous && <span className="block text-xs font-normal text-stone-400 mt-1">{sous}</span>}
     </label>
   );
   const oubli = onglet === "oubli";
@@ -1279,7 +1289,7 @@ function EcranConnexion() {
      deviner ce qui cloche ; un bouton éteint accompagné de la phrase qui
      manque le dit d'avance. Le contrôle est refait dans « creer » — un bouton
      désactivé n'est pas une validation, la touche Entrée y échappe. */
-  const manqueCreation = onglet === "creation" ? champsProfilIncomplets({ nom, org, email }) : null;
+  const manqueCreation = onglet === "creation" ? champsProfilIncomplets({ org, email }) : null;
   const creationPrete = !manqueCreation && mdp.length >= 6;
   return (
     <CadreAccueil enfants={
@@ -1303,12 +1313,7 @@ function EcranConnexion() {
           </div>
         )}
         {msg && <div className={`mt-4 text-sm rounded-xl px-3.5 py-2.5 ${msg.type === "erreur" ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-800 border border-emerald-200"}`}>{msg.txt}</div>}
-        {onglet === "creation" && <>
-          {champ("Votre nom et prénom", "text", nom, setNom, null, true,
-            "Le nom de la personne qui utilisera ce compte.")}
-          {champ("Votre organisation", "text", org, setOrg, "(entreprise / cabinet)", true,
-            "Elle fixe le périmètre des projets que vous verrez. Seul l'administrateur lead pourra la corriger ensuite.")}
-        </>}
+        {onglet === "creation" && champ("Organisation", "text", org, setOrg, "(entreprise / cabinet)", true)}
         {champ("Email professionnel", "email", email, setEmail, null, onglet === "creation")}
         {!oubli && (
           <label className="block text-sm font-semibold text-stone-800 mt-4">Mot de passe{onglet === "creation" && <><span className="text-red-500"> *</span><span className="font-normal text-stone-400"> (6 caractères min.)</span></>}
@@ -1700,16 +1705,18 @@ export default function MipPpaApp() {
       const org = eP ? (memeCompte ? avant.org : "") : (p?.org || "");
       const neuf = {
         id: utilisateur.id, email: utilisateur.email, nom, org, role,
-        /* Un profil est incomplet s'il manque le nom OU l'organisation.
-           La condition ne portait que sur le nom : un compte nommé mais sans
-           organisation entrait donc directement dans l'application, et rien
-           ne le rattachait à une structure. Or « org » commande la visibilité
-           des projets (« mon_org() » → « peut_voir_projet() ») : un compte sans
+        /* Un profil est incomplet tant que l'ORGANISATION manque.
+           La condition portait sur le nom : un compte nommé mais sans
+           organisation entrait donc directement dans l'application, et rien ne
+           le rattachait à une structure. Or « org » commande la visibilité des
+           projets (« mon_org() » → « peut_voir_projet() ») : un compte sans
            organisation est un compte dont le périmètre n'est pas défini.
+           Le nom, lui, ne conditionne plus rien — il n'est plus demandé et se
+           déduit de l'adresse email.
            Corrigé ici plutôt qu'en base : la vérification s'applique aux
            comptes DÉJÀ créés, sans migration, dès leur prochaine connexion. */
         aFinaliser: eP ? (memeCompte ? avant.aFinaliser : false)
-          : !(p && String(p.nom || "").trim() && String(p.org || "").trim()),
+          : !(p && String(p.org || "").trim()),
       };
       // Référence conservée si rien n'a bougé : pas de rendu inutile.
       if (avant && ["id", "email", "nom", "org", "role", "aFinaliser"].every((k) => avant[k] === neuf[k])) return avant;
@@ -4744,7 +4751,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
               ["5. Exports", "Le bouton Fiche PDF génère la fiche officielle d'évaluation d'un projet (avec les images et PDF joints en annexe) ; l'export Excel produit la synthèse de vos projets. Ces documents sont partageables en interne."],
               ["6. Besoin d'une correction ?", "Si une information vous semble inexacte (score, échéance, document), contactez votre interlocuteur FDFP ou l'administrateur de la plateforme : lui seul peut modifier les données."],
             ] : [
-              ["1. Démarrer", "Créez votre compte (nom, organisation, email, mot de passe), attendez l'activation par l'administrateur lead qui vous attribue un rôle, puis connectez-vous. Le tout premier compte créé devient automatiquement Administrateur lead. Mot de passe perdu : le lien « Mot de passe oublié ? » de l'écran de connexion envoie un courriel de réinitialisation, valable une heure et utilisable une seule fois. Une fois connecté, le menu du compte permet aussi d'en changer à tout moment."],
+              ["1. Démarrer", "Créez votre compte : organisation, email professionnel et mot de passe, les trois obligatoires. L'organisation fixe le périmètre des projets que vous verrez ; seul l'administrateur lead pourra la corriger ensuite. Attendez l'activation par l'administrateur lead qui vous attribue un rôle, puis connectez-vous. Le tout premier compte créé devient automatiquement Administrateur lead. Mot de passe perdu : le lien « Mot de passe oublié ? » de l'écran de connexion envoie un courriel de réinitialisation, valable une heure et utilisable une seule fois. Une fois connecté, le menu du compte permet aussi d'en changer à tout moment."],
               ["2. Comptes & rôles", "Cinq niveaux d'accès : Administrateur lead (tous les droits, distribue les accès) ; Administrateur FDFP (pilotage global, validation, configuration) ; Agent FDFP (évaluation MIP-PPA, suivis, exports) ; Promoteur (consultation en lecture seule de l'ensemble du portefeuille) ; Opérateur (saisie des indicateurs pédagogiques et suivi des apprenants). Les rôles sont protégés côté serveur : aucun utilisateur ne peut s'auto-attribuer un accès."],
               ["3. Gérer les projets", "Créez un projet de formation de type apprentissage (intitulé, entreprise bénéficiaire, secteur, zone, localité, apprenants, budget FCFA, dates de lancement et de fin), suivez son statut (Planifié / En cours / Terminé), puis cliquez dessus pour ouvrir sa fiche d'évaluation. Les deux dates sont facultatives, mais la date de fin commande les échéances de suivi : renseignez-la dès qu'elle est connue."],
               ["4. Évaluer (modèle MIP-PPA)", "Le modèle mesure la valeur réelle d'une formation à travers 5 dimensions et 23 indicateurs notés de 0 à 4. Les indicateurs non encore mesurables peuvent rester vides ; le score se calcule automatiquement et l'enregistrement est instantané."],
