@@ -35,7 +35,7 @@ export const REFERENTIEL_DEFAUT = [
     desc: "Acquisition réelle des connaissances et gestes techniques.",
     indicateurs: [
       { id: "EP1", phase: "En fin de formation", label: "Progression moyenne des connaissances théoriques entre le test initial et le test final (cible : ≥ 30 points de pourcentage)" },
-      { id: "EP2", phase: "En fin de formation", label: "Part des apprenants maîtrisant les gestes techniques évalués en situation de travail en fin de formation (cible : ≥ 80 %)" },
+      { id: "EP2", phase: "En fin de formation", label: "Part des apprenants maîtrisant les gestes techniques aux points critiques pour la maîtrise (CCP) du procédé, évalués en situation de travail en fin de formation (cible : ≥ 80 %)" },
       { id: "EP3", phase: "En fin de formation", label: "Taux d'assiduité moyen des apprenants sur la durée totale de la formation (cible : ≥ 90 %)" },
       { id: "EP4", phase: "En fin de formation", label: "Taux de satisfaction des apprenants mesuré par questionnaire en fin de formation (cible : ≥ 80 %)" },
       { id: "EP5", phase: "En fin de formation", label: "Taux de satisfaction des tuteurs en entreprise sur la qualité pédagogique, recueilli en fin de formation (cible : ≥ 80 %)" },
@@ -56,8 +56,8 @@ export const REFERENTIEL_DEFAUT = [
     id: "IO", nom: "Impact organisationnel", poids: 25,
     desc: "Effets mesurables sur la qualité, la productivité et la sécurité.",
     indicateurs: [
-      { id: "IO1", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Réduction du taux de non-conformité qualité sur les postes concernés entre M+0 et M+6 (cible : ≥ 20 %)" },
-      { id: "IO2", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Amélioration de la productivité de la ligne ou du poste concerné entre M+0 et M+6 (cible : ≥ 10 %)" },
+      { id: "IO1", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Réduction du taux de non-conformité qualité et sanitaire (plan HACCP / ISO 22000) sur les postes concernés entre M+0 et M+6 (cible : ≥ 20 %)" },
+      { id: "IO2", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Amélioration de la productivité et du rendement matière de la ligne ou du poste concerné entre M+0 et M+6 (cible : ≥ 10 %)" },
       { id: "IO3", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Réduction du nombre d'accidents et d'incidents de sécurité alimentaire sur les postes concernés entre M+0 et M+12 (cible : ≥ 25 %)" },
       { id: "IO4", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des compétences acquises effectivement mobilisées au poste de travail, constatée par le management à M+3 (cible : ≥ 70 %)" },
       { id: "IO5", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Taux de satisfaction du management sur l'atteinte des objectifs de performance du projet, mesuré à M+6 (cible : ≥ 80 %)" },
@@ -69,7 +69,7 @@ export const REFERENTIEL_DEFAUT = [
     indicateurs: [
       { id: "DC1", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Taux de rétention des apprenants dans l'entreprise mesuré à M+6 (cible : ≥ 80 %)" },
       { id: "DC2", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des apprenants promus ou ayant évolué vers un poste supérieur, mesurée à M+12 (cible : ≥ 30 %)" },
-      { id: "DC3", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des compétences acquises intégrées aux fiches de poste et procédures internes, vérifiée à M+12 (cible : ≥ 50 %)" },
+      { id: "DC3", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des compétences acquises intégrées aux fiches de poste, au plan de maîtrise sanitaire et aux procédures de traçabilité, vérifiée à M+12 (cible : ≥ 50 %)" },
       { id: "DC4", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des apprenants appliquant les pratiques apprises sans supervision, constatée par observation à M+6 puis M+12 (cible : ≥ 70 %)" },
     ],
   },
