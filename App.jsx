@@ -40,7 +40,7 @@ import { nettoyerPdf } from "./pdf.js";
    ils ne servent qu'à dessiner, sur deux écrans. Voir « useTraces ». */
 
 /* ================================================================
-   FDFP · MIP-PPA — Suivi des projets de formation de type apprentissage dans l'agro-industrie
+   FDFP · MIP-PPA — Suivi des projets de formation de type apprentissage dans l'industrie agroalimentaire
    Reconstruction fidèle de l'application (modèle : 5 dimensions,
    23 indicateurs, notes 0–4, suivi post-formation à 3/6/12 mois)
    ================================================================ */
@@ -2793,7 +2793,7 @@ export default function MipPpaApp() {
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(14);
     doc.text(nettoyerPdf("FICHE D'EVALUATION MIP-PPA"), W - M, 13, { align: "right" });
     doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-    doc.text(nettoyerPdf("Projet Apprentissage - Agro-industrie"), W - M, 19, { align: "right" });
+    doc.text(nettoyerPdf("Projet Apprentissage - Industrie agroalimentaire"), W - M, 19, { align: "right" });
     doc.setDrawColor(...orange); doc.setLineWidth(1.6); doc.line(0, 30, W, 30);
     y = 40;
 
