@@ -31,7 +31,7 @@ import {
   libelleSecteur, listeSecteursPlate, nomLibre, ANTENNES_FDFP, IMPLANTATIONS,
   normaliserRegion, LOCALITES_PAR_ZONE, DEP_PAR_LOCALITE, localitesDe,
   localiteParDefaut, normaliserLocalite, PROJET_VIERGE, PERMS, STATUTS_PROJET,
-  normaliserStatut, memeNom,
+  normaliserStatut, memeNom, masqueOrganisations, nomMasque,
 } from "./referentiel.js";
 /* « nettoyerPdf » est la seule partie purement calculatoire de la génération
    de fiches — et la plus délicate. Isolée pour être testée (pdf.test.js). */
@@ -277,6 +277,8 @@ const IC = {
   crayon: <><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></>,
   poubelle: <><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></>,
   fermer: <><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>,
+  oeil: <><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></>,
+  oeilBarre: <><path d="M10.7 5.1A10.5 10.5 0 0 1 12 5c6.5 0 10 7 10 7a18 18 0 0 1-2.4 3.3"/><path d="M6.6 6.6A17.6 17.6 0 0 0 2 12s3.5 7 10 7a10.3 10.3 0 0 0 4.5-1"/><path d="M14.1 14.1a3 3 0 1 1-4.2-4.2"/><line x1="2" x2="22" y1="2" y2="22"/></>,
   plus: <><path d="M5 12h14"/><path d="M12 5v14"/></>,
   fichier: <><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/></>,
   trombone: <><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></>,
@@ -2153,6 +2155,38 @@ export default function MipPpaApp() {
 
   const admin = P.referentiel;
 
+  /* ---------- Masque de présentation des organisations ----------------------
+     Projeter l'application pendant une soutenance, un comité ou une formation
+     expose qui est noté quoi. Ce commutateur remplace les raisons sociales par
+     « Promoteur 1 », « Opérateur 1 », « Bénéficiaire 1 » — les mêmes
+     désignations que le mémoire et la présentation.
+
+     ⚠ CE N'EST PAS UNE ANONYMISATION, et l'interface le dit. Les vrais noms
+     restent dans la base, dans la mémoire du navigateur et dans toute
+     sauvegarde : le masque agit à l'affichage. Il protège d'un regard sur un
+     écran, pas d'une lecture de la base.
+
+     Réservé aux deux rôles d'administration (droit « masqueOrgs »), les seuls
+     qui présentent le portefeuille entier. Le réglage est PERSONNEL et local
+     au navigateur : il ne change rien pour les autres sessions, et l'interface
+     ne laisse donc croire à personne qu'il masque quelque chose pour autrui.
+
+     Le masque est construit sur « formations » et non sur les seuls projets
+     visibles : les numéros ne doivent pas changer quand un filtre se pose. */
+  const [masquerOrgs, setMasquerOrgs] = useState(() => {
+    try { return localStorage.getItem("mip-ppa-masquer-orgs") === "1"; } catch { return false; }
+  });
+  const masqueActif = masquerOrgs && !!P.masqueOrgs;
+  useEffect(() => {
+    try { localStorage.setItem("mip-ppa-masquer-orgs", masquerOrgs ? "1" : "0"); } catch { /* navigation privée */ }
+  }, [masquerOrgs]);
+  const masqueOrgs = useMemo(
+    () => (masqueActif ? masqueOrganisations(formations) : null), [masqueActif, formations]);
+  /* Un seul point de passage pour l'affichage d'un nom d'organisation. Tout ce
+     qui SERT À FILTRER, à chercher, à comparer ou à écrire en base continue de
+     lire le champ brut : masquer une donnée de travail la casserait. */
+  const orgAff = (nom) => nomMasque(masqueOrgs, nom);
+
   // ---------- Portée des données selon le rôle ----------
   const formationsVisibles = useMemo(() =>
     P.portee === "entreprise"
@@ -2689,7 +2723,7 @@ export default function MipPpaApp() {
   const lignesExport = () => formationsVisibles.map((f) => {
     const g = scoreGlobal(referentiel, f.notes);
     return [
-      f.titre, f.entreprise,
+      f.titre, orgAff(f.entreprise),
       f.secteurGrand || grandSecteurDe(secteurs, f.filiere), f.filiere, f.domaine || "", f.region,
       normaliserLocalite(f.localite, f.region),
       Number(f.apprenants) || 0, Number(f.budget) || 0, f.statut,
@@ -2896,8 +2930,8 @@ export default function MipPpaApp() {
       y += 5.5 * lignes.length;
     };
     const locPdf = normaliserLocalite(f.localite, f.region);
-    ligne(`Promoteur : ${f.entreprise}  -  ${f.filiere}  -  ${f.region}${locPdf ? ` (${locPdf})` : ""}`);
-    if (f.operateur || f.beneficiaire) ligne(`${f.operateur ? "Opérateur : " + f.operateur : ""}${f.operateur && f.beneficiaire ? "  -  " : ""}${f.beneficiaire ? "Bénéficiaire : " + f.beneficiaire : ""}`);
+    ligne(`Promoteur : ${orgAff(f.entreprise)}  -  ${f.filiere}  -  ${f.region}${locPdf ? ` (${locPdf})` : ""}`);
+    if (f.operateur || f.beneficiaire) ligne(`${f.operateur ? "Opérateur : " + orgAff(f.operateur) : ""}${f.operateur && f.beneficiaire ? "  -  " : ""}${f.beneficiaire ? "Bénéficiaire : " + orgAff(f.beneficiaire) : ""}`);
     ligne(`${f.apprenants} apprenants  -  Budget : ${fmtFCFA(f.budget)}  -  Statut : ${f.statut}`);
     /* Calendrier du projet. La fiche circule seule, souvent imprimée : sans
        cette ligne, un lecteur ne sait pas si le « M+12 » qu'il a sous les yeux
@@ -3128,7 +3162,7 @@ export default function MipPpaApp() {
     suivisF.forEach((s) => (s.docs || []).forEach((d) => {
       if (((d.type || "").includes("pdf") || /\.pdf$/i.test(d.nom)) && d.data) pdfsJoints.push({ jalon: s.jalon, d });
     }));
-    const nomFichier = `Fiche_MIP-PPA_${f.entreprise.replace(/\s+/g, "_")}.pdf`;
+    const nomFichier = `Fiche_MIP-PPA_${String(orgAff(f.entreprise)).replace(/\s+/g, "_")}.pdf`;
     const MENTION = "FDFP - Fonds de Développement de la Formation Professionnelle - Modèle MIP-PPA - PFE ESA/INP-HB";
     const LE_JOUR = new Date().toLocaleDateString("fr-FR");
 
@@ -3617,6 +3651,22 @@ export default function MipPpaApp() {
           <div className="bandeau-droite">
             <HorlogeUTC />
             <button onClick={() => setPage("guide")} className="hidden sm:flex text-sm text-stone-600 hover:text-stone-900 items-center gap-1.5" title="Ouvrir le guide d'utilisation."><Icone n="livre" t={16} /> Guide</button>
+            {/* Masque de présentation, ouvert aux deux rôles d'administration.
+                L'état actif est ANNONCÉ en toutes lettres — un masque qu'on
+                oublie d'avoir posé fait lire de faux noms pendant une réunion
+                de travail. */}
+            {P.masqueOrgs && (
+              <button onClick={() => setMasquerOrgs(!masquerOrgs)}
+                className={`hidden sm:flex items-center gap-1.5 text-sm shrink-0 rounded-lg px-2 py-1 border ${masquerOrgs ? "border-amber-300 bg-amber-50 text-amber-800" : "border-transparent text-stone-500 hover:text-stone-800"}`}
+                title={masquerOrgs
+                  ? "Les organisations sont masquées à l'écran et dans les exports. Cliquer pour réafficher les vrais noms."
+                  : "Masquer les promoteurs, opérateurs et bénéficiaires, à l'écran et dans les exports, pour projeter sans exposer les entreprises."}
+                aria-pressed={masquerOrgs}
+                aria-label={masquerOrgs ? "Réafficher les noms des organisations" : "Masquer les noms des organisations"}>
+                <Icone n={masquerOrgs ? "oeilBarre" : "oeil"} t={17} />
+                <span className="hidden lg:inline">{masquerOrgs ? "Noms masqués" : "Masquer les noms"}</span>
+              </button>
+            )}
             <button onClick={basculerTheme} className="hidden sm:block text-stone-500 hover:text-stone-800 shrink-0" title={sombre ? "Passer en mode éclairé" : "Passer en mode sombre"} aria-label={sombre ? "Passer en mode éclairé" : "Passer en mode sombre"}>
               <Icone n={sombre ? "soleil" : "lune"} t={19} />
             </button>
@@ -3854,7 +3904,7 @@ export default function MipPpaApp() {
                         chasse la pastille hors du bouton sur petit écran. */}
                     <div className="min-w-0">
                       <div className="font-semibold break-words">{f.titre}</div>
-                      <div className="text-sm text-stone-500 break-words">{f.entreprise} · {libelleSecteur(f, secteurs)} · {f.apprenants} apprenants</div>
+                      <div className="text-sm text-stone-500 break-words">{orgAff(f.entreprise)} · {libelleSecteur(f, secteurs)} · {f.apprenants} apprenants</div>
                     </div>
                     <Badge score={scoreGlobal(referentiel, f.notes)} />
                   </button>
@@ -4128,8 +4178,8 @@ export default function MipPpaApp() {
                 <div key={f.id} className="hidden md:grid grid-cols-12 items-center px-5 py-4 border-b border-stone-50 hover:bg-stone-50">
                   <div className="col-span-6 pr-3 min-w-0">
                     <div className="font-semibold break-words">{f.titre}</div>
-                    <div className="text-sm text-stone-500 break-words">Promoteur : {f.entreprise}{f.operateur ? ` · Opérateur : ${f.operateur}` : ""} · {f.region}{normaliserLocalite(f.localite, f.region) ? ` (${normaliserLocalite(f.localite, f.region)})` : ""}</div>
-                    {f.beneficiaire && <div className="text-xs text-stone-400 break-words">Bénéficiaire : {f.beneficiaire}</div>}
+                    <div className="text-sm text-stone-500 break-words">Promoteur : {orgAff(f.entreprise)}{f.operateur ? ` · Opérateur : ${orgAff(f.operateur)}` : ""} · {f.region}{normaliserLocalite(f.localite, f.region) ? ` (${normaliserLocalite(f.localite, f.region)})` : ""}</div>
+                    {f.beneficiaire && <div className="text-xs text-stone-400 break-words">Bénéficiaire : {orgAff(f.beneficiaire)}</div>}
                     <PeriodeProjet projet={f} className="text-xs text-stone-400 break-words" />
                   </div>
                   <div className="col-span-2 text-sm min-w-0"><div className="font-medium break-words">{f.secteurGrand || grandSecteurDe(secteurs, f.filiere)}</div><div className="text-stone-500 text-xs break-words">{f.filiere}{f.domaine ? " · " + f.domaine : ""}</div></div>
@@ -4153,8 +4203,8 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                       <div className="font-semibold break-words min-w-0">{f.titre}</div>
                       <div className="shrink-0 flex flex-col items-end gap-1"><Badge score={scoreGlobal(referentiel, f.notes)} /><PuceStatut statut={f.statut} /><PuceCouverture referentiel={referentiel} notes={f.notes} /></div>
                     </div>
-                    <div className="text-sm text-stone-500 break-words mt-1">Promoteur : {f.entreprise}{f.operateur ? ` · Opérateur : ${f.operateur}` : ""} · {f.region}{normaliserLocalite(f.localite, f.region) ? ` (${normaliserLocalite(f.localite, f.region)})` : ""}</div>
-                    {f.beneficiaire && <div className="text-xs text-stone-400 break-words mt-0.5">Bénéficiaire : {f.beneficiaire}</div>}
+                    <div className="text-sm text-stone-500 break-words mt-1">Promoteur : {orgAff(f.entreprise)}{f.operateur ? ` · Opérateur : ${orgAff(f.operateur)}` : ""} · {f.region}{normaliserLocalite(f.localite, f.region) ? ` (${normaliserLocalite(f.localite, f.region)})` : ""}</div>
+                    {f.beneficiaire && <div className="text-xs text-stone-400 break-words mt-0.5">Bénéficiaire : {orgAff(f.beneficiaire)}</div>}
                     <PeriodeProjet projet={f} className="text-xs text-stone-400 break-words mt-0.5" />
                     <div className="text-xs text-stone-500 break-words mt-1.5">
                       <span className="font-medium">{f.secteurGrand || grandSecteurDe(secteurs, f.filiere)}</span>{f.filiere ? " · " + f.filiere : ""}{f.domaine ? " · " + f.domaine : ""}
@@ -4204,10 +4254,10 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                 téléphone que sur un grand écran. */}
             <section className="rounded-2xl p-6 text-white flex flex-col items-center text-center gap-4" style={{ background: "linear-gradient(120deg,#0e3c60,#2280bf)" }}>
               <div className="max-w-3xl">
-                <div className="text-xs uppercase tracking-wider text-sky-200">Promoteur : {fEval.entreprise}</div>
+                <div className="text-xs uppercase tracking-wider text-sky-200">Promoteur : {orgAff(fEval.entreprise)}</div>
                 <h2 className="text-2xl font-bold mt-1 break-words">{fEval.titre}</h2>
                 <div className="text-sm text-sky-100 mt-1 break-words">{libelleSecteur(fEval, secteurs)} · {fEval.region}{normaliserLocalite(fEval.localite, fEval.region) ? ` (${normaliserLocalite(fEval.localite, fEval.region)})` : ""} · {fEval.apprenants} apprenants · {fmtFCFA(fEval.budget)}</div>
-                {(fEval.operateur || fEval.beneficiaire) && <div className="text-xs text-sky-200 mt-1 break-words">{[fEval.operateur ? `Opérateur : ${fEval.operateur}` : "", fEval.beneficiaire ? `Bénéficiaire : ${fEval.beneficiaire}` : ""].filter(Boolean).join(" · ")}</div>}
+                {(fEval.operateur || fEval.beneficiaire) && <div className="text-xs text-sky-200 mt-1 break-words">{[fEval.operateur ? `Opérateur : ${orgAff(fEval.operateur)}` : "", fEval.beneficiaire ? `Bénéficiaire : ${orgAff(fEval.beneficiaire)}` : ""].filter(Boolean).join(" · ")}</div>}
                 <PeriodeProjet projet={fEval} className="text-xs text-sky-200 mt-1 break-words" />
               </div>
               <div className="max-w-3xl">
@@ -4482,12 +4532,12 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                     <div className="min-w-0 w-full">
                       <span className="text-xs font-semibold px-2 py-0.5 rounded-full mr-2" style={{ background: teinte, color: "#1c1917" }}>{s.jalon}</span>
                       <span className="font-semibold">{s.f.titre}</span>
-                      <div className="text-sm text-stone-500 mt-0.5">{s.f.entreprise} · {libelleSecteur(s.f, secteurs)} · échéance {s.echeance}{s.statut === "programmé" ? ` · ${joursRestants(s.echeance) < 0 ? Math.abs(joursRestants(s.echeance)) + " j de retard" : "dans " + joursRestants(s.echeance) + " j"}` : ""}</div>
+                      <div className="text-sm text-stone-500 mt-0.5">{orgAff(s.f.entreprise)} · {libelleSecteur(s.f, secteurs)} · échéance {s.echeance}{s.statut === "programmé" ? ` · ${joursRestants(s.echeance) < 0 ? Math.abs(joursRestants(s.echeance)) + " j de retard" : "dans " + joursRestants(s.echeance) + " j"}` : ""}</div>
                       {s.note && <div className="text-xs text-stone-500 italic mt-1"><Icone n="note" t={13} /> {s.note}</div>}
                       {(s.docs || []).length > 0 && <div className="text-xs text-sky-700 mt-1"><Icone n="trombone" t={13} /> {s.docs.length} document{s.docs.length > 1 ? "s" : ""} de suivi rattaché{s.docs.length > 1 ? "s" : ""}</div>}
                     </div>
                     <div className="flex gap-2">
-                      {!P.lectureSeule && <button onClick={() => setSuiviEdit({ id: s.id, jalon: s.jalon, titreF: s.f.titre + " · " + s.f.entreprise, echeance: s.echeance, note: s.note, docs: s.docs || [] })}
+                      {!P.lectureSeule && <button onClick={() => setSuiviEdit({ id: s.id, jalon: s.jalon, titreF: s.f.titre + " · " + orgAff(s.f.entreprise), echeance: s.echeance, note: s.note, docs: s.docs || [] })}
                         className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50" title="Modifier la date, les observations et les documents."><Icone n="crayon" t={14} /> Notes & date</button>}
                       {P.suiviValider && (s.statut === "programmé"
                         ? <button onClick={() => { setSuivis((ss) => ss.map((x) => x.id === s.id ? { ...x, statut: "effectué" } : x)); notif("Suivi marqué effectué"); }} className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50" title="Valider la réalisation de ce suivi."><Icone n="coche" t={14} /> Marquer effectué</button>
@@ -4695,7 +4745,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                   <div className="flex justify-between items-center gap-3 flex-wrap">
                     <div>
                       <div className="font-bold">Score critique : {f.titre}</div>
-                      <div className="text-sm text-stone-500">{f.entreprise} · score global inférieur à 40 %</div>
+                      <div className="text-sm text-stone-500">{orgAff(f.entreprise)} · score global inférieur à 40 %</div>
                     </div>
                     <button onClick={() => { setEvalId(f.id); setPage("evaluation"); }} className="text-sm font-medium hover:underline" style={{ color: C.vert }}>Ouvrir l'évaluation →</button>
                   </div>
@@ -4706,7 +4756,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                 return (
                   <section key={s.id} className="bg-white rounded-2xl border-l-4 border border-stone-200 p-5" style={{ borderLeftColor: C.dev }}>
                     <div className="font-bold">Suivi {s.jalon} en retard : {f?.titre}</div>
-                    <div className="text-sm text-stone-500">{f?.entreprise} · échéance dépassée : {s.echeance}</div>
+                    <div className="text-sm text-stone-500">{orgAff(f?.entreprise)} · échéance dépassée : {s.echeance}</div>
                   </section>
                 );
               })}
@@ -4720,7 +4770,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                     <div className="min-w-0">
                       <div className="font-bold break-words">Évaluation incomplète : {t.formation.titre}</div>
                       <div className="text-sm text-stone-500 break-words">
-                        {t.formation.entreprise} · échéance {t.jalons} dépassée ·{" "}
+                        {orgAff(t.formation.entreprise)} · échéance {t.jalons} dépassée ·{" "}
                         <strong>{t.manquants.length} indicateur{t.manquants.length > 1 ? "s" : ""}</strong> restant à noter sur {t.couverture.indicateurs}
                       </div>
                       <div className="text-xs text-stone-400 mt-1">
@@ -4743,7 +4793,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                       {c.anomalies.map((a) => (
                         <div key={a.code} className={"text-sm break-words " + (a.gravite === "erreur" ? "text-red-600 font-medium" : "text-stone-500")}>{a.txt}</div>
                       ))}
-                      <div className="text-xs text-stone-400 mt-1">{c.formation.entreprise}</div>
+                      <div className="text-xs text-stone-400 mt-1">{orgAff(c.formation.entreprise)}</div>
                     </div>
                     {P.editerFormation && <button onClick={() => editerFormation(c.formation)} className="text-sm font-medium hover:underline shrink-0" style={{ color: C.vert }}>Corriger la fiche →</button>}
                   </div>
@@ -4859,7 +4909,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                   <div key={f.id} className="flex items-center justify-between gap-3 py-3.5">
                     <div>
                       <div className="font-semibold">{f.titre}</div>
-                      <div className="text-sm text-stone-500">{f.entreprise} · {libelleSecteur(f, secteurs)}</div>
+                      <div className="text-sm text-stone-500">{orgAff(f.entreprise)} · {libelleSecteur(f, secteurs)}</div>
                     </div>
                     <button onClick={() => fichePDF(f)} className="bg-white border border-stone-200 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-50 shrink-0" title="Générer la fiche PDF de cette formation."><Icone n="fichier" t={15} /> Fiche PDF</button>
                   </div>
@@ -4906,6 +4956,19 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
 
               if ((P.pages || []).includes("dashboard")) {
                 g.push(["Tableau de bord", "Vue d'ensemble : nombre de projets et d'apprenants, budget engagé, score moyen MIP, radar des 5 dimensions, comparaison par secteur et carte d'implantation. Chaque carte est cliquable et ouvre le détail projet par projet."]);
+              }
+
+              /* La rubrique dit franchement ce que le masque ne fait pas.
+                 Promettre un anonymat que la base ne tient pas exposerait
+                 l'utilisateur qui s'y fierait pour autre chose qu'une
+                 projection. */
+              if (P.masqueOrgs) {
+                g.push(["Masquer les noms des entreprises",
+                  "Le bouton « Masquer les noms », en haut à droite, remplace les promoteurs, opérateurs et bénéficiaires par des désignations génériques : « Promoteur 1 », « Opérateur 1 », « Bénéficiaire 1 ». "
+                  + "Il sert à projeter l'application devant une assemblée, un comité ou une classe sans exposer quelle entreprise obtient quel score. "
+                  + "Une même organisation garde partout la même désignation, et une entreprise qui est son propre bénéficiaire reste « Promoteur N » : la lecture croisée reste possible. "
+                  + "Le masque s'applique aussi à la fiche PDF et aux exports tableur produits pendant qu'il est actif. "
+                  + "Attention : ce réglage n'est qu'un affichage. Les vrais noms restent dans la base et dans les sauvegardes ; ce n'est pas une anonymisation des données. Il ne vaut que pour votre écran et ne change rien pour les autres comptes."]);
               }
 
               if ((P.pages || []).includes("evaluation")) {
@@ -5153,7 +5216,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                       <div className="min-w-0">
                         <div className="font-medium break-words">{f.titre}</div>
                         <div className="text-xs text-stone-500 break-words">
-                          {f.entreprise}{f.region ? ` · ${f.region}` : ""}{f.statut ? ` · ${f.statut}` : ""}
+                          {orgAff(f.entreprise)}{f.region ? ` · ${f.region}` : ""}{f.statut ? ` · ${f.statut}` : ""}
                         </div>
                       </div>
                       <div className="shrink-0 flex items-center gap-2">
@@ -5200,7 +5263,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                   <div className="min-w-0">
                     <div className="font-semibold break-words">{f.titre}</div>
                     <div className="text-xs text-stone-500 break-words">
-                      {f.entreprise}{f.region ? ` · ${f.region}` : ""}
+                      {orgAff(f.entreprise)}{f.region ? ` · ${f.region}` : ""}
                       {f.supprimeLe ? ` · retiré le ${new Date(f.supprimeLe).toLocaleString("fr-FR")}` : ""}
                       {f.supprimePar ? ` par ${f.supprimePar}` : ""}
                     </div>
@@ -5247,7 +5310,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                     <div className="min-w-0">
                       <div className="font-medium break-words">{f.titre}</div>
                       <div className="text-xs text-stone-500 break-words">
-                        {f.entreprise}{f.statut ? ` · ${f.statut}` : ""}
+                        {orgAff(f.entreprise)}{f.statut ? ` · ${f.statut}` : ""}
                       </div>
                     </div>
                     <span className="shrink-0"><Badge score={scoreGlobal(referentiel, f.notes)} /></span>

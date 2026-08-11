@@ -157,9 +157,66 @@ export const IMPLANTATIONS = ["Siège Abidjan", ...ANTENNES_FDFP.map((a) => `Ant
    cette tolérance, les deux formes n'étaient pas reconnues comme une seule, et
    un projet repris sous la forme du document restait hors nomenclature —
    invisible aux filtres, absent de la carte. */
-export const memeNom = (a, b) => {
-  const pivot = (x) => String(x == null ? "" : x).replace(/[\s\-'’]+/g, "").toLowerCase();
-  return pivot(a).localeCompare(pivot(b), "fr", { sensitivity: "base" }) === 0;
+/* Forme pivot d'un nom propre : sans espaces, traits d'union ni apostrophes,
+   en minuscules. Sortie de « memeNom » pour servir aussi de CLÉ — deux
+   écritures d'une même organisation doivent tomber sur la même entrée. */
+export const clePivot = (x) => String(x == null ? "" : x)
+  .replace(/[\s\-'’.]+/g, "")
+  .normalize("NFD").replace(/[̀-ͯ]/g, "")
+  .toLowerCase();
+
+export const memeNom = (a, b) => clePivot(a) === clePivot(b);
+
+/* ---------------------------------------------------------------------------
+   MASQUE DE PRÉSENTATION DES ORGANISATIONS
+   ---------------------------------------------------------------------------
+   Remplace les raisons sociales par des désignations génériques, pour projeter
+   un écran devant une assemblée sans exposer qui est noté quoi.
+
+   ⚠ CE N'EST PAS UNE ANONYMISATION. Les vrais noms restent dans la base, dans
+   la mémoire du navigateur et dans toute copie de sauvegarde : le masque agit
+   à l'affichage, pas sur la donnée. Le dire autrement serait promettre une
+   protection qui n'existe pas.
+
+   Deux propriétés le rendent utilisable :
+     - il est STABLE — une même organisation reçoit la même étiquette partout,
+       si bien que « Promoteur 2 » sur deux projets désigne bien la même
+       entreprise, et que la lecture croisée reste possible ;
+     - il suit le RÔLE de première apparition — une entreprise qui est son
+       propre bénéficiaire reste « Promoteur 2 » dans la ligne bénéficiaire,
+       ce qui préserve l'information « c'est la même personne morale ».
+   L'ordre de parcours est celui de la liste, puis promoteur, opérateur,
+   bénéficiaire : le numéro d'une organisation ne dépend donc pas du hasard. */
+export const ETIQUETTES_MASQUE = {
+  entreprise: "Promoteur",
+  operateur: "Opérateur",
+  beneficiaire: "Bénéficiaire",
+};
+
+export function masqueOrganisations(projets) {
+  const table = new Map();
+  const compteurs = { entreprise: 0, operateur: 0, beneficiaire: 0 };
+  for (const p of Array.isArray(projets) ? projets : []) {
+    for (const champ of ["entreprise", "operateur", "beneficiaire"]) {
+      const nom = String(p?.[champ] ?? "").trim();
+      if (!nom) continue;
+      const cle = clePivot(nom);
+      if (!cle || table.has(cle)) continue;
+      compteurs[champ] += 1;
+      table.set(cle, `${ETIQUETTES_MASQUE[champ]} ${compteurs[champ]}`);
+    }
+  }
+  return table;
+}
+
+/* Applique le masque à un nom. Sans masque, ou pour un nom inconnu de lui, la
+   valeur ressort intacte : un projet ajouté après coup s'affiche en clair
+   plutôt que de disparaître. */
+export const nomMasque = (masque, nom) => {
+  if (!masque) return nom;
+  const s = String(nom ?? "").trim();
+  if (!s) return nom;
+  return masque.get(clePivot(s)) ?? nom;
 };
 
 // Convertit les valeurs historiques (« Abidjan », « San-Pédro », « antenne de Bouaké »…)
@@ -263,10 +320,10 @@ export const PROJET_VIERGE = () => ({
    une suppression de masse, et le seul rôle qui l'a est l'administrateur
    lead. */
 export const PERMS = {
-  "Administrateur lead":     { pages: ["dashboard", "formations", "evaluation", "suivi", "indicateurs", "alertes", "exports", "guide", "users"], evalDims: "toutes", creerFormation: true,  editerFormation: true,  supprimerFormation: true,  referentiel: true,  secteurs: true,  users: true,  fichePdf: true,  exportXlsx: true,  exportCsv: true,  sauvegarde: true,  suivisJalons: "tous", suiviValider: true,  portee: "tous" },
-  "Administrateur FDFP":     { pages: ["dashboard", "formations", "evaluation", "suivi", "indicateurs", "alertes", "exports", "guide"],          evalDims: "toutes", creerFormation: true,  editerFormation: true,  supprimerFormation: false, referentiel: true,  secteurs: false, users: false, fichePdf: true,  exportXlsx: true,  exportCsv: true,  sauvegarde: true,  suivisJalons: "tous", suiviValider: true,  portee: "tous" },
-  "Agent FDFP":              { pages: ["dashboard", "formations", "evaluation", "suivi", "indicateurs", "alertes", "exports", "guide"],          evalDims: "toutes", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, fichePdf: true,  exportXlsx: true,  exportCsv: true,  sauvegarde: false,  suivisJalons: "tous", suiviValider: true,  portee: "tous" },
-  "Promoteur":               { pages: ["dashboard", "formations", "evaluation", "suivi", "exports", "guide"],                          evalDims: "aucune", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, fichePdf: true,  exportXlsx: false, exportCsv: true, sauvegarde: false,  suivisJalons: "tous", suiviValider: false, portee: "entreprise", lectureSeule: true },
+  "Administrateur lead":     { masqueOrgs: true,  pages: ["dashboard", "formations", "evaluation", "suivi", "indicateurs", "alertes", "exports", "guide", "users"], evalDims: "toutes", creerFormation: true,  editerFormation: true,  supprimerFormation: true,  referentiel: true,  secteurs: true,  users: true,  fichePdf: true,  exportXlsx: true,  exportCsv: true,  sauvegarde: true,  suivisJalons: "tous", suiviValider: true,  portee: "tous" },
+  "Administrateur FDFP":     { masqueOrgs: true,  pages: ["dashboard", "formations", "evaluation", "suivi", "indicateurs", "alertes", "exports", "guide"],          evalDims: "toutes", creerFormation: true,  editerFormation: true,  supprimerFormation: false, referentiel: true,  secteurs: false, users: false, fichePdf: true,  exportXlsx: true,  exportCsv: true,  sauvegarde: true,  suivisJalons: "tous", suiviValider: true,  portee: "tous" },
+  "Agent FDFP":              { masqueOrgs: false, pages: ["dashboard", "formations", "evaluation", "suivi", "indicateurs", "alertes", "exports", "guide"],          evalDims: "toutes", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, fichePdf: true,  exportXlsx: true,  exportCsv: true,  sauvegarde: false,  suivisJalons: "tous", suiviValider: true,  portee: "tous" },
+  "Promoteur":               { masqueOrgs: false, pages: ["dashboard", "formations", "evaluation", "suivi", "exports", "guide"],                          evalDims: "aucune", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, fichePdf: true,  exportXlsx: false, exportCsv: true, sauvegarde: false,  suivisJalons: "tous", suiviValider: false, portee: "entreprise", lectureSeule: true },
   /* OPÉRATEUR — aligné sur le Promoteur, fiche PDF comprise.
      Deux corrections successives, et la seconde explique la première.
      1. Il portait « exportCsv: true » sans avoir la page « exports » : le
@@ -287,8 +344,8 @@ export const PERMS = {
      entrées restent distinctes pour que la matrice puisse diverger plus tard —
      notamment si l'opérateur devait un jour saisir la seule dimension
      pédagogique, ce qui supposerait de rouvrir l'écriture côté RLS. */
-  "Opérateur":               { pages: ["dashboard", "formations", "evaluation", "suivi", "exports", "guide"],                          evalDims: "aucune", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, fichePdf: true,  exportXlsx: false, exportCsv: true, sauvegarde: false, suivisJalons: "tous", suiviValider: false, portee: "entreprise", lectureSeule: true },
-  "En attente d'activation": { pages: ["guide"], evalDims: null, creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, fichePdf: false, exportXlsx: false, exportCsv: false, sauvegarde: false, suivisJalons: "aucun", suiviValider: false, portee: "aucune" },
+  "Opérateur":               { masqueOrgs: false, pages: ["dashboard", "formations", "evaluation", "suivi", "exports", "guide"],                          evalDims: "aucune", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, fichePdf: true,  exportXlsx: false, exportCsv: true, sauvegarde: false, suivisJalons: "tous", suiviValider: false, portee: "entreprise", lectureSeule: true },
+  "En attente d'activation": { masqueOrgs: false, pages: ["guide"], evalDims: null, creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, fichePdf: false, exportXlsx: false, exportCsv: false, sauvegarde: false, suivisJalons: "aucun", suiviValider: false, portee: "aucune" },
 };
 
 /* Le statut qualifie le PROJET de formation, pas la formation : « Planifié »,

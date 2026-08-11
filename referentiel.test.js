@@ -9,6 +9,7 @@ import { describe, it, expect } from "vitest";
 import {
   STATUTS_PROJET, normaliserStatut, normaliserRegion, normaliserLocalite,
   localitesDe, localiteParDefaut, IMPLANTATIONS, LOCALITES_PAR_ZONE,
+  masqueOrganisations, nomMasque, memeNom, clePivot,
 } from "./referentiel.js";
 import { DEPARTEMENTS } from "./geo-civ.js";
 
@@ -144,5 +145,82 @@ describe("localités et zones", () => {
     expect(localitesDe("Antenne Bouaké")).toContain("M'Bahiakro");    // Iffou
     expect(localitesDe("Antenne Yamoussoukro")).toContain("Oumé");    // Gôh
     expect(localitesDe("Antenne San-Pédro")).toContain("Gagnoa");     // Gôh
+  });
+});
+
+/* Masque de présentation des organisations.
+ *
+ * Ce masque sert à projeter un écran devant une assemblée. Une étiquette
+ * instable — la même entreprise numérotée différemment selon la page — rendrait
+ * la lecture croisée impossible et ferait croire à deux organisations là où il
+ * n'y en a qu'une. D'où ces tests. */
+describe("masqueOrganisations", () => {
+  const DEMO = [
+    { entreprise: "SACO", operateur: "A.C.A", beneficiaire: "SCINPA" },
+    { entreprise: "DIAOUNE AGRO-ALIMENTAIRE", operateur: "Emergence", beneficiaire: "DIAOUNE AGRO-ALIMENTAIRE" },
+    { entreprise: "FrieslandCampina", operateur: "Domny", beneficiaire: "FrieslandCampina" },
+  ];
+
+  it("numérote par rôle de première apparition", () => {
+    const m = masqueOrganisations(DEMO);
+    expect(nomMasque(m, "SACO")).toBe("Promoteur 1");
+    expect(nomMasque(m, "A.C.A")).toBe("Opérateur 1");
+    expect(nomMasque(m, "SCINPA")).toBe("Bénéficiaire 1");
+    expect(nomMasque(m, "DIAOUNE AGRO-ALIMENTAIRE")).toBe("Promoteur 2");
+    expect(nomMasque(m, "FrieslandCampina")).toBe("Promoteur 3");
+  });
+
+  it("garde une seule étiquette pour une organisation qui est son propre bénéficiaire", () => {
+    const m = masqueOrganisations(DEMO);
+    // « Promoteur 2 » et non « Bénéficiaire 2 » : c'est la même personne morale,
+    // et l'écran doit continuer à le montrer.
+    expect(nomMasque(m, DEMO[1].beneficiaire)).toBe(nomMasque(m, DEMO[1].entreprise));
+  });
+
+  it("reconnaît une même organisation écrite autrement", () => {
+    const m = masqueOrganisations(DEMO);
+    expect(nomMasque(m, "saco")).toBe("Promoteur 1");
+    expect(nomMasque(m, "A C A")).toBe("Opérateur 1");
+    expect(nomMasque(m, "ACA")).toBe("Opérateur 1");
+  });
+
+  it("laisse intact un nom qu'il ne connaît pas, et n'agit pas sans masque", () => {
+    const m = masqueOrganisations(DEMO);
+    expect(nomMasque(m, "NOUVELLE SARL")).toBe("NOUVELLE SARL");
+    expect(nomMasque(null, "SACO")).toBe("SACO");
+  });
+
+  it("ignore les champs vides sans consommer de numéro", () => {
+    const m = masqueOrganisations([
+      { entreprise: "A", operateur: "", beneficiaire: null },
+      { entreprise: "B", operateur: "X" },
+    ]);
+    expect(nomMasque(m, "A")).toBe("Promoteur 1");
+    expect(nomMasque(m, "B")).toBe("Promoteur 2");
+    expect(nomMasque(m, "X")).toBe("Opérateur 1");
+  });
+
+  it("est stable : deux constructions donnent le même résultat", () => {
+    const a = masqueOrganisations(DEMO);
+    const b = masqueOrganisations(DEMO);
+    for (const p of DEMO) expect(nomMasque(a, p.entreprise)).toBe(nomMasque(b, p.entreprise));
+  });
+
+  it("supporte une entrée absente ou non tabulaire", () => {
+    expect(masqueOrganisations(undefined).size).toBe(0);
+    expect(masqueOrganisations(null).size).toBe(0);
+    expect(masqueOrganisations([null, undefined]).size).toBe(0);
+  });
+});
+
+describe("clePivot / memeNom", () => {
+  it("ignore accents, espaces, traits d'union, apostrophes et points", () => {
+    expect(memeNom("San-Pédro", "SAN PEDRO")).toBe(true);
+    expect(memeNom("M'Bengué", "MBENGUE")).toBe(true);
+    expect(memeNom("A.C.A", "aca")).toBe(true);
+    expect(clePivot("  Côte d'Ivoire ")).toBe("cotedivoire");
+  });
+  it("ne confond pas deux noms distincts", () => {
+    expect(memeNom("Bouaké", "Abidjan")).toBe(false);
   });
 });
