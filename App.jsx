@@ -50,25 +50,34 @@ import { nettoyerPdf } from "./pdf.js";
 // ----------------- DONNÉES DÉMO ---------------------------------
 const FORMATIONS_DEMO = [
   {
-    id: "f1", titre: "Maîtrise HACCP en ligne de conditionnement cacao",
+    /* Les intitulés suivent la forme employée par le FDFP dans ses dossiers :
+       « Formation de N jeunes au métier de … ». Le nombre annoncé dans le
+       titre est celui du champ « apprenants » : les deux se lisent côte à côte
+       sur la fiche, un écart entre eux se verrait. */
+    id: "f1", titre: "Formation de 30 jeunes au métier de superviseur HACCP en ligne de conditionnement cacao",
     entreprise: "SACO", operateur: "A.C.A", beneficiaire: "SCINPA", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "Siège Abidjan", localite: "Abidjan",
-    apprenants: 18, budget: 12500000, statut: "Terminé",
+    apprenants: 30, budget: 12500000, statut: "Terminé",
     /* Dates cohérentes avec SUIVIS_DEMO : la date de fin est l'origine des
        trois jalons, M+3 tombe donc bien trois mois après elle. */
     dateDebut: "2025-11-03", dateFin: "2026-02-20",
     notes: { P1: 4, P2: 3, P3: 4, P4: 4, EP1: 3, EP2: 3, EP3: 4, EP4: 4, EP5: 3, EP6: 4, IE1: 3, IE2: 3, IE3: 4, IE4: 3, IO1: 3, IO2: 3, IO3: 4, IO4: 3, IO5: 3, DC1: 3, DC2: 2, DC3: 3, DC4: 3 },
   },
   {
-    id: "f2", titre: "Conduite de séchoir industriel (fruits tropicaux)",
-    entreprise: "AGROCI", operateur: "Emergence", beneficiaire: "AGROCI", secteurGrand: "Secteur secondaire", filiere: "Transformation des fruits et légumes", domaine: "Jus et concentrés", region: "Antenne Yamoussoukro", localite: "Toumodi",
-    apprenants: 9, budget: 6800000, statut: "Terminé",
+    /* Projet d'ancrage : c'est la filière et le terrain de l'étude, l'anacarde
+       dans la zone de l'antenne de Bouaké. Le décorticage et le calibrage sont
+       les postes où le geste commande directement le taux d'amandes entières,
+       donc la valeur produite : le lien compétence / performance y est
+       observable, ce qui est précisément ce que le modèle prétend mesurer. */
+    id: "f2", titre: "Formation de 50 jeunes au métier d'agent contrôleur de processus de décorticage de l'anacarde",
+    entreprise: "DIAOUNE AGRO-ALIMENTAIRE", operateur: "Emergence", beneficiaire: "DIAOUNE AGRO-ALIMENTAIRE", secteurGrand: "Secteur secondaire", filiere: "Transformation de l'anacarde", domaine: "Décorticage", region: "Antenne Bouaké", localite: "Bouaké",
+    apprenants: 50, budget: 5000000, statut: "Terminé",
     dateDebut: "2026-01-12", dateFin: "2026-04-17",
     notes: { P1: 3, P2: 2, P3: 3, P4: 2, EP1: 2, EP2: 2, EP3: 3, EP4: 4, EP5: 2, EP6: 2, IE1: 2, IE2: 3, IE3: 2, IE4: 2, IO1: 2, IO2: 2, IO3: 3, IO4: 2, IO5: 2, DC1: 3, DC2: 2, DC3: 2, DC4: 2 },
   },
   {
-    id: "f3", titre: "Sécurité alimentaire & traçabilité ISO 22000",
+    id: "f3", titre: "Formation de 25 jeunes au métier de superviseur de la sécurité alimentaire et de la traçabilité ISO 22000",
     entreprise: "FrieslandCampina", operateur: "Domny", beneficiaire: "FrieslandCampina", secteurGrand: "Secteur secondaire", filiere: "Industrie laitière", domaine: "Lait et yaourts", region: "Antenne San-Pédro", localite: "San-Pédro",
-    apprenants: 24, budget: 15200000, statut: "Terminé",
+    apprenants: 25, budget: 15200000, statut: "Terminé",
     dateDebut: "2026-02-09", dateFin: "2026-06-02",
     notes: { P1: 4, P2: 4, P3: 4, P4: 4, EP1: 4, EP2: 3, EP3: 4, EP4: 4, EP5: 4, EP6: 4, IE1: 3, IE2: 3, IE3: 4, IE4: 3, IO1: 4, IO2: 3, IO3: 4, IO4: 4, IO5: 3, DC1: 3, DC2: 3, DC3: 4, DC4: 3 },
   },
@@ -339,6 +348,15 @@ const fmtFCFA = (v) => `${grouperNombre(v)} FCFA`;
 // Jours pleins entre aujourd'hui et une échéance « AAAA-MM-JJ ». Les deux
 // bornes sont ramenées à minuit UTC : l'écart est donc un multiple exact de
 // 24 h, sans dérive liée à l'heure de consultation ni au changement d'heure.
+/* Heure d'un horodatage ISO, en UTC comme tout le reste de la plateforme.
+   Sert à dire depuis quand un compte est en ligne. Le fuseau est explicite :
+   le FDFP et ses antennes doivent lire la même heure. */
+const heureCourte = (iso) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "un instant"
+    : d.toLocaleTimeString("fr-FR", { timeZone: "UTC", hour: "2-digit", minute: "2-digit" }) + " GMT+0";
+};
+
 const joursRestants = (dateStr) => {
   if (!dateStr) return 0;
   const cible = Date.parse(String(dateStr).slice(0, 10) + "T00:00:00Z");
@@ -615,6 +633,26 @@ function TickRadar({ x, y, cx, cy, payload, mobile }) {
         <tspan key={i} x={x} dy={i === 0 ? depart : hauteurLigne}>{l}</tspan>
       ))}
     </text>
+  );
+}
+
+/* Graduation de l'échelle du radar. Recharts pose ces valeurs le long d'un
+   seul rayon, donc par-dessus le polygone : posées à même la surface colorée
+   elles ne se lisent pas. On les détoure d'une pastille claire, qui les
+   sépare aussi bien du fond blanc que de l'aplat du polygone.
+   Le zéro est omis : au centre exact, il se superpose aux cinq axes et
+   n'apprend rien que la grille ne dise déjà. */
+function TickEchelleRadar({ x, y, payload }) {
+  if (!payload || payload.value === 0) return null;
+  const texte = String(payload.value);
+  const largeur = texte.length * 5.6 + 8;
+  return (
+    <g>
+      <rect x={x - largeur / 2} y={y - 7} width={largeur} height={14} rx={4}
+        fill="#ffffff" fillOpacity={0.86} stroke="#e7e5e4" strokeWidth={0.75} />
+      <text x={x} y={y} textAnchor="middle" dominantBaseline="central"
+        fontSize={9.5} fill="#78716c">{texte}</text>
+    </g>
   );
 }
 
@@ -1677,6 +1715,24 @@ export default function MipPpaApp() {
   const setSecteurs = majConfig(secteursRef, setSecteursBrut, "secteurs");
   const setPhases = majConfig(phasesRef, setPhasesBrut, "phases");
   const [comptes, setComptes] = useState([]);          // liste chargée depuis Supabase (page Utilisateurs)
+  /* Comptes actuellement connectés, par identifiant.
+     ---------------------------------------------------------------------------
+     Obtenus par la « présence » de Supabase Realtime, et non par une lecture de
+     la base. Le choix mérite d'être expliqué, car la solution évidente ne
+     fonctionne pas : les sessions vivent dans le schéma « auth », que la clé
+     publique du navigateur n'atteint pas — et qu'elle ne DOIT pas atteindre.
+     Y accéder supposerait la clé de service, donc de la livrer au client.
+
+     La présence résout cela autrement : chaque onglet ouvert s'annonce sur le
+     canal temps réel déjà utilisé pour la synchronisation. Aucune écriture en
+     base, aucune table supplémentaire, aucune migration. Quand l'onglet se
+     ferme ou que la connexion tombe, l'annonce disparaît d'elle-même.
+
+     ⚠ CE QUE CELA MESURE EXACTEMENT : les onglets OUVERTS sur l'application,
+     pas les sessions valides. Quelqu'un dont le jeton est encore valable mais
+     qui a fermé son navigateur n'y figure pas — et c'est la bonne définition
+     de « connecté » pour un tableau de bord d'administration. */
+  const [connectes, setConnectes] = useState({});
   const [session, setSession] = useState(null);         // { id, email, nom, org, role }
   const [chargementAuth, setChargementAuth] = useState(true);
   /* Session ouverte par un lien « mot de passe oublié ». Tant que ce drapeau
@@ -1967,11 +2023,34 @@ export default function MipPpaApp() {
     chargerDonnees();
     if (!sb) return;
     // Temps reel : quand un autre utilisateur modifie, on recharge
-    const canal = sb.channel("mip-ppa-sync")
+    /* « presence: { key } » attache l'annonce à l'identifiant du compte : deux
+       onglets ouverts par la même personne comptent pour une seule présence,
+       ce qui est bien ce qu'on veut afficher. */
+    const canal = sb.channel("mip-ppa-sync", { config: { presence: { key: session.id } } })
       .on("postgres_changes", { event: "*", schema: "public", table: "projets" }, () => rechargerLeger())
       .on("postgres_changes", { event: "*", schema: "public", table: "suivis" }, () => rechargerLeger())
       .on("postgres_changes", { event: "*", schema: "public", table: "configuration" }, () => rechargerLeger())
-      .subscribe();
+      /* « sync » couvre les trois cas — arrivée, départ, état initial — et rend
+         l'état complet. S'abonner en plus à « join » et « leave » ferait un
+         rendu de plus pour la même information. */
+      .on("presence", { event: "sync" }, () => {
+        const etat = canal.presenceState();
+        const vus = {};
+        Object.entries(etat).forEach(([id, metas]) => {
+          /* Un compte peut avoir plusieurs onglets : on retient la plus
+             ancienne arrivée, qui est le vrai début de sa présence. */
+          const depuis = metas.map((m) => m.depuis).filter(Boolean).sort()[0] || null;
+          vus[id] = { onglets: metas.length, depuis, role: metas[0]?.role || "" };
+        });
+        setConnectes(vus);
+      })
+      .subscribe(async (etat) => {
+        /* On ne s'annonce qu'une fois l'abonnement réellement établi : un
+           « track » émis trop tôt est perdu sans erreur. */
+        if (etat === "SUBSCRIBED") {
+          await canal.track({ depuis: new Date().toISOString(), role: roleActif });
+        }
+      });
     return () => { sb.removeChannel(canal); };
     /* Dépendances réduites à des valeurs SIMPLES. Avec l'objet « session »,
        l'effet se rejouait dès que cet objet était recréé — même à contenu
@@ -3617,13 +3696,21 @@ export default function MipPpaApp() {
                 <RadarChart data={radarData} outerRadius={estMobile ? "54%" : "72%"}>
                   <PolarGrid stroke="#e7e5e4" />
                   <PolarAngleAxis dataKey="dim" tick={<TickRadar mobile={estMobile} />} />
-                  {/* Graduations masquées. Recharts les empile le long d'un
-                      rayon, par-dessus le polygone : « 0 25 50 75 100 » se
-                      chevauchaient sur la surface colorée sans être lisibles.
-                      L'échelle reste donnée par la grille, et la valeur exacte
-                      par l'infobulle — rien n'est perdu. */}
-                  <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
-                  <Radar dataKey="score" stroke={C.vert} fill={C.vert} fillOpacity={0.35} />
+                  {/* Graduations de l'échelle. Elles avaient été masquées parce
+                      que Recharts les empile le long d'un rayon, par-dessus le
+                      polygone : « 25 50 75 100 » devenait illisible sur la
+                      surface colorée. Le remède n'est pas de les retirer — sans
+                      elles, on voit une forme mais on ne sait pas à quelle
+                      hauteur elle se situe — mais de les détourer : chaque
+                      valeur est posée sur une pastille claire qui la sépare du
+                      fond, quel qu'il soit. */}
+                  <PolarRadiusAxis domain={[0, 100]} tickCount={5} axisLine={false}
+                    tick={<TickEchelleRadar />} />
+                  {/* Animation d'entrée coupée : sur une capture d'écran prise
+                      au chargement, le polygone n'était pas encore dessiné et le
+                      radar paraissait vide. */}
+                  <Radar dataKey="score" stroke={C.vert} fill={C.vert} fillOpacity={0.35}
+                    isAnimationActive={false} />
                   <Tooltip formatter={(v) => `${Math.round(v)} %`} />
                 </RadarChart>
               </ResponsiveContainer>
@@ -3740,7 +3827,10 @@ export default function MipPpaApp() {
                       );
                     }} />
                   <Tooltip formatter={(v) => `${Math.round(v)} %`} />
-                  <Bar dataKey="score" fill={C.vert} radius={[0, 6, 6, 0]} barSize={26} />
+                  {/* Même raison que le radar : une capture prise au chargement
+                      montrait des barres encore à zéro. */}
+                  <Bar dataKey="score" fill={C.vert} radius={[0, 6, 6, 0]} barSize={26}
+                    isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
               <ul className="sr-only">
@@ -4879,7 +4969,17 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
           {page === "users" && (P.users ? (<>
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-                <h3 className="font-bold">Comptes ({comptes.length})</h3>
+                <h3 className="font-bold">
+                  Comptes ({comptes.length})
+                  {/* Le compte des connectés n'est montré qu'à l'administrateur
+                      lead : savoir qui est en ligne est une information de
+                      supervision, pas une information d'usage. */}
+                  {roleActif === "Administrateur lead" && (
+                    <span className="ml-2 text-sm font-semibold" style={{ color: C.vert }}>
+                      · {Object.keys(connectes).length} connecté{Object.keys(connectes).length > 1 ? "s" : ""}
+                    </span>
+                  )}
+                </h3>
                 <div className="flex items-center gap-2">
                   <button onClick={chargerComptes} title="Recharger la liste depuis la base."
                     className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50 flex items-center gap-1.5"><Icone n="rotation" t={14} /> Actualiser</button>
@@ -4915,6 +5015,18 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
+                      {/* Pastille de présence. Le point vert dit « en ligne
+                          maintenant » ; l'infobulle donne depuis quand et
+                          combien d'onglets, ce qui aide à distinguer une
+                          personne au travail d'un onglet resté ouvert. */}
+                      {roleActif === "Administrateur lead" && connectes[u.id] && (
+                        <span className="text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 bg-emerald-50 text-emerald-800"
+                          title={`En ligne depuis ${heureCourte(connectes[u.id].depuis)}`
+                            + (connectes[u.id].onglets > 1 ? ` · ${connectes[u.id].onglets} onglets ouverts` : "")}>
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" aria-hidden="true" />
+                          En ligne
+                        </span>
+                      )}
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${u.role === "En attente d'activation" ? "bg-stone-100 text-stone-500" : "bg-sky-100 text-sky-800"}`}>{u.role}</span>
                       <select value={u.role} disabled={roleActif !== "Administrateur lead" || session?.id === u.id}
                         onChange={(e) => attribuerRole(u.id, e.target.value)}
