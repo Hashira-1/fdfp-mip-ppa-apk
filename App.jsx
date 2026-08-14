@@ -5008,7 +5008,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
               ]);
               if (sorties.length) {
                 g.push(["Exports", "Depuis la page Exports, vous pouvez produire : " + sorties.join(" ; ") + ". "
-                  + "Les exports portent toujours sur l'ensemble des projets qui vous sont visibles, jamais sur le résultat d'un filtre d'écran : un export est un livrable, il ne doit pas dépendre de l'état de votre recherche."]);
+                  + "Les exports portent toujours sur l'ensemble des projets qui vous sont visibles."]);
               }
 
               if (P.users) {
