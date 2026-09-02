@@ -1825,30 +1825,31 @@ export default function MipPpaApp() {
      qui a fermé son navigateur n'y figure pas — et c'est la bonne définition
      de « connecté » pour un tableau de bord d'administration. */
   const [connectes, setConnectes] = useState({});
-  /* Journal des connexions — les dernières sessions ouvertes sur la plateforme.
+  /* Journal des connexions. Il n'est PAS affiché tel quel : il ne sert qu'à
+     dater, sous chaque compte, sa DERNIÈRE connexion.
      ---------------------------------------------------------------------------
-     Complément indispensable de la présence ci-dessus, et non doublon : la
-     présence dit QUI EST LÀ MAINTENANT et n'en garde aucune trace ; le journal
-     dit QUI EST VENU, ET QUAND. L'administrateur lead a besoin des deux —
+     Complément de la présence ci-dessus, et non doublon : la présence dit QUI
+     EST LÀ MAINTENANT et n'en garde aucune trace ; cette date-ci dit DEPUIS
+     QUAND UN COMPTE N'EST PLUS VENU. L'administrateur lead a besoin des deux —
      « personne n'est connecté » ne se lit pas de la même façon selon que le
      compte s'est connecté ce matin ou plus depuis six semaines.
 
      Trois états, et il faut les distinguer :
        null  — la table « connexions » n'existe pas encore (phase 9 non
-               exécutée dans Supabase). L'écran l'annonce et renvoie au script,
-               au lieu d'afficher une liste vide qui ferait croire à l'absence
-               de connexions.
+               exécutée dans Supabase). L'écran l'annonce en une ligne et
+               renvoie au script, plutôt que de laisser la date manquer sans
+               explication.
        []    — la table existe et ne contient rien.
        [...] — les lignes, la plus récente d'abord.
 
-     POURQUOI QUATRE CENTS LIGNES et non les cinquante affichées : la liste
-     sert aussi à dater la DERNIÈRE connexion de chaque compte, ligne par
-     ligne. Avec cinquante lignes, un compte discret sortirait de la fenêtre et
-     s'afficherait « aucune connexion » alors qu'il s'est connecté la semaine
-     passée. Le déclencheur de la phase 9 borne le journal à vingt lignes par
-     compte : quatre cents couvrent donc vingt comptes de façon exhaustive, et
-     bien davantage en pratique. Au-delà, l'affichage reste juste — il dit
-     « connexion non enregistrée », jamais « jamais connecté ». */
+     POURQUOI QUATRE CENTS LIGNES pour n'en montrer qu'une par compte : c'est
+     la dernière ligne de CHAQUE compte qu'il faut trouver. Avec cinquante, un
+     compte discret sortirait de la fenêtre et s'afficherait « connexion non
+     enregistrée » alors qu'il s'est connecté la semaine passée. Le déclencheur
+     de la phase 9 borne le journal à vingt lignes par compte : quatre cents
+     couvrent donc vingt comptes de façon exhaustive, et bien davantage en
+     pratique. Au-delà, l'affichage reste juste — il dit « connexion non
+     enregistrée », jamais « jamais connecté ». */
   const [connexions, setConnexions] = useState([]);
   const [session, setSession] = useState(null);         // { id, email, nom, org, role }
   const [chargementAuth, setChargementAuth] = useState(true);
@@ -1952,9 +1953,10 @@ export default function MipPpaApp() {
     setComptes((profils || []).map((p) => ({ id: p.id, email: p.email, nom: p.nom || p.email, org: p.org || "Non renseignée", role: (roles || []).find((r) => r.user_id === p.id)?.role || "En attente d'activation" })));
   };
 
-  /* Les cinquante dernières ouvertures de session, tous comptes confondus.
-     Réservée au lead par la politique « connexions_select » de la phase 9 :
-     l'interface n'est pas la seule à le garantir.
+  /* Les dernières ouvertures de session, tous comptes confondus — voir
+     ci-dessus pourquoi on en lit quatre cents pour n'en montrer qu'une par
+     compte. Réservée au lead par la politique « connexions_select » de la
+     phase 9 : l'interface n'est pas la seule à le garantir.
 
      L'ERREUR EST TRAITÉE, ET DISTINGUÉE D'UNE LISTE VIDE. Tant que la phase 9
      n'a pas été exécutée, PostgREST répond « relation … does not exist » :
@@ -2000,8 +2002,6 @@ export default function MipPpaApp() {
     (connexions || []).forEach((c) => { if (!m[c.user_id]) m[c.user_id] = c; });
     return m;
   }, [connexions]);
-  // Le journal est replié par défaut : dix lignes suffisent au coup d'œil.
-  const [journalDeplie, setJournalDeplie] = useState(false);
   /* Corriger l'organisation d'un compte. Réservé à l'administrateur lead — et
      pas seulement par l'interface : le déclencheur « profils_geler_org » de la
      phase 3 fige « org » dès qu'il est renseigné, en ménageant une exception
@@ -3870,11 +3870,14 @@ export default function MipPpaApp() {
                 l'emporte sur un style en ligne — la couleur aurait tenu en mode
                 clair et sauté en mode nuit. Rien ne vise « text-white », qui
                 peut donc rester une classe.
+                Le développé garde sa graisse d'origine — normale : le blanc
+                suffit à le rendre lisible, la mettre en demi-gras l'aurait fait
+                concurrencer le sigle.
                 Contraste du développé sur le fond #0d2233 : 6,4 pour 1 en gris
-                n° 400, 16,4 en blanc. La barre latérale est sombre dans les
+                n° 400, 16,2 en blanc. La barre latérale est sombre dans les
                 deux thèmes : une seule couleur suffit. */}
             <div className="font-bold leading-tight" style={{ color: C.gold }}>MIP-PPA</div>
-            <div className="text-xs font-medium leading-snug break-words text-white">Modèle d'Indicateurs de Performance - Produit Projet Apprentissage</div>
+            <div className="text-xs break-words text-white">Modèle d'Indicateurs de Performance - Produit Projet Apprentissage</div>
           </div>
         </div>
         <nav className="flex-1 px-3 space-y-5 pb-4">
@@ -5371,7 +5374,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
 
               if (P.users) {
                 g.push(["Utilisateurs & rôles", "La page Utilisateurs liste les comptes et permet d'attribuer un rôle. Un compte sans rôle n'a aucun accès. Vous pouvez aussi corriger l'organisation d'un compte : c'est elle qui fixe le périmètre des projets qu'il verra. Les rôles sont protégés côté serveur : aucun utilisateur ne peut s'auto-attribuer un accès."]);
-                g.push(["Qui est là, et qui est venu", "Deux affichages répondent à deux questions différentes. La pastille « En ligne » dit qui a l'application ouverte en ce moment : elle apparaît et disparaît toute seule, et ne garde aucune trace. La section « Dernières sessions de connexion » garde, elle, un journal des ouvertures de session : qui, quand, depuis quel navigateur. Elle compte les ouvertures de session par l'application, pas les authentifications : deux onglets font deux lignes, un jeton renouvelé en arrière-plan n'en fait aucune. Le journal ne remonte pas avant son installation — un compte affiché « Connexion non enregistrée » n'est pas un compte qui ne s'est jamais connecté. Les deux affichages sont réservés à l'administrateur lead."]);
+                g.push(["Qui est là, et qui est venu", "Deux indications répondent à deux questions différentes. La pastille « En ligne » dit qui a l'application ouverte en ce moment : elle apparaît et disparaît toute seule, et ne garde aucune trace. Sous les comptes qui ne sont pas connectés, la ligne « Dernière connexion » dit, elle, à quand remonte leur dernière venue. Elle compte les ouvertures de session par l'application, pas les authentifications : un jeton renouvelé en arrière-plan ne compte pas. Le journal ne remonte pas avant son installation — un compte affiché « Connexion non enregistrée » n'est donc pas un compte qui ne s'est jamais connecté. Les deux indications sont réservées à l'administrateur lead."]);
               }
 
               if (P.lectureSeule) {
@@ -5413,6 +5416,18 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                 </div>
               </div>
               <p className="text-sm text-stone-500 mb-4">Sélectionnez un rôle pour chaque utilisateur. Les comptes « En attente » n'ont aucun accès tant qu'aucun rôle ne leur est attribué. Seul l'administrateur lead peut modifier les rôles.</p>
+              {/* Journal des connexions absent : la date de dernière connexion
+                  ne peut pas s'afficher sous les comptes. On le dit UNE fois,
+                  ici, en une ligne — plutôt que de laisser la fonction
+                  manquer en silence, ou d'ouvrir une carte pour ça. */}
+              {roleActif === "Administrateur lead" && connexions === null && (
+                <p className="text-sm mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-amber-900">
+                  La date de dernière connexion n'apparaîtra sous chaque compte qu'une fois
+                  <span className="font-mono"> supabase-phase9.sql </span>
+                  exécuté dans Supabase (SQL Editor → New query → Run). Le script ne détruit rien.
+                  La pastille « En ligne » n'en dépend pas.
+                </p>
+              )}
               <div className="divide-y divide-stone-100">
                 {comptes.map((u) => {
                   /* Un rôle ne se modifie que par l'administrateur lead, et
@@ -5520,71 +5535,6 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
               </div>
             </section>
 
-            {/* =========== DERNIÈRES SESSIONS DE CONNEXION =========== */}
-            {/* Réservé à l'administrateur lead, comme la pastille de présence :
-                savoir qui s'est connecté et quand est une information de
-                supervision. Le §0 quater de l'état des lieux explique pourquoi
-                les deux affichages coexistent — la présence ne garde rien. */}
-            {roleActif === "Administrateur lead" && (
-              <section className="bg-white rounded-2xl border border-stone-200 p-6">
-                <h3 className="font-bold mb-1 flex items-center gap-2"><Icone n="calendrier" t={16} /> Dernières sessions de connexion</h3>
-                {connexions === null ? (
-                  /* Journal non installé. On le dit, on dit quoi faire, et on
-                     n'affiche surtout pas une liste vide — elle se lirait
-                     « personne ne s'est connecté », ce qui est faux. */
-                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                    <div className="font-semibold">Le journal des connexions n'est pas encore installé.</div>
-                    <p className="mt-1 leading-relaxed">
-                      Exécutez <span className="font-mono">supabase-phase9.sql</span> dans Supabase
-                      (SQL Editor → New query → Run). Le script ne détruit rien : il crée la seule
-                      table <span className="font-mono">connexions</span> et ses deux règles d'accès.
-                      La pastille « En ligne » ci-dessus n'en dépend pas et continue de fonctionner.
-                    </p>
-                  </div>
-                ) : (<>
-                  <p className="text-sm text-stone-500 mb-4">
-                    Chaque ouverture de session par l'application dépose une ligne. Deux onglets ouverts
-                    font deux lignes ; un jeton renouvelé en arrière-plan n'en fait aucune. Le journal ne
-                    remonte pas avant son installation, et conserve les vingt dernières sessions par compte.
-                  </p>
-                  {connexions.length === 0 ? (
-                    <p className="text-sm text-stone-500">Aucune session enregistrée pour l'instant. La prochaine connexion — la vôtre comprise — apparaîtra ici.</p>
-                  ) : (<>
-                    <ul className="divide-y divide-stone-100">
-                      {(journalDeplie ? connexions.slice(0, 50) : connexions.slice(0, 10)).map((c) => {
-                        /* Le nom vient de la liste des comptes, qui est à jour ;
-                           l'email et le rôle viennent de la ligne, qui dit ce
-                           qu'était le compte ce jour-là. */
-                        const compte = comptes.find((u) => u.id === c.user_id);
-                        return (
-                          <li key={c.id} className="py-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                            <div className="min-w-0">
-                              <div className="text-sm font-semibold break-words">
-                                {compte ? compte.nom : (c.email || "Compte supprimé")}
-                                {c.user_id === session?.id && <span className="ml-1.5 text-xs font-normal text-stone-400">(vous)</span>}
-                              </div>
-                              <div className="text-xs text-stone-500 break-words">
-                                {c.email}{c.role ? <> · {c.role}</> : null}{c.appareil ? <> · {c.appareil}</> : null}
-                              </div>
-                            </div>
-                            <div className="text-xs text-stone-500 sm:text-right shrink-0">
-                              <div className="font-semibold text-stone-700">{ilYA(c.ouverte_le)}</div>
-                              <div>{dateHeureCourte(c.ouverte_le)}</div>
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                    {connexions.length > 10 && (
-                      <button onClick={() => setJournalDeplie(!journalDeplie)}
-                        className="mt-3 text-sm font-medium hover:underline" style={{ color: C.vert }}>
-                        {journalDeplie ? "Réduire la liste" : `Afficher les ${Math.min(connexions.length, 50)} dernières sessions`}
-                      </button>
-                    )}
-                  </>)}
-                </>)}
-              </section>
-            )}
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <h3 className="font-bold mb-1"><Icone n="plus" t={16} /> Inviter un nouvel utilisateur</h3>
               <p className="text-sm text-stone-600 mb-4">Saisissez l'email d'un partenaire : un email d'invitation contenant le lien de la plateforme lui sera envoyé directement (comme l'email de confirmation d'inscription). Après inscription, il apparaîtra ci-dessus en statut « En attente », prêt à recevoir son rôle.</p>
