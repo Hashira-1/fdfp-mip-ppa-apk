@@ -236,6 +236,10 @@ function ecrireStock(cle, val) {
    Elle est volontairement écrite AVANT l'opération risquée, jamais après :
    une copie prise après coup ne vaut rien. */
 const CLE_SECOURS = "mip-ppa-secours";
+/* Marque d'onglet du journal des connexions. Dans « sessionStorage » et non
+   « localStorage » : elle doit mourir avec l'onglet, sans quoi une deuxième
+   session ouverte le lendemain sur le même poste ne serait jamais inscrite. */
+const CLE_CONNEXION_ONGLET = "mip-ppa-connexion-onglet";
 function sauvegardeSecours(projets, suivis) {
   if (!projets || !projets.length) return;   // ne jamais écraser par du vide
   ecrireStock(CLE_SECOURS, {
@@ -357,6 +361,56 @@ const heureCourte = (iso) => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "un instant"
     : d.toLocaleTimeString("fr-FR", { timeZone: "UTC", hour: "2-digit", minute: "2-digit" }) + " GMT+0";
+};
+
+/* Date ET heure d'un horodatage ISO, toujours en UTC. « heureCourte » suffit
+   pour une présence en cours — elle est forcément du jour ; le journal des
+   connexions, lui, remonte à plusieurs jours et doit porter sa date. */
+const dateHeureCourte = (iso) => {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "date inconnue";
+  return d.toLocaleDateString("fr-FR", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "2-digit" })
+    + " à " + d.toLocaleTimeString("fr-FR", { timeZone: "UTC", hour: "2-digit", minute: "2-digit" }) + " GMT+0";
+};
+
+/* Ancienneté d'un horodatage, en clair. Une date seule oblige à compter sur
+   ses doigts ; « il y a 3 jours » se lit d'un coup d'œil. Les deux sont
+   affichées ensemble : la formule pour comprendre, la date pour vérifier. */
+const ilYA = (iso) => {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return "";
+  const min = Math.floor((Date.now() - t) / 60000);
+  if (min < 1) return "à l'instant";
+  if (min < 60) return `il y a ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `il y a ${h} h`;
+  const j = Math.floor(h / 24);
+  if (j < 31) return `il y a ${j} jour${j > 1 ? "s" : ""}`;
+  const m = Math.floor(j / 30);
+  return `il y a ${m} mois`;
+};
+
+/* Navigateur et système, déduits de « userAgent ». Volontairement grossier :
+   le journal des connexions a besoin de distinguer un téléphone d'un poste de
+   bureau — « Chrome sur Android » suffit à cela — et surtout pas de constituer
+   une empreinte d'appareil. Aucune version, aucun détail matériel.
+   L'ordre des tests compte : Chrome et Edge annoncent tous deux « Safari »
+   dans leur chaîne, Edge annonce en plus « Chrome ». */
+const appareilCourant = () => {
+  const ua = (typeof navigator === "undefined" ? "" : navigator.userAgent) || "";
+  const nav = /Edg\//.test(ua) ? "Edge"
+    : /OPR\/|Opera/.test(ua) ? "Opera"
+    : /Chrome\//.test(ua) ? "Chrome"
+    : /Firefox\//.test(ua) ? "Firefox"
+    : /Safari\//.test(ua) ? "Safari"
+    : "Navigateur";
+  const sys = /Android/.test(ua) ? "Android"
+    : /iPhone|iPad|iPod/.test(ua) ? "iOS"
+    : /Windows/.test(ua) ? "Windows"
+    : /Mac OS X|Macintosh/.test(ua) ? "macOS"
+    : /Linux/.test(ua) ? "Linux"
+    : "";
+  return sys ? `${nav} sur ${sys}` : nav;
 };
 
 const joursRestants = (dateStr) => {
@@ -500,7 +554,13 @@ function ChampEditable({ valeur, surValider, className = "", largeurAuto = false
   };
   return (
     <input value={txt} title={titre} placeholder={placeholder} className={className}
-      style={largeurAuto ? { width: Math.max(largeurMin, txt.length) + "ch" } : undefined}
+      /* « ch » vaut la largeur du zéro. Dans une fonte proportionnelle, un
+         « m », un « g » ou un « è » sont plus larges : à N caractères pour
+         N ch, les libellés riches en lettres larges étaient rognés — « Or »
+         et « Riz » tenaient, « Manganèse » perdait son « e » sous la croix de
+         suppression. Une marge d'un caractère absorbe l'écart, sans faire
+         flotter les champs courts. */
+      style={largeurAuto ? { width: (Math.max(largeurMin, txt.length) + 1) + "ch" } : undefined}
       onChange={(e) => setTxt(e.target.value)}
       onFocus={() => setEnEdition(true)}
       onBlur={() => {
@@ -1735,6 +1795,31 @@ export default function MipPpaApp() {
      qui a fermé son navigateur n'y figure pas — et c'est la bonne définition
      de « connecté » pour un tableau de bord d'administration. */
   const [connectes, setConnectes] = useState({});
+  /* Journal des connexions — les dernières sessions ouvertes sur la plateforme.
+     ---------------------------------------------------------------------------
+     Complément indispensable de la présence ci-dessus, et non doublon : la
+     présence dit QUI EST LÀ MAINTENANT et n'en garde aucune trace ; le journal
+     dit QUI EST VENU, ET QUAND. L'administrateur lead a besoin des deux —
+     « personne n'est connecté » ne se lit pas de la même façon selon que le
+     compte s'est connecté ce matin ou plus depuis six semaines.
+
+     Trois états, et il faut les distinguer :
+       null  — la table « connexions » n'existe pas encore (phase 9 non
+               exécutée dans Supabase). L'écran l'annonce et renvoie au script,
+               au lieu d'afficher une liste vide qui ferait croire à l'absence
+               de connexions.
+       []    — la table existe et ne contient rien.
+       [...] — les lignes, la plus récente d'abord.
+
+     POURQUOI QUATRE CENTS LIGNES et non les cinquante affichées : la liste
+     sert aussi à dater la DERNIÈRE connexion de chaque compte, ligne par
+     ligne. Avec cinquante lignes, un compte discret sortirait de la fenêtre et
+     s'afficherait « aucune connexion » alors qu'il s'est connecté la semaine
+     passée. Le déclencheur de la phase 9 borne le journal à vingt lignes par
+     compte : quatre cents couvrent donc vingt comptes de façon exhaustive, et
+     bien davantage en pratique. Au-delà, l'affichage reste juste — il dit
+     « connexion non enregistrée », jamais « jamais connecté ». */
+  const [connexions, setConnexions] = useState([]);
   const [session, setSession] = useState(null);         // { id, email, nom, org, role }
   const [chargementAuth, setChargementAuth] = useState(true);
   /* Session ouverte par un lien « mot de passe oublié ». Tant que ce drapeau
@@ -1836,6 +1921,57 @@ export default function MipPpaApp() {
     const { data: roles } = await sb.from("user_roles").select("*");
     setComptes((profils || []).map((p) => ({ id: p.id, email: p.email, nom: p.nom || p.email, org: p.org || "Non renseignée", role: (roles || []).find((r) => r.user_id === p.id)?.role || "En attente d'activation" })));
   };
+
+  /* Les cinquante dernières ouvertures de session, tous comptes confondus.
+     Réservée au lead par la politique « connexions_select » de la phase 9 :
+     l'interface n'est pas la seule à le garantir.
+
+     L'ERREUR EST TRAITÉE, ET DISTINGUÉE D'UNE LISTE VIDE. Tant que la phase 9
+     n'a pas été exécutée, PostgREST répond « relation … does not exist » :
+     afficher alors « aucune connexion » serait un mensonge tranquille — on
+     pose « null », et l'écran explique ce qui manque. */
+  const chargerConnexions = async () => {
+    const { data, error } = await sb.from("connexions")
+      .select("id, user_id, email, role, appareil, ouverte_le")
+      .order("ouverte_le", { ascending: false }).limit(400);
+    setConnexions(error ? null : (data || []));
+  };
+
+  /* Inscrire SA PROPRE ouverture de session dans le journal.
+     ---------------------------------------------------------------------------
+     UNE SEULE LIGNE PAR ONGLET, garantie par « sessionStorage » : il est propre
+     à l'onglet et disparaît avec lui. Sans ce garde-fou, chaque rendu qui
+     recrée l'objet de session déposerait une ligne de plus — le renouvellement
+     de jeton, à lui seul, en produirait plusieurs par heure et noierait le
+     journal sous des connexions qui n'ont jamais eu lieu.
+
+     L'ÉCHEC EST SILENCIEUX, DÉLIBÉRÉMENT. Si la phase 9 n'est pas installée,
+     l'insertion échoue : c'est sans conséquence pour l'utilisateur, qui n'a
+     rien demandé et à qui l'on n'a rien à annoncer. C'est l'écran
+     d'administration qui porte le message, une fois, là où il est utile. */
+  useEffect(() => {
+    if (!sb || !session?.id) return;
+    let deja = null;
+    try { deja = window.sessionStorage.getItem(CLE_CONNEXION_ONGLET); } catch { /* navigation privée */ }
+    if (deja === session.id) return;
+    try { window.sessionStorage.setItem(CLE_CONNEXION_ONGLET, session.id); } catch { /* idem */ }
+    sb.from("connexions").insert({
+      user_id: session.id, email: session.email,
+      role: session.role, appareil: appareilCourant(),
+    }).then(() => { /* journal absent ou refusé : sans effet sur la session */ });
+  }, [session?.id]);
+
+  /* Dernière connexion connue de chaque compte, indexée par identifiant.
+     Le journal arrivant déjà trié du plus récent au plus ancien, la première
+     ligne rencontrée pour un compte EST sa dernière connexion : aucun tri, et
+     un seul parcours. */
+  const derniereConnexion = useMemo(() => {
+    const m = {};
+    (connexions || []).forEach((c) => { if (!m[c.user_id]) m[c.user_id] = c; });
+    return m;
+  }, [connexions]);
+  // Le journal est replié par défaut : dix lignes suffisent au coup d'œil.
+  const [journalDeplie, setJournalDeplie] = useState(false);
   /* Corriger l'organisation d'un compte. Réservé à l'administrateur lead — et
      pas seulement par l'interface : le déclencheur « profils_geler_org » de la
      phase 3 fige « org » dès qu'il est renseigné, en ménageant une exception
@@ -1945,7 +2081,9 @@ export default function MipPpaApp() {
   const P = PERMS[roleActif] || PERMS["En attente d'activation"];
   const monCompte = session;
   useEffect(() => { if (session && !P.pages.includes(page)) setPage(P.pages[0]); }, [roleActif, session]); // redirection selon le rôle
-  useEffect(() => { if (page === "users" && P.users && sb) chargerComptes(); }, [page, roleActif]);
+  useEffect(() => {
+    if (page === "users" && P.users && sb) { chargerComptes(); chargerConnexions(); }
+  }, [page, roleActif]);
 
   // --- Chargement initial des donnees metier depuis Supabase + temps reel ---
   const chargerDonnees = async () => {
@@ -3507,6 +3645,27 @@ export default function MipPpaApp() {
         .sombre .bg-amber-50{background:rgba(217,160,40,.14)!important}
         .sombre .bg-emerald-50{background:rgba(30,160,110,.15)!important}
         .sombre .text-stone-300{color:#a8b3bd!important}
+
+        /* ---------- PASTILLES DE COULEUR EN MODE NUIT ----------
+           Les fonds pâles (« bg-…-50 ») étaient déjà repris ci-dessus, mais
+           pas les TEXTES qu'ils portent. Une pastille « En ligne » écrivait
+           donc du vert n° 800 (#065f46) sur un fond nuit : un rapport de
+           contraste de 1,3 pour 1, c'est-à-dire illisible. Même chose pour
+           « Non renseignée » en ambre n° 700 et pour les messages d'erreur en
+           rouge n° 600 et 700.
+           Les teintes retenues sont les nuances 300 de Tailwind : conçues
+           pour un fond sombre, elles dépassent toutes 7 pour 1 sur #152230.
+           « text-sky-100/200 » et « text-amber-200 » ne figurent PAS ici :
+           ils ne servent que sur l'écran de connexion, qui est déjà sombre. */
+        .sombre .bg-sky-100{background:rgba(56,130,190,.22)!important}
+        .sombre .bg-emerald-100{background:rgba(30,160,110,.22)!important}
+        .sombre .text-sky-800,.sombre .text-sky-700{color:#8fc6ef!important}
+        .sombre .text-emerald-800,.sombre .text-emerald-700,.sombre .text-emerald-600{color:#6ee7b7!important}
+        .sombre .text-amber-900,.sombre .text-amber-800,.sombre .text-amber-700,.sombre .text-amber-600{color:#f0c26a!important}
+        .sombre .text-red-700,.sombre .text-red-600{color:#f29a9a!important}
+        .sombre .border-amber-200,.sombre .border-amber-300{border-color:rgba(217,160,40,.42)!important}
+        .sombre .border-emerald-200{border-color:rgba(30,160,110,.42)!important}
+        .sombre .border-red-200{border-color:rgba(220,60,60,.42)!important}
         .sombre .shadow-xl,.sombre .shadow-2xl{box-shadow:0 18px 45px rgba(0,0,0,.55)!important}
         .sombre svg text{fill:#b8c0c9}
 
@@ -4226,12 +4385,16 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
 
           {/* =========== ÉVALUATION MIP =========== */}
           {page === "evaluation" && (!fEval ? (
-            <div className="bg-white rounded-2xl border border-stone-200 p-8 text-center">
+            <div className="bg-white rounded-2xl border border-stone-200 p-5 sm:p-8 text-center">
               <p className="text-stone-600 mb-4">Sélectionnez le Projet de formation de type apprentissage à évaluer :</p>
               <div className="flex flex-col gap-2 max-w-xl mx-auto">
                 {formationsVisibles.map((f) => (
-                  <button key={f.id} onClick={() => setEvalId(f.id)} className="flex items-center justify-between gap-3 border border-stone-200 rounded-xl px-4 py-3 hover:bg-stone-50 text-left">
-                    <span className="font-medium break-words min-w-0">{f.titre}</span><span className="shrink-0"><Badge score={scoreGlobal(referentiel, f.notes)} /></span>
+                  /* Sur téléphone, la pastille de score passe SOUS l'intitulé :
+                     alignée à sa droite, elle lui laissait moins de la moitié
+                     de la largeur et un titre de projet s'y étalait sur six
+                     lignes, face à une pastille d'une seule. */
+                  <button key={f.id} onClick={() => setEvalId(f.id)} className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 border border-stone-200 rounded-xl px-4 py-3 hover:bg-stone-50 text-left">
+                    <span className="font-medium break-words min-w-0 flex-1">{f.titre}</span><span className="shrink-0"><Badge score={scoreGlobal(referentiel, f.notes)} /></span>
                   </button>
                 ))}
               </div>
@@ -4532,7 +4695,16 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                     <div className="min-w-0 w-full">
                       <span className="text-xs font-semibold px-2 py-0.5 rounded-full mr-2" style={{ background: teinte, color: "#1c1917" }}>{s.jalon}</span>
                       <span className="font-semibold">{s.f.titre}</span>
-                      <div className="text-sm text-stone-500 mt-0.5">{orgAff(s.f.entreprise)} · {libelleSecteur(s.f, secteurs)} · échéance {s.echeance}{s.statut === "programmé" ? ` · ${joursRestants(s.echeance) < 0 ? Math.abs(joursRestants(s.echeance)) + " j de retard" : "dans " + joursRestants(s.echeance) + " j"}` : ""}</div>
+                      <div className="text-sm text-stone-500 mt-0.5">{orgAff(s.f.entreprise)} · {libelleSecteur(s.f, secteurs)} · échéance {s.echeance}{/* « dans 0 j » se lisait comme une erreur d'affichage alors qu'il
+                          désignait le cas le plus pressant : l'échéance du jour.
+                          On l'écrit en toutes lettres, et « demain » avec. */}
+                      {s.statut === "programmé" ? ` · ${(() => {
+                        const j = joursRestants(s.echeance);
+                        if (j < 0) return Math.abs(j) + " j de retard";
+                        if (j === 0) return "aujourd'hui";
+                        if (j === 1) return "demain";
+                        return "dans " + j + " j";
+                      })()}` : ""}</div>
                       {s.note && <div className="text-xs text-stone-500 italic mt-1"><Icone n="note" t={13} /> {s.note}</div>}
                       {(s.docs || []).length > 0 && <div className="text-xs text-sky-700 mt-1"><Icone n="trombone" t={13} /> {s.docs.length} document{s.docs.length > 1 ? "s" : ""} de suivi rattaché{s.docs.length > 1 ? "s" : ""}</div>}
                     </div>
@@ -4906,12 +5078,16 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
               <p className="text-sm text-stone-500">Une fiche officielle par projet de formation de type apprentissage.</p>
               <div className="divide-y divide-stone-100 mt-2">
                 {formationsVisibles.map((f) => (
-                  <div key={f.id} className="flex items-center justify-between gap-3 py-3.5">
-                    <div>
-                      <div className="font-semibold">{f.titre}</div>
-                      <div className="text-sm text-stone-500">{orgAff(f.entreprise)} · {libelleSecteur(f, secteurs)}</div>
+                  /* Sur téléphone, le bouton passe SOUS l'intitulé. Côte à
+                     côte, il ne laissait qu'une colonne d'une vingtaine de
+                     caractères au titre du projet, qui s'étalait alors sur
+                     cinq lignes à côté d'un bouton d'une seule. */
+                  <div key={f.id} className="flex flex-col gap-2 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                    <div className="min-w-0">
+                      <div className="font-semibold break-words">{f.titre}</div>
+                      <div className="text-sm text-stone-500 break-words">{orgAff(f.entreprise)} · {libelleSecteur(f, secteurs)}</div>
                     </div>
-                    <button onClick={() => fichePDF(f)} className="bg-white border border-stone-200 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-50 shrink-0" title="Générer la fiche PDF de cette formation."><Icone n="fichier" t={15} /> Fiche PDF</button>
+                    <button onClick={() => fichePDF(f)} className="bg-white border border-stone-200 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-50 shrink-0 self-start sm:self-auto" title="Générer la fiche PDF de cette formation."><Icone n="fichier" t={15} /> Fiche PDF</button>
                   </div>
                 ))}
               </div>
@@ -5013,6 +5189,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
 
               if (P.users) {
                 g.push(["Utilisateurs & rôles", "La page Utilisateurs liste les comptes et permet d'attribuer un rôle. Un compte sans rôle n'a aucun accès. Vous pouvez aussi corriger l'organisation d'un compte : c'est elle qui fixe le périmètre des projets qu'il verra. Les rôles sont protégés côté serveur : aucun utilisateur ne peut s'auto-attribuer un accès."]);
+                g.push(["Qui est là, et qui est venu", "Deux affichages répondent à deux questions différentes. La pastille « En ligne » dit qui a l'application ouverte en ce moment : elle apparaît et disparaît toute seule, et ne garde aucune trace. La section « Dernières sessions de connexion » garde, elle, un journal des ouvertures de session : qui, quand, depuis quel navigateur. Elle compte les ouvertures de session par l'application, pas les authentifications : deux onglets font deux lignes, un jeton renouvelé en arrière-plan n'en fait aucune. Le journal ne remonte pas avant son installation — un compte affiché « Connexion non enregistrée » n'est pas un compte qui ne s'est jamais connecté. Les deux affichages sont réservés à l'administrateur lead."]);
               }
 
               if (P.lectureSeule) {
@@ -5044,7 +5221,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                   )}
                 </h3>
                 <div className="flex items-center gap-2">
-                  <button onClick={chargerComptes} title="Recharger la liste depuis la base."
+                  <button onClick={() => { chargerComptes(); chargerConnexions(); }} title="Recharger la liste des comptes et le journal des connexions depuis la base."
                     className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50 flex items-center gap-1.5"><Icone n="rotation" t={14} /> Actualiser</button>
                   <select defaultValue="" onChange={(e) => { if (e.target.value === "deconnexion") { if (sb) sb.auth.signOut(); setSession(null); } e.target.value = ""; }}
                     className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg bg-white cursor-pointer" title="Options du compte">
@@ -5055,10 +5232,22 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
               </div>
               <p className="text-sm text-stone-500 mb-4">Sélectionnez un rôle pour chaque utilisateur. Les comptes « En attente » n'ont aucun accès tant qu'aucun rôle ne leur est attribué. Seul l'administrateur lead peut modifier les rôles.</p>
               <div className="divide-y divide-stone-100">
-                {comptes.map((u) => (
-                  <div key={u.id} className="py-4 flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full text-white flex items-center justify-center text-sm font-semibold" style={{ background: u.role === "En attente d'activation" ? "#a8a29e" : C.vert }}>
+                {comptes.map((u) => {
+                  /* Un rôle ne se modifie que par l'administrateur lead, et
+                     jamais le sien : personne ne se retire ses propres droits
+                     par inadvertance, et le dernier lead ne peut pas se
+                     verrouiller dehors.
+                     De cette même condition découle l'affichage : quand le rôle
+                     est modifiable, la LISTE DÉROULANTE le porte ; sinon c'est
+                     la PASTILLE. Les deux à la fois disaient deux fois la même
+                     chose et, sur un téléphone, débordaient de l'écran. */
+                  const modifiable = roleActif === "Administrateur lead" && session?.id !== u.id;
+                  const enLigne = roleActif === "Administrateur lead" && connectes[u.id];
+                  const derniere = derniereConnexion[u.id];
+                  return (
+                  <div key={u.id} className="py-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                      <div className="w-10 h-10 shrink-0 rounded-full text-white flex items-center justify-center text-sm font-semibold" style={{ background: u.role === "En attente d'activation" ? "#a8a29e" : C.vert }}>
                         {u.nom.split(" ").map((m) => m[0]).slice(0, 2).join("").toUpperCase()}
                       </div>
                       <div className="min-w-0">
@@ -5075,37 +5264,145 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                               className="ml-1.5 text-xs font-medium hover:underline" style={{ color: C.vert }}>modifier</button>
                           )}
                         </div>
+                        {/* Dernière connexion. Elle n'a de sens que pour un
+                            compte qui n'est pas là en ce moment — la pastille
+                            « En ligne » dit mieux, et depuis quand.
+                            ⚠ « Connexion non enregistrée » et non « jamais
+                            connecté » : le journal ne remonte pas avant son
+                            installation, et un compte ancien peut s'être
+                            connecté cent fois sans y figurer. */}
+                        {roleActif === "Administrateur lead" && !enLigne && connexions !== null && (
+                          <div className="text-xs text-stone-400 mt-0.5"
+                            title={derniere ? "Dernière connexion : " + dateHeureCourte(derniere.ouverte_le) : "Aucune session enregistrée depuis l'installation du journal. Cela ne veut pas dire que ce compte ne s'est jamais connecté."}>
+                            {derniere ? (<>
+                              Dernière connexion {ilYA(derniere.ouverte_le)}
+                              {/* La date exacte tient sur un écran large ;
+                                  sur un téléphone elle ferait une deuxième
+                                  ligne pour chaque compte. Elle reste dans
+                                  l'infobulle, et dans le journal ci-dessous. */}
+                              <span className="hidden sm:inline"> <span className="text-stone-300">·</span> {dateHeureCourte(derniere.ouverte_le)}</span>
+                            </>) : "Connexion non enregistrée"}
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    {/* Le bloc de droite passe à la ligne sur téléphone
+                        (« flex-wrap ») et occupe toute la largeur : c'est ce
+                        qui empêche la liste déroulante des rôles de sortir de
+                        l'écran quand la pastille « En ligne » est présente. */}
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto sm:justify-end min-w-0">
                       {/* Pastille de présence. Le point vert dit « en ligne
                           maintenant » ; l'infobulle donne depuis quand et
                           combien d'onglets, ce qui aide à distinguer une
                           personne au travail d'un onglet resté ouvert. */}
-                      {roleActif === "Administrateur lead" && connectes[u.id] && (
-                        <span className="text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 bg-emerald-50 text-emerald-800"
+                      {enLigne && (
+                        <span className="text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 bg-emerald-50 text-emerald-800 whitespace-nowrap shrink-0"
                           title={`En ligne depuis ${heureCourte(connectes[u.id].depuis)}`
                             + (connectes[u.id].onglets > 1 ? ` · ${connectes[u.id].onglets} onglets ouverts` : "")}>
                           <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" aria-hidden="true" />
                           En ligne
                         </span>
                       )}
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${u.role === "En attente d'activation" ? "bg-stone-100 text-stone-500" : "bg-sky-100 text-sky-800"}`}>{u.role}</span>
-                      <select value={u.role} disabled={roleActif !== "Administrateur lead" || session?.id === u.id}
-                        onChange={(e) => attribuerRole(u.id, e.target.value)}
-                        className="text-sm border border-stone-200 rounded-lg px-3 py-2 bg-stone-50">
-                        <option value="En attente d'activation">Choisir…</option>
-                        {ROLES.filter((r) => r !== "En attente d'activation").map((r) => <option key={r}>{r}</option>)}
-                      </select>
-                      {roleActif === "Administrateur lead" && session?.id !== u.id && u.role !== "En attente d'activation" && (
-                        <button title="Retirer l'accès (repasse le compte en attente)." onClick={() => attribuerRole(u.id, "En attente d'activation")}
-                          className="text-red-500 hover:text-red-700" aria-label="Retirer l'accès (repasse le compte en attente)."><Icone n="poubelle" t={16} /></button>
+                      {modifiable ? (<>
+                        <label className="sr-only" htmlFor={"role-" + u.id}>Rôle de {u.nom}</label>
+                        {/* « sm:w-52 » : au-delà du téléphone la liste prend une
+                            largeur fixe. Sans elle, elle se dimensionne sur le
+                            rôle affiché et la colonne se décale d'une ligne à
+                            l'autre. Sur téléphone, au contraire, elle occupe la
+                            place restante (« flex-1 min-w-0 ») et ne peut donc
+                            plus déborder de l'écran. */}
+                        <select id={"role-" + u.id} value={u.role}
+                          onChange={(e) => attribuerRole(u.id, e.target.value)}
+                          title={"Rôle de " + u.nom + ". Il fixe ce que ce compte peut voir et faire."}
+                          className="text-sm border border-stone-200 rounded-lg px-3 py-2 bg-stone-50 flex-1 min-w-0 sm:flex-none sm:w-52">
+                          <option value="En attente d'activation">Choisir…</option>
+                          {ROLES.filter((r) => r !== "En attente d'activation").map((r) => <option key={r}>{r}</option>)}
+                        </select>
+                        {/* L'emplacement de la corbeille est réservé même
+                            lorsqu'elle est absente : sans cela, la ligne d'un
+                            compte « En attente » décale sa liste déroulante
+                            vers la droite et la colonne se met à zigzaguer. */}
+                        <span className="w-6 shrink-0 flex justify-center">
+                          {u.role !== "En attente d'activation" && (
+                            <button title="Retirer l'accès (repasse le compte en attente)." onClick={() => attribuerRole(u.id, "En attente d'activation")}
+                              className="text-red-500 hover:text-red-700" aria-label={"Retirer l'accès de " + u.nom + " (repasse le compte en attente)."}><Icone n="poubelle" t={16} /></button>
+                          )}
+                        </span>
+                      </>) : (
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${u.role === "En attente d'activation" ? "bg-stone-100 text-stone-500" : "bg-sky-100 text-sky-800"}`}>{u.role}</span>
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
+
+            {/* =========== DERNIÈRES SESSIONS DE CONNEXION =========== */}
+            {/* Réservé à l'administrateur lead, comme la pastille de présence :
+                savoir qui s'est connecté et quand est une information de
+                supervision. Le §0 quater de l'état des lieux explique pourquoi
+                les deux affichages coexistent — la présence ne garde rien. */}
+            {roleActif === "Administrateur lead" && (
+              <section className="bg-white rounded-2xl border border-stone-200 p-6">
+                <h3 className="font-bold mb-1 flex items-center gap-2"><Icone n="calendrier" t={16} /> Dernières sessions de connexion</h3>
+                {connexions === null ? (
+                  /* Journal non installé. On le dit, on dit quoi faire, et on
+                     n'affiche surtout pas une liste vide — elle se lirait
+                     « personne ne s'est connecté », ce qui est faux. */
+                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    <div className="font-semibold">Le journal des connexions n'est pas encore installé.</div>
+                    <p className="mt-1 leading-relaxed">
+                      Exécutez <span className="font-mono">supabase-phase9.sql</span> dans Supabase
+                      (SQL Editor → New query → Run). Le script ne détruit rien : il crée la seule
+                      table <span className="font-mono">connexions</span> et ses deux règles d'accès.
+                      La pastille « En ligne » ci-dessus n'en dépend pas et continue de fonctionner.
+                    </p>
+                  </div>
+                ) : (<>
+                  <p className="text-sm text-stone-500 mb-4">
+                    Chaque ouverture de session par l'application dépose une ligne. Deux onglets ouverts
+                    font deux lignes ; un jeton renouvelé en arrière-plan n'en fait aucune. Le journal ne
+                    remonte pas avant son installation, et conserve les vingt dernières sessions par compte.
+                  </p>
+                  {connexions.length === 0 ? (
+                    <p className="text-sm text-stone-500">Aucune session enregistrée pour l'instant. La prochaine connexion — la vôtre comprise — apparaîtra ici.</p>
+                  ) : (<>
+                    <ul className="divide-y divide-stone-100">
+                      {(journalDeplie ? connexions.slice(0, 50) : connexions.slice(0, 10)).map((c) => {
+                        /* Le nom vient de la liste des comptes, qui est à jour ;
+                           l'email et le rôle viennent de la ligne, qui dit ce
+                           qu'était le compte ce jour-là. */
+                        const compte = comptes.find((u) => u.id === c.user_id);
+                        return (
+                          <li key={c.id} className="py-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                            <div className="min-w-0">
+                              <div className="text-sm font-semibold break-words">
+                                {compte ? compte.nom : (c.email || "Compte supprimé")}
+                                {c.user_id === session?.id && <span className="ml-1.5 text-xs font-normal text-stone-400">(vous)</span>}
+                              </div>
+                              <div className="text-xs text-stone-500 break-words">
+                                {c.email}{c.role ? <> · {c.role}</> : null}{c.appareil ? <> · {c.appareil}</> : null}
+                              </div>
+                            </div>
+                            <div className="text-xs text-stone-500 sm:text-right shrink-0">
+                              <div className="font-semibold text-stone-700">{ilYA(c.ouverte_le)}</div>
+                              <div>{dateHeureCourte(c.ouverte_le)}</div>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    {connexions.length > 10 && (
+                      <button onClick={() => setJournalDeplie(!journalDeplie)}
+                        className="mt-3 text-sm font-medium hover:underline" style={{ color: C.vert }}>
+                        {journalDeplie ? "Réduire la liste" : `Afficher les ${Math.min(connexions.length, 50)} dernières sessions`}
+                      </button>
+                    )}
+                  </>)}
+                </>)}
+              </section>
+            )}
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <h3 className="font-bold mb-1"><Icone n="plus" t={16} /> Inviter un nouvel utilisateur</h3>
               <p className="text-sm text-stone-600 mb-4">Saisissez l'email d'un partenaire : un email d'invitation contenant le lien de la plateforme lui sera envoyé directement (comme l'email de confirmation d'inscription). Après inscription, il apparaîtra ci-dessus en statut « En attente », prêt à recevoir son rôle.</p>
