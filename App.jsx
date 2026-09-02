@@ -648,6 +648,21 @@ function decouperLibelle(texte, largeurMax) {
   return lignes.length ? lignes : [""];
 }
 
+/* Même découpe, mais bornée à un nombre de lignes. Ce dont on a besoin sous
+   un axe horizontal : la place y est comptée en hauteur, et un libellé de
+   quatre-vingts caractères sur huit lignes repousserait les barres hors du
+   cadre. La dernière ligne conservée porte alors des points de suspension,
+   pour que le lecteur sache qu'il manque du texte — l'infobulle et la liste
+   accessible donnent le libellé entier. */
+function decouperBorne(texte, largeurMax, maxLignes) {
+  const lignes = decouperLibelle(texte, largeurMax);
+  if (lignes.length <= maxLignes) return lignes;
+  const gardees = lignes.slice(0, maxLignes);
+  const derniere = gardees[maxLignes - 1];
+  gardees[maxLignes - 1] = (derniere.length > largeurMax - 1 ? derniere.slice(0, largeurMax - 1) : derniere) + "…";
+  return gardees;
+}
+
 /* Largeur réelle d'un texte, mesurée par le navigateur au lieu d'être estimée
    au nombre de caractères. L'estimation se trompe de 25 % selon les lettres
    (« Transformation » et « semi-finie » n'occupent pas la même place à nombre
@@ -2070,6 +2085,14 @@ export default function MipPpaApp() {
   const [detailStat, setDetailStat] = useState(null); // "projets" | "apprenants" | "scores"
   const [detailLocalite, setDetailLocalite] = useState(null); // nom d'une localité de la carte
   const [lectureCarte, setLectureCarte] = useState("implantation"); // ou "score"
+  /* Sens des barres du graphique « Score moyen par secteur ».
+     ⚠ PIÈGE DE VOCABULAIRE, à ne pas confondre en relisant le code : ce que
+     Recharts appelle « layout: vertical » dessine des barres HORIZONTALES —
+     c'est l'axe des catégories qui est vertical. Cet état-ci porte le sens
+     des BARRES, tel que l'utilisateur le voit et tel que le bouton le dit.
+     « horizontal » reste la vue par défaut : c'est celle qui absorbe des
+     libellés de secteur de quatre-vingts caractères sans les rogner. */
+  const [sensSecteur, setSensSecteur] = useState("horizontal"); // ou "vertical"
   /* Copie de secours disponible. Relue à chaque rendu de la page Projets :
      elle est écrite hors de React (localStorage), un état figé au montage
      manquerait celle que l'opération en cours vient de prendre. */
@@ -2456,6 +2479,51 @@ export default function MipPpaApp() {
       (m, d) => Math.max(m, ...decouperLibelle(d.filiere, caracteres).map((l) => largeurTexte(l, police))), 0);
     return { caracteres, police, largeur: Math.min(plafond, Math.ceil(plusLarge) + 10) };
   }, [estMobile, largeurFenetre, filiereData]);
+
+  /* Largeur RÉELLE du cadre du graphique sectoriel.
+     En barres verticales, chaque secteur ne dispose que d'une bande — la
+     largeur du cadre divisée par le nombre de secteurs — et c'est elle qui
+     décide du découpage des libellés. Elle ne se déduit pas de la largeur de
+     la fenêtre : entre la barre latérale, les gouttières de la zone de
+     contenu, sa largeur maximale de 1 024 px et la marge de la carte, l'écart
+     dépasse 300 px sur un grand écran. On mesure donc le conteneur.
+     La mesure est refaite quand la fenêtre change de taille : « largeurFenetre »
+     est déjà tenu à jour par l'écouteur de redimensionnement plus haut, il
+     suffit de s'en servir comme déclencheur — pas de second écouteur. */
+  const boiteSecteur = useRef(null);
+  const [largeurSecteur, setLargeurSecteur] = useState(0);
+  useEffect(() => {
+    if (boiteSecteur.current) setLargeurSecteur(boiteSecteur.current.clientWidth);
+  }, [page, sensSecteur, largeurFenetre, filiereData.length]);
+
+  /* Axe des libellés quand les barres sont verticales : il passe SOUS le
+     graphique, et la place s'y compte en hauteur.
+     Deux décisions y sont prises.
+     1. QUEL LIBELLÉ. Un secteur s'écrit sur trois niveaux — « Secteur
+        secondaire · Transformation du cacao et du café · Fèves et masse de
+        cacao ». Sous une barre, seul le dernier niveau tient, et c'est le seul
+        qui distingue : les trois projets de démonstration partagent les deux
+        premiers. On ne prend cette forme abrégée QUE si elle reste distincte
+        d'un secteur à l'autre ; sinon on garde le libellé entier, quitte à le
+        tronquer. Deux barres portant la même étiquette seraient pires qu'une
+        étiquette longue.
+     2. COMBIEN DE LIGNES. Trois au plus : au-delà, l'axe mange le graphique.
+        L'infobulle et la liste accessible portent toujours le libellé complet. */
+  const axeSecteurBas = useMemo(() => {
+    const police = estMobile ? 9 : 11;
+    const nb = Math.max(1, filiereData.length);
+    // 44 px : l'axe des ordonnées et sa marge. 8 px : le blanc entre deux bandes.
+    const bande = Math.max(34, (Math.max(240, largeurSecteur) - 44) / nb - 8);
+    const caracteres = Math.max(5, Math.floor(bande / (police * 0.58)));
+    const courtes = filiereData.map((d) => String(d.filiere).split(" · ").pop());
+    const distinctes = new Set(courtes).size === courtes.length;
+    const etiquette = {};
+    filiereData.forEach((d, i) => { etiquette[d.filiere] = distinctes ? courtes[i] : d.filiere; });
+    const maxLignes = 3;
+    const lignes = filiereData.reduce(
+      (m, d) => Math.max(m, decouperBorne(etiquette[d.filiere], caracteres, maxLignes).length), 1);
+    return { police, caracteres, etiquette, maxLignes, hauteur: Math.round(lignes * police * 1.25) + 14 };
+  }, [estMobile, largeurSecteur, filiereData]);
 
   // ---------- Actions ----------
   /* Répercussion d'un renommage du référentiel sur les données déjà saisies.
@@ -4015,33 +4083,99 @@ export default function MipPpaApp() {
             </section>
 
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
-              <h3 className="font-bold">Score moyen par secteur</h3>
-              <p className="text-sm text-stone-500 mb-2">Comparaison sectorielle.</p>
-              <ResponsiveContainer width="100%" height={Math.max(72, 66 * filiereData.length) + 40}>
-                <BarChart data={filiereData} layout="vertical" margin={{ left: 6, right: 18 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
-                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10 }} />
-                  {/* La colonne des libellés se règle au prorata de l'écran. À
-                      150 px fixes, elle mangeait 150 des 247 px disponibles sur
-                      un téléphone de 320 px : il ne restait presque rien pour
-                      les barres, seule information utile du graphique. */}
-                  <YAxis type="category" dataKey="filiere" width={axeSecteur.largeur} interval={0}
-                    tick={({ x, y, payload }) => {
-                      // Découpe le libellé en lignes complètes (aucune condensation)
-                      const lignes = decouperLibelle(payload.value, axeSecteur.caracteres);
-                      return (
-                        <text x={x} y={y} textAnchor="end" fill="#57534e" fontSize={axeSecteur.police}>
-                          {lignes.map((l, i) => <tspan key={i} x={x - 4} dy={i === 0 ? -((lignes.length - 1) * 5.5) + 4 : 12}>{l}</tspan>)}
-                        </text>
-                      );
-                    }} />
-                  <Tooltip formatter={(v) => `${Math.round(v)} %`} />
-                  {/* Même raison que le radar : une capture prise au chargement
-                      montrait des barres encore à zéro. */}
-                  <Bar dataKey="score" fill={C.vert} radius={[0, 6, 6, 0]} barSize={26}
-                    isAnimationActive={false} />
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="font-bold">Score moyen par secteur</h3>
+                  {/* Le sous-titre reste court et constant : allongé, il pousse
+                      le sélecteur à la ligne suivante et le décale à gauche.
+                      L'avertissement sur les libellés abrégés est donc placé
+                      SOUS le graphique, là où il se lit au bon moment. */}
+                  <p className="text-sm text-stone-500 mb-2">Comparaison sectorielle.</p>
+                </div>
+                {/* Même sélecteur que celui de la carte, à deux boutons. Les
+                    barres horizontales portent des libellés de secteur entiers ;
+                    les verticales se comparent mieux entre elles et tiennent en
+                    hauteur. Aucune des deux ne remplace l'autre. */}
+                <div className="flex rounded-lg border border-stone-200 overflow-hidden shrink-0" role="group"
+                  aria-label="Choisir le sens des barres">
+                  {[["horizontal", "Horizontales", "Barres horizontales : le libellé complet de chaque secteur tient à gauche de sa barre."],
+                    ["vertical", "Verticales", "Barres verticales : les hauteurs se comparent d'un coup d'œil, les libellés passent sous les barres et sont abrégés."]].map(([cle, txt, aide]) => (
+                    <button key={cle} onClick={() => setSensSecteur(cle)}
+                      aria-pressed={sensSecteur === cle} title={aide}
+                      className={"text-xs px-3 py-1.5 font-medium " + (sensSecteur === cle ? "text-white" : "bg-white text-stone-600 hover:bg-stone-50")}
+                      style={sensSecteur === cle ? { background: C.vertFonce } : undefined}>
+                      {txt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Le conteneur est mesuré : « axeSecteurBas » a besoin de la
+                  largeur réelle du cadre, pas de celle de la fenêtre. */}
+              <div ref={boiteSecteur}>
+              {sensSecteur === "vertical" ? (
+                /* ⚠ Ici PAS de « layout » : le réglage par défaut de Recharts
+                   dessine les barres verticales. C'est « layout: vertical »,
+                   plus bas, qui donne des barres horizontales. */
+                <ResponsiveContainer width="100%" height={230 + axeSecteurBas.hauteur}>
+                  <BarChart data={filiereData} margin={{ top: 4, left: -14, right: 10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
+                    <XAxis type="category" dataKey="filiere" interval={0} height={axeSecteurBas.hauteur}
+                      tick={({ x, y, payload }) => {
+                        const lignes = decouperBorne(axeSecteurBas.etiquette[payload.value] ?? payload.value,
+                          axeSecteurBas.caracteres, axeSecteurBas.maxLignes);
+                        return (
+                          <text x={x} y={y} textAnchor="middle" fill="#57534e" fontSize={axeSecteurBas.police}>
+                            {lignes.map((l, i) => (
+                              <tspan key={i} x={x} dy={i === 0 ? axeSecteurBas.police + 3 : axeSecteurBas.police * 1.25}>{l}</tspan>
+                            ))}
+                          </text>
+                        );
+                      }} />
+                    <YAxis type="number" domain={[0, 100]} tick={{ fontSize: 10 }} />
+                    {/* L'infobulle porte le libellé ENTIER : c'est elle qui
+                        rattrape l'abrègement de l'axe. */}
+                    <Tooltip formatter={(v) => `${Math.round(v)} %`} />
+                    {/* Même raison que le radar : une capture prise au chargement
+                        montrait des barres encore à zéro. */}
+                    <Bar dataKey="score" fill={C.vert} radius={[6, 6, 0, 0]} maxBarSize={72}
+                      isAnimationActive={false} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <ResponsiveContainer width="100%" height={Math.max(72, 66 * filiereData.length) + 40}>
+                  <BarChart data={filiereData} layout="vertical" margin={{ left: 6, right: 18 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
+                    <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10 }} />
+                    {/* La colonne des libellés se règle au prorata de l'écran. À
+                        150 px fixes, elle mangeait 150 des 247 px disponibles sur
+                        un téléphone de 320 px : il ne restait presque rien pour
+                        les barres, seule information utile du graphique. */}
+                    <YAxis type="category" dataKey="filiere" width={axeSecteur.largeur} interval={0}
+                      tick={({ x, y, payload }) => {
+                        // Découpe le libellé en lignes complètes (aucune condensation)
+                        const lignes = decouperLibelle(payload.value, axeSecteur.caracteres);
+                        return (
+                          <text x={x} y={y} textAnchor="end" fill="#57534e" fontSize={axeSecteur.police}>
+                            {lignes.map((l, i) => <tspan key={i} x={x - 4} dy={i === 0 ? -((lignes.length - 1) * 5.5) + 4 : 12}>{l}</tspan>)}
+                          </text>
+                        );
+                      }} />
+                    <Tooltip formatter={(v) => `${Math.round(v)} %`} />
+                    {/* Même raison que le radar : une capture prise au chargement
+                        montrait des barres encore à zéro. */}
+                    <Bar dataKey="score" fill={C.vert} radius={[0, 6, 6, 0]} barSize={26}
+                      isAnimationActive={false} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+              </div>
+              {/* Dit uniquement quand c'est vrai : en barres horizontales, les
+                  libellés sont entiers et la mention n'aurait rien à signaler. */}
+              {sensSecteur === "vertical" && (
+                <p className="text-xs text-stone-400 mt-1">
+                  Les libellés sous les barres sont abrégés ; survolez une barre pour lire le secteur entier.
+                </p>
+              )}
               <ul className="sr-only">
                 {filiereData.map((d) => (
                   <li key={d.filiere}>{d.filiere} : {Math.round(d.score)} %</li>
