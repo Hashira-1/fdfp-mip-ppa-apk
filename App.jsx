@@ -301,6 +301,21 @@ const IC = {
   disquette: <><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></>,
   tendance: <><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></>,
   note: <><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 12h4"/><path d="M10 16h4"/></>,
+  /* Groupe de trois personnes, la plus grande au premier plan. Sert à la carte
+     « Apprenants concernés » du tableau de bord, où « usine » — un bâtiment —
+     comptait des personnes avec le dessin d'un lieu.
+     Distinct d'« utilisateurs », qui reste le pictogramme des COMPTES de la
+     plateforme : deux notions différentes, deux dessins différents.
+     Les deux silhouettes latérales s'arrêtent juste sous la silhouette
+     centrale, qui les recouvre : c'est ce qui donne le premier plan. */
+  groupe: <>
+    <circle cx="12" cy="7" r="3.4"/>
+    <path d="M5.6 20.5v-2.6a4.4 4.4 0 0 1 4.4-4.4h4a4.4 4.4 0 0 1 4.4 4.4v2.6"/>
+    <circle cx="4.4" cy="10.6" r="2.4"/>
+    <path d="M1 20.5v-2.2a3.5 3.5 0 0 1 3.5-3.5h1.1"/>
+    <circle cx="19.6" cy="10.6" r="2.4"/>
+    <path d="M23 20.5v-2.2a3.5 3.5 0 0 0-3.5-3.5h-1.1"/>
+  </>,
 };
 function Icone({ n, t = 18, className = "" }) {
   return (
@@ -3828,13 +3843,12 @@ export default function MipPpaApp() {
         .nav-item:hover { background: rgba(255,255,255,.08); color: #fff; padding-left: 1rem; }
         .nav-actif { background: #1c4a66; color: #fff; font-weight: 600; }
         .nav-actif:hover { background: #1c4a66; }
-        /* Pictogrammes de la barre en orange FDFP, comme les intitulés de
-           section. Ils sont tracés en « currentColor » : une règle sur le SVG
-           suffit, et elle laisse aux libellés leur blanc — c'est ce contraste
-           entre les deux qui fait lire la rubrique active.
-           Posée ici plutôt qu'en style en ligne dans le JSX : « .nav-actif »
-           impose « color:#fff » au bouton, qu'un enfant hériterait. */
-        .nav-item > svg { color: #f2a33c; }
+        /* Les pictogrammes des rubriques n'ont PAS de couleur propre : ils
+           suivent « currentColor », donc le gris du libellé, son blanc au
+           survol et son blanc sur la rubrique active. Un essai en orange FDFP
+           a été fait le 2 septembre puis retiré — l'orange était déjà pris par
+           les intitulés de section et par le rôle, et le répéter sur neuf
+           pictogrammes noyait ces repères au lieu de les servir. */
         * { scrollbar-width: thin; }
         html { scroll-behavior: smooth; }
       `}</style>
@@ -3846,18 +3860,21 @@ export default function MipPpaApp() {
               second « cadre-logo » superposait deux plaques et deux marges. */}
           <LogoFDFP h={30} />
           <div className="min-w-0">
-            <div className="text-white font-bold leading-tight">MIP-PPA</div>
-            {/* Développé du sigle et intitulés de section : orange FDFP, la
-                seconde couleur du logo — celle qui souligne « FDFP » sur la
-                plaque juste à gauche.
-                ⚠ LA CLASSE « text-stone-… » A ÉTÉ RETIRÉE, pas seulement
-                doublée : le bloc du mode nuit porte
+            {/* Le sigle porte SEUL l'orange FDFP — la seconde couleur du logo,
+                celle qui souligne « FDFP » sur la plaque juste à gauche. Son
+                développé passe en blanc : deux lignes du même orange faisaient
+                un pavé, et c'est le sigle qui doit accrocher l'œil.
+                ⚠ LA CLASSE « text-stone-400 » DU DÉVELOPPÉ A ÉTÉ RETIRÉE, pas
+                seulement doublée : le bloc du mode nuit porte
                 « .sombre .text-stone-400{…!important} », et un « !important »
-                l'emporte sur un style en ligne. La couleur aurait tenu en mode
-                clair et sauté en mode nuit. La barre latérale, elle, est sombre
-                dans les deux thèmes : une seule couleur suffit.
-                Gain de contraste sur le fond #0d2233 : 6,4 pour 1 → 7,8. */}
-            <div className="text-xs font-medium leading-snug break-words" style={{ color: C.gold }}>Modèle d'Indicateurs de Performance - Produit Projet Apprentissage</div>
+                l'emporte sur un style en ligne — la couleur aurait tenu en mode
+                clair et sauté en mode nuit. Rien ne vise « text-white », qui
+                peut donc rester une classe.
+                Contraste du développé sur le fond #0d2233 : 6,4 pour 1 en gris
+                n° 400, 16,4 en blanc. La barre latérale est sombre dans les
+                deux thèmes : une seule couleur suffit. */}
+            <div className="font-bold leading-tight" style={{ color: C.gold }}>MIP-PPA</div>
+            <div className="text-xs font-medium leading-snug break-words text-white">Modèle d'Indicateurs de Performance - Produit Projet Apprentissage</div>
           </div>
         </div>
         <nav className="flex-1 px-3 space-y-5 pb-4">
@@ -3984,7 +4001,7 @@ export default function MipPpaApp() {
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
               <StatCard icone={<Icone n="cap" t={20} />} titre="Projets suivis" valeur={stats.nb}
                 surClic={() => setDetailStat("projets")} indice="Voir l'intitulé de chaque projet" />
-              <StatCard icone={<Icone n="usine" t={20} />} titre="Apprenants concernés" valeur={stats.apprenants} teinte="#fdf0da" fg="#b07515"
+              <StatCard icone={<Icone n="groupe" t={20} />} titre="Apprenants concernés" valeur={stats.apprenants} teinte="#fdf0da" fg="#b07515"
                 surClic={() => setDetailStat("apprenants")} indice="Voir le nombre d'apprenants par projet" />
               <StatCard icone={<Icone n="cible" t={20} />} titre="Score moyen MIP-PPA" valeur={fmtPct(stats.moy)} sous="Moyenne pondérée du portefeuille" teinte="#dcebf7" fg={C.vert}
                 surClic={() => setDetailStat("scores")} indice="Voir le score de chaque projet" />
