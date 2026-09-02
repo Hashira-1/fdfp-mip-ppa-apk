@@ -3840,13 +3840,28 @@ export default function MipPpaApp() {
           <LogoFDFP h={30} />
           <div className="min-w-0">
             <div className="text-white font-bold leading-tight">MIP-PPA</div>
-            <div className="text-xs text-stone-400 break-words">Modèle d'Indicateurs de Performance - Produit Projet Apprentissage</div>
+            {/* Développé du sigle et intitulés de section : orange FDFP, la
+                seconde couleur du logo — celle qui souligne « FDFP » sur la
+                plaque juste à gauche.
+                ⚠ LA CLASSE « text-stone-… » A ÉTÉ RETIRÉE, pas seulement
+                doublée : le bloc du mode nuit porte
+                « .sombre .text-stone-400{…!important} », et un « !important »
+                l'emporte sur un style en ligne. La couleur aurait tenu en mode
+                clair et sauté en mode nuit. La barre latérale, elle, est sombre
+                dans les deux thèmes : une seule couleur suffit.
+                Gain de contraste sur le fond #0d2233 : 6,4 pour 1 → 7,8. */}
+            <div className="text-xs font-medium leading-snug break-words" style={{ color: C.gold }}>Modèle d'Indicateurs de Performance - Produit Projet Apprentissage</div>
           </div>
         </div>
         <nav className="flex-1 px-3 space-y-5 pb-4">
           {NAV.map((g) => (
             <div key={g.section}>
-              <div className="text-[11px] uppercase tracking-wider text-stone-500 px-3 mb-1.5">{g.section}</div>
+              {/* « Pilotage », « Aide », « Administration ». Le gris n° 500 sur
+                  le bleu nuit de la barre ne donnait que 3,4 pour 1 — sous le
+                  seuil de 4,5 exigé d'un petit texte, et cela se voyait : les
+                  intitulés de section s'effaçaient. En orange FDFP : 7,8.
+                  Même remarque que ci-dessus sur la classe retirée. */}
+              <div className="text-xs font-semibold uppercase tracking-wider px-3 mb-1.5" style={{ color: C.gold }}>{g.section}</div>
               {g.items.map(([id, ic, lbl]) => (
                 <button key={id} onClick={() => { setPage(id); setMenuMobile(false); }} title={DESCR_NAV[id] || lbl}
                   className={"nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left " + (page === id ? "nav-actif" : "")}>
