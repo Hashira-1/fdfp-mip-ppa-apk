@@ -3828,6 +3828,13 @@ export default function MipPpaApp() {
         .nav-item:hover { background: rgba(255,255,255,.08); color: #fff; padding-left: 1rem; }
         .nav-actif { background: #1c4a66; color: #fff; font-weight: 600; }
         .nav-actif:hover { background: #1c4a66; }
+        /* Pictogrammes de la barre en orange FDFP, comme les intitulés de
+           section. Ils sont tracés en « currentColor » : une règle sur le SVG
+           suffit, et elle laisse aux libellés leur blanc — c'est ce contraste
+           entre les deux qui fait lire la rubrique active.
+           Posée ici plutôt qu'en style en ligne dans le JSX : « .nav-actif »
+           impose « color:#fff » au bouton, qu'un enfant hériterait. */
+        .nav-item > svg { color: #f2a33c; }
         * { scrollbar-width: thin; }
         html { scroll-behavior: smooth; }
       `}</style>
@@ -3871,8 +3878,17 @@ export default function MipPpaApp() {
             </div>
           ))}
         </nav>
-        <div className="px-5 py-4 border-t" style={{ borderColor: "#1c4a66" }}>
-          <div className="flex items-center gap-2 text-sm" style={{ color: C.gold }}><Icone n="bouclier" t={16} /> {roleActif}</div>
+        {/* « px-6 » et non « px-5 » : la barre de navigation est en « px-3 » et
+            ses boutons aussi, ce qui pose leurs pictogrammes à 24 px du bord.
+            À 20 px, le bouclier du rôle était seul décalé vers la gauche. */}
+        <div className="px-6 py-4 border-t" style={{ borderColor: "#1c4a66" }}>
+          {/* Même écartement (« gap-3 »), même taille de pictogramme (17) et
+              même graisse que les autres libellés orange de la barre : le rôle
+              était le seul à être resté en graisse normale, ce qui le faisait
+              paraître délavé à côté d'« ADMINISTRATION » juste au-dessus.
+              Il garde en revanche sa casse : c'est le nom d'un rôle, pas un
+              intitulé de rubrique, et l'application l'écrit ainsi partout. */}
+          <div className="flex items-center gap-3 text-sm font-semibold" style={{ color: C.gold }}><Icone n="bouclier" t={17} /> {roleActif}</div>
           <button onClick={() => { if (sb) sb.auth.signOut(); setSession(null); setPage("dashboard"); }}
             className="mt-2 text-xs text-stone-400 hover:text-white flex items-center gap-1.5" title="Fermer votre session"><Icone n="deconnexion" t={13} /> Se déconnecter</button>
         </div>
