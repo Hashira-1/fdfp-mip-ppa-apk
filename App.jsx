@@ -1851,6 +1851,23 @@ export default function MipPpaApp() {
      pratique. Au-delà, l'affichage reste juste — il dit « connexion non
      enregistrée », jamais « jamais connecté ». */
   const [connexions, setConnexions] = useState([]);
+  /* Deuxième source de date, et la seule qui remonte AVANT l'installation du
+     journal : « last_sign_in_at » de « auth.users », que GoTrue tient à jour à
+     chaque authentification. Le navigateur ne l'atteint pas — le schéma
+     « auth » n'est pas exposé, et il ne doit pas l'être, il contient aussi les
+     empreintes de mots de passe. La phase 10 ouvre donc une porte étroite :
+     une fonction qui ne rend que l'identifiant et cette date, et seulement à
+     l'administrateur lead.
+
+     Pourquoi DEUX sources, et pas celle-ci seule : « last_sign_in_at » ne
+     bouge pas tant que la personne reste connectée — quelqu'un qui revient
+     tous les jours sans jamais se déconnecter garderait une date vieille de
+     plusieurs semaines. Le journal de la phase 9, lui, suit ces retours mais
+     ne remonte pas avant son installation. On retient donc la plus récente
+     des deux ; aucune ne suffit seule.
+
+     null = la fonction n'existe pas (phase 10 non exécutée). */
+  const [connexionsAuth, setConnexionsAuth] = useState({});
   const [session, setSession] = useState(null);         // { id, email, nom, org, role }
   const [chargementAuth, setChargementAuth] = useState(true);
   /* Session ouverte par un lien « mot de passe oublié ». Tant que ce drapeau
@@ -1967,6 +1984,13 @@ export default function MipPpaApp() {
       .select("id, user_id, email, role, appareil, ouverte_le")
       .order("ouverte_le", { ascending: false }).limit(400);
     setConnexions(error ? null : (data || []));
+    /* Deuxième source (phase 10). Les deux appels sont indépendants : si l'un
+       échoue parce que son script n'a pas été exécuté, l'autre alimente quand
+       même l'affichage. Une fonction absente rend une erreur, pas une
+       exception — on la distingue d'un résultat vide, comme pour la table. */
+    const { data: auth, error: eAuth } = await sb.rpc("dernieres_connexions");
+    setConnexionsAuth(eAuth ? null : Object.fromEntries(
+      (auth || []).filter((r) => r.derniere).map((r) => [r.user_id, r.derniere])));
   };
 
   /* Inscrire SA PROPRE ouverture de session dans le journal.
@@ -1993,15 +2017,33 @@ export default function MipPpaApp() {
     }).then(() => { /* journal absent ou refusé : sans effet sur la session */ });
   }, [session?.id]);
 
-  /* Dernière connexion connue de chaque compte, indexée par identifiant.
+  /* Dernière connexion connue de chaque compte, indexée par identifiant, sous
+     forme d'horodatage ISO. Les deux sources sont croisées et c'est la PLUS
+     RÉCENTE qui gagne — voir « connexionsAuth » plus haut pour la raison.
      Le journal arrivant déjà trié du plus récent au plus ancien, la première
-     ligne rencontrée pour un compte EST sa dernière connexion : aucun tri, et
-     un seul parcours. */
+     ligne rencontrée pour un compte est sa dernière : aucun tri, un parcours.
+     La comparaison passe par « Date.parse » et non par les chaînes : les deux
+     sources n'écrivent pas forcément le même nombre de décimales de seconde ni
+     le même suffixe de fuseau (« Z » ou « +00:00 »), et comparer ces
+     chaînes-là reviendrait à parier sur leur mise en forme. */
   const derniereConnexion = useMemo(() => {
     const m = {};
-    (connexions || []).forEach((c) => { if (!m[c.user_id]) m[c.user_id] = c; });
+    (connexions || []).forEach((c) => { if (!m[c.user_id]) m[c.user_id] = c.ouverte_le; });
+    Object.entries(connexionsAuth || {}).forEach(([id, le]) => {
+      if (!m[id] || Date.parse(le) > Date.parse(m[id])) m[id] = le;
+    });
     return m;
-  }, [connexions]);
+  }, [connexions, connexionsAuth]);
+  /* Au moins une des deux sources répond : la ligne « Dernière connexion » a
+     un sens. Si AUCUNE ne répond, on ne l'affiche pas du tout — écrire
+     « Connexion non enregistrée » sous chaque compte ferait porter aux comptes
+     un défaut d'installation qui ne les concerne pas. */
+  const sourceConnexions = connexions !== null || connexionsAuth !== null;
+  // Scripts à exécuter dans Supabase, nommés dans leur ordre d'exécution.
+  const scriptsConnexionManquants = [
+    ...(connexions === null ? ["supabase-phase9.sql"] : []),
+    ...(connexionsAuth === null ? ["supabase-phase10.sql"] : []),
+  ];
   /* Corriger l'organisation d'un compte. Réservé à l'administrateur lead — et
      pas seulement par l'interface : le déclencheur « profils_geler_org » de la
      phase 3 fige « org » dès qu'il est renseigné, en ménageant une exception
@@ -5374,7 +5416,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
 
               if (P.users) {
                 g.push(["Utilisateurs & rôles", "La page Utilisateurs liste les comptes et permet d'attribuer un rôle. Un compte sans rôle n'a aucun accès. Vous pouvez aussi corriger l'organisation d'un compte : c'est elle qui fixe le périmètre des projets qu'il verra. Les rôles sont protégés côté serveur : aucun utilisateur ne peut s'auto-attribuer un accès."]);
-                g.push(["Qui est là, et qui est venu", "Deux indications répondent à deux questions différentes. La pastille « En ligne » dit qui a l'application ouverte en ce moment : elle apparaît et disparaît toute seule, et ne garde aucune trace. Sous les comptes qui ne sont pas connectés, la ligne « Dernière connexion » dit, elle, à quand remonte leur dernière venue. Elle compte les ouvertures de session par l'application, pas les authentifications : un jeton renouvelé en arrière-plan ne compte pas. Le journal ne remonte pas avant son installation — un compte affiché « Connexion non enregistrée » n'est donc pas un compte qui ne s'est jamais connecté. Les deux indications sont réservées à l'administrateur lead."]);
+                g.push(["Qui est là, et qui est venu", "Deux indications répondent à deux questions différentes. La pastille « En ligne » dit qui a l'application ouverte en ce moment : elle apparaît et disparaît toute seule, et ne garde aucune trace. Sous les comptes qui ne sont pas connectés, la ligne « Dernière connexion » dit, elle, à quand remonte leur dernière venue. Cette date croise deux mesures et retient la plus récente : la dernière authentification du compte, et la dernière ouverture de l'application. Un jeton renouvelé tout seul en arrière-plan ne compte ni pour l'une ni pour l'autre. Un compte affiché « Connexion non enregistrée » n'est pas un compte qui ne s'est jamais connecté : c'est un compte dont aucune des deux mesures ne porte de date. Les deux indications sont réservées à l'administrateur lead."]);
               }
 
               if (P.lectureSeule) {
@@ -5416,16 +5458,32 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                 </div>
               </div>
               <p className="text-sm text-stone-500 mb-4">Sélectionnez un rôle pour chaque utilisateur. Les comptes « En attente » n'ont aucun accès tant qu'aucun rôle ne leur est attribué. Seul l'administrateur lead peut modifier les rôles.</p>
-              {/* Journal des connexions absent : la date de dernière connexion
-                  ne peut pas s'afficher sous les comptes. On le dit UNE fois,
-                  ici, en une ligne — plutôt que de laisser la fonction
-                  manquer en silence, ou d'ouvrir une carte pour ça. */}
-              {roleActif === "Administrateur lead" && connexions === null && (
+              {/* Une source de dates manque. On le dit UNE fois, ici, en une
+                  ligne — plutôt que de laisser la fonction manquer en silence,
+                  ou d'ouvrir une carte pour ça. Le message NOMME le ou les
+                  scripts qui manquent : « ça ne marche pas » n'aide personne.
+                  Sans la phase 10, l'affichage fonctionne mais ne remonte pas
+                  avant la phase 9 — c'est ce cas-là qui remplit l'écran de
+                  « Connexion non enregistrée ». */}
+              {roleActif === "Administrateur lead" && scriptsConnexionManquants.length > 0 && (
                 <p className="text-sm mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-amber-900">
-                  La date de dernière connexion n'apparaîtra sous chaque compte qu'une fois
-                  <span className="font-mono"> supabase-phase9.sql </span>
-                  exécuté dans Supabase (SQL Editor → New query → Run). Le script ne détruit rien.
-                  La pastille « En ligne » n'en dépend pas.
+                  {/* Deux formulations, et l'ordre des tests compte : quand le
+                      journal manque aussi, parler de dates « antérieures à son
+                      installation » n'aurait aucun sens — il n'est pas
+                      installé du tout. */}
+                  {connexions === null
+                    ? "La date de dernière connexion ne peut pas encore s'afficher sous chaque compte."
+                    : "Les dates de dernière connexion antérieures à l'installation du journal ne sont pas encore lisibles."}
+                  {" Exécutez "}
+                  {scriptsConnexionManquants.map((f, i) => (
+                    <React.Fragment key={f}>
+                      {i > 0 && (i === scriptsConnexionManquants.length - 1 ? " puis " : ", ")}
+                      <span className="font-mono">{f}</span>
+                    </React.Fragment>
+                  ))}
+                  {" dans Supabase (SQL Editor → New query → Run). "}
+                  {scriptsConnexionManquants.length > 1 ? "Aucun des deux ne détruit quoi que ce soit." : "Le script ne détruit rien."}
+                  {" La pastille « En ligne » n'en dépend pas."}
                 </p>
               )}
               <div className="divide-y divide-stone-100">
@@ -5465,19 +5523,19 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                             compte qui n'est pas là en ce moment — la pastille
                             « En ligne » dit mieux, et depuis quand.
                             ⚠ « Connexion non enregistrée » et non « jamais
-                            connecté » : le journal ne remonte pas avant son
-                            installation, et un compte ancien peut s'être
-                            connecté cent fois sans y figurer. */}
-                        {roleActif === "Administrateur lead" && !enLigne && connexions !== null && (
+                            connecté » : les deux sources ont chacune leur
+                            angle mort, et un compte peut s'être connecté cent
+                            fois sans qu'aucune ne l'ait retenu. */}
+                        {roleActif === "Administrateur lead" && !enLigne && sourceConnexions && (
                           <div className="text-xs text-stone-400 mt-0.5"
-                            title={derniere ? "Dernière connexion : " + dateHeureCourte(derniere.ouverte_le) : "Aucune session enregistrée depuis l'installation du journal. Cela ne veut pas dire que ce compte ne s'est jamais connecté."}>
+                            title={derniere ? "Dernière connexion : " + dateHeureCourte(derniere) : "Aucune date connue pour ce compte. Cela ne veut pas dire qu'il ne s'est jamais connecté."}>
                             {derniere ? (<>
-                              Dernière connexion {ilYA(derniere.ouverte_le)}
+                              Dernière connexion {ilYA(derniere)}
                               {/* La date exacte tient sur un écran large ;
                                   sur un téléphone elle ferait une deuxième
                                   ligne pour chaque compte. Elle reste dans
-                                  l'infobulle, et dans le journal ci-dessous. */}
-                              <span className="hidden sm:inline"> <span className="text-stone-300">·</span> {dateHeureCourte(derniere.ouverte_le)}</span>
+                                  l'infobulle. */}
+                              <span className="hidden sm:inline"> <span className="text-stone-300">·</span> {dateHeureCourte(derniere)}</span>
                             </>) : "Connexion non enregistrée"}
                           </div>
                         )}
