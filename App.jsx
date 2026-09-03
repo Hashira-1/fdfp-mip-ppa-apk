@@ -8,7 +8,7 @@ import {
   ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   Radar, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
 } from "recharts";
-/* Le modèle de calcul vit dans son propre fichier — à plat, sans sous-dossier —
+/* Le modèle de calcul vit dans son propre fichier (à plat, sans sous-dossier)
    pour être testable sans démarrer React (voir « calculs.test.js », npm test).
    L'application et les tests partagent ainsi exactement le même code. */
 import {
@@ -22,8 +22,8 @@ import {
    départementaux), pas du code d'interface. Voir l'en-tête du fichier pour
    les sources et la méthode de simplification. */
 import { CARTE_LARGEUR, CARTE_HAUTEUR, DEPARTEMENTS } from "./geo-civ.js";
-/* Le vocabulaire métier — référentiel, nomenclature sectorielle, zones et
-   localités, rôles et permissions — vit dans son propre fichier. Ce sont des
+/* Le vocabulaire métier (référentiel, nomenclature sectorielle, zones et
+   localités, rôles et permissions) vit dans son propre fichier. Ce sont des
    données et des fonctions pures ; les garder ici obligeait à traverser
    l'interface pour relire ce que la plateforme évalue. */
 import {
@@ -34,13 +34,13 @@ import {
   normaliserStatut, memeNom, masqueOrganisations, nomMasque,
 } from "./referentiel.js";
 /* « nettoyerPdf » est la seule partie purement calculatoire de la génération
-   de fiches — et la plus délicate. Isolée pour être testée (pdf.test.js). */
+   de fiches, et la plus délicate. Isolée pour être testée (pdf.test.js). */
 import { nettoyerPdf } from "./pdf.js";
-/* Les tracés — 95 Ko de contours et de routes — ne sont PAS importés ici :
+/* Les tracés (95 Ko de contours et de routes) ne sont PAS importés ici :
    ils ne servent qu'à dessiner, sur deux écrans. Voir « useTraces ». */
 
 /* ================================================================
-   FDFP · MIP-PPA — Suivi des projets de formation de type apprentissage dans l'industrie agroalimentaire
+   FDFP · MIP-PPA : Suivi des projets de formation de type apprentissage dans l'industrie agroalimentaire
    Reconstruction fidèle de l'application (modèle : 5 dimensions,
    23 indicateurs, notes 0–4, suivi post-formation à 3/6/12 mois)
    ================================================================ */
@@ -126,7 +126,7 @@ const sb = globalThis.__mipPpaSupabase || (globalThis.__mipPpaSupabase = creerCl
 // ----------------- COMPTES & AUTHENTIFICATION ------
 
 /* Traduction des erreurs de Supabase Auth. Une seule table, pour tous les
-   écrans — c'est la leçon de la panne qu'elle corrige.
+   écrans : c'est la leçon de la panne qu'elle corrige.
    ---------------------------------------------------------------------------
    Chaque écran traduisait de son côté, ou pas du tout, et l'un d'eux cherchait
    le mot « same » là où Supabase écrit « New password should be different from
@@ -137,7 +137,7 @@ const sb = globalThis.__mipPpaSupabase || (globalThis.__mipPpaSupabase = creerCl
    TROMPEUR. Lu au-dessus de deux champs identiques, « should be different »
    se comprend comme « les deux saisies doivent différer ». L'utilisateur en
    saisissait donc deux différentes et tombait sur « Les deux saisies
-   diffèrent » — deux erreurs qui se contredisent, sans issue apparente.
+   diffèrent » : deux erreurs qui se contredisent, sans issue apparente.
 
    D'où la formulation retenue plus bas : elle dit explicitement lequel des
    deux mots de passe pose problème, et rappelle que les deux champs doivent
@@ -183,7 +183,7 @@ function messageAuth(error, defaut) {
    ---------------------------------------------------------------------------
    Les deux écrans se contentaient d'un « champ non vide » : une espace
    passait, « a » aussi. Or « org » n'est pas un champ d'état civil, c'est ce
-   qui fixe le PÉRIMÈTRE DE DONNÉES du compte — « mon_org() » commande
+   qui fixe le PÉRIMÈTRE DE DONNÉES du compte : « mon_org() » commande
    « peut_voir_projet() ». Une organisation mal saisie rattache quelqu'un au
    mauvais portefeuille ; une organisation vide ne le rattache à rien.
    D'où un contrôle réel, et le même des deux côtés. */
@@ -205,8 +205,8 @@ function champsProfilIncomplets({ org, email }) {
    ---------------------------------------------------------------------------
    Le formulaire ne demande plus de nom : l'email suffit à identifier un compte,
    et un champ de moins est un champ de moins à remplir. Mais l'application
-   affiche un nom à plusieurs endroits — initiales de l'avatar, liste des
-   utilisateurs, accueil de l'écran d'attente — et « (?) » partout serait pire
+   affiche un nom à plusieurs endroits (initiales de l'avatar, liste des
+   utilisateurs, accueil de l'écran d'attente) et « (?) » partout serait pire
    que le champ supprimé. On dérive donc un libellé lisible de la partie locale
    de l'adresse : « adjoua.kouame@fdfp.ci » devient « Adjoua Kouame ».
    Ce n'est qu'un affichage. L'administrateur lead peut le corriger, comme il
@@ -230,8 +230,8 @@ function ecrireStock(cle, val) {
 /* ----------------- FILET DE SÉCURITÉ : COPIE DE SECOURS -----------------
    Une copie du portefeuille est gardée dans le navigateur à chaque
    chargement réussi, et juste avant toute opération qui supprime en masse.
-   Ce n'est pas une sauvegarde au sens propre — elle est locale à un poste et
-   à un navigateur, elle ne remplace pas les sauvegardes de Supabase — mais
+   Ce n'est pas une sauvegarde au sens propre (elle est locale à un poste et
+   à un navigateur, elle ne remplace pas les sauvegardes de Supabase) mais
    elle transforme une perte définitive en simple mauvaise minute.
    Elle est volontairement écrite AVANT l'opération risquée, jamais après :
    une copie prise après coup ne vaut rien. */
@@ -297,13 +297,14 @@ const IC = {
   cible: <><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></>,
   horloge: <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>,
   cocheCercle: <><path d="M21.8 10A10 10 0 1 1 17 3.34"/><path d="m9 11 3 3L22 4"/></>,
-  usine: <><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></>,
   disquette: <><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></>,
   tendance: <><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></>,
   note: <><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 12h4"/><path d="M10 16h4"/></>,
+  // Flèche de retour du bandeau supérieur.
+  flecheGauche: <><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></>,
   /* Groupe de trois personnes, la plus grande au premier plan. Sert à la carte
-     « Apprenants concernés » du tableau de bord, où « usine » — un bâtiment —
-     comptait des personnes avec le dessin d'un lieu.
+     « Apprenants concernés » du tableau de bord, qui comptait jusqu'ici des
+     personnes avec le dessin d'un bâtiment.
      Distinct d'« utilisateurs », qui reste le pictogramme des COMPTES de la
      plateforme : deux notions différentes, deux dessins différents.
      Les deux silhouettes latérales s'arrêtent juste sous la silhouette
@@ -353,8 +354,8 @@ const noteLabel = (n) => (n === 4 ? "Excellent" : n === 3 ? "Bon" : n === 2 ? "P
 /* scoreDimension, scoreGlobal, couvertureModele et niveau sont importés depuis
    « calculs.js » : le modèle est isolé pour être testé (npm test). */
 const fmtPct = (v) => (v === null ? "Non noté" : `${Math.round(v)} %`);
-/* Montants : regroupement par tranches de trois chiffres — milliers, millions,
-   milliards… — pour que l'ordre de grandeur se lise d'un coup d'œil.
+/* Montants : regroupement par tranches de trois chiffres, milliers, millions,
+   milliards… : pour que l'ordre de grandeur se lise d'un coup d'œil.
    Le séparateur produit par Intl varie selon le moteur (espace fine insécable
    U+202F sur les versions récentes, insécable U+00A0 sur les plus anciennes) :
    on le normalise vers un caractère unique, pour que l'affichage soit
@@ -379,7 +380,7 @@ const heureCourte = (iso) => {
 };
 
 /* Date ET heure d'un horodatage ISO, toujours en UTC. « heureCourte » suffit
-   pour une présence en cours — elle est forcément du jour ; le journal des
+   pour une présence en cours : elle est forcément du jour ; le journal des
    connexions, lui, remonte à plusieurs jours et doit porter sa date. */
 const dateHeureCourte = (iso) => {
   const d = new Date(iso);
@@ -407,7 +408,7 @@ const ilYA = (iso) => {
 
 /* Navigateur et système, déduits de « userAgent ». Volontairement grossier :
    le journal des connexions a besoin de distinguer un téléphone d'un poste de
-   bureau — « Chrome sur Android » suffit à cela — et surtout pas de constituer
+   bureau : « Chrome sur Android » suffit à cela, et surtout pas de constituer
    une empreinte d'appareil. Aucune version, aucun détail matériel.
    L'ordre des tests compte : Chrome et Edge annoncent tous deux « Safari »
    dans leur chaîne, Edge annonce en plus « Chrome ». */
@@ -428,6 +429,12 @@ const appareilCourant = () => {
   return sys ? `${nav} sur ${sys}` : nav;
 };
 
+/* « que » ou « qu' » selon l'initiale du mot qui suit. Quatre des six rôles
+   commencent par une voyelle : sans cela, l'application écrivait « en tant que
+   Agent FDFP » et « en tant que Opérateur ». Une faute d'élision dans la
+   première phrase d'un guide décrédibilise tout ce qui suit. */
+const elider = (mot) => (/^[aàâäeéèêëiîïoôöuùûüy]/i.test(String(mot).trim()) ? "qu'" : "que ");
+
 const joursRestants = (dateStr) => {
   if (!dateStr) return 0;
   const cible = Date.parse(String(dateStr).slice(0, 10) + "T00:00:00Z");
@@ -435,7 +442,7 @@ const joursRestants = (dateStr) => {
 };
 
 /* Téléchargement d'un contenu binaire (classeur XLSX). Distinct de
-   telecharger(), qui préfixe le texte d'un BOM UTF-8 — indispensable au CSV,
+   telecharger(), qui préfixe le texte d'un BOM UTF-8 : indispensable au CSV,
    mais qui corromprait un fichier binaire. */
 function telechargerBinaire(nomFichier, donnees, type) {
   const url = URL.createObjectURL(new Blob([donnees], { type }));
@@ -471,16 +478,16 @@ const CHEMIN_FOND = "/fond-page.jpg";
 const CERTIFICATION_FDFP = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAwAAAAC1CAYAAADobpjVAACAAElEQVR42uydd3xV5f3H3+eu3AwySAh7ExAUkC0q4l601lW1rW1NR+zS2mGhYl0VhWp/raPD1JYOtbWttlVxKyouEGTvvUP2vuuM3x/Pc8jJ5d7kJrmBhDyfl9dw7z33nOc8Z32+6/PVUOh6KCz2AVOAO4GLAQ9QC/wR+BWwn8VFap4UFBQUFBQUFBTaDLeagi5H/r3ANcCT0ghwyW9SgKnAJGAzkz5bxpoXTTVhCgoKCgoKCgoKbYGmpqBLkX+PJP+PAvlxlrKAI8AjwF+AEhYXWWryFBQUFBQUFBQUlAHQ/QyAKcBzwNAElg4BG4AFwDtAVZdLCyosdgG9gEygGqhTqUsKCgoKCgoKCsoAUBBkORsoBj7fxl82AB8gIgIrgbITHhEQxL8AuBK4AugPrAd+BqxTRoCCgoKCgoKCgjIAevhR0OCmJ64EngFS27mWBmAT8DvgI2Af0HhcybYg/nnA5cAdwKioc+xj4GZlBCgoKCgoKCgoKAOgZ0N4//8KfDYJa9OBUmAF8E9gC3AQoSIUbDfxFspEHvnODWTJvxlAbyAHmABcBYxtwZD5GChkcdEWdeAVFBQUFBQUFJQB0AOPQFK8/y0ZA7XAYWkIvA0EgL1AJGpZL6L2wBtnXTMQaT22AdBP/k2VRoAH8CU4rr8B32FxUb06ATpsPAL4gTT5SUAaeqowXEFBQUFBQUEZAF2UwPWShPhzx2mLFhCUf6PPBf9xOicCQBGLi55SJ0CHzp00YBbwTWCE/PQI8A9p7B1kcZGSilVQUFBQUFBQBkAXI3HTgdcRKTU9Cf9EpAI1qpOgXedNBvAA8JUY504E2I6oBxGGgFBgUsaAgoKCgoKCgjIAugCRmwW8SlMKR09BPVAE/EOlq7T5nNGA7wGLaDltTAfKgV3AEmAVoj6kEqijKRKkUoYUFBQUFBR6EDxqCk44LI5Nx+kJyAB+CqwBNqvToE3IBb5M6zUjHkStRj/gTEn4GyX5r5RGWAPwOoXFDa2sywT2y98nAhcwGJFWtl++DiAiEcrYUFBQUFBQOIFQEYATjcLiAuAtSZZ6Ip5FFARXqpMhkStWg5ue+BLwRyDlOG89KA2BROGXhkAQ0QhuM6J79WvAEWUIKCgoKCgonBi41BSccOxD1AD0VFwDfIvCYhWNSgQ3PaEhCn9TTsDWbbWhRF8ux+/6AecBfwCeB86nsNirDqiCgoKCgoIyAHoeFheFgKcQHtKeCA/wA2COlLRUaJ2EF3Tj8XuBmcDTwDXKCFBQUFBQUDgx5EvhxGM5IjXilh5qlOUBdwE7gQ3qdGgRqYima90dfYFfI4qS3+60rRQWu4EhwBREwzonSoAdKJUkBQUFBYUeBlUD0FVQWDwUkdd9QQ+ehSeBmxURa/U8eRfRtO1kwEsIOdjyTpirLOALwA+BYRzb5C6MKIbeBbwCrJNGwWGgCmhU56KCgoKCwskIFQHoKlhctJfC4tuBXyFyvHtiJGAUIrc9oE6IHoOLgHMQdQHJJP9u4A7gVkTaVCz4aK6SFJbnXiVCseh1CovXIaRUSxBpeqrTsoKCgoKCMgAUkmoErKaw+BZEUXC/HjgDu4BQggQPYCBwKpCJSB/ayeKiWnUidSukAFdTWLxE1sMkC0MQBeb+NvzGJ19ZwHBpiIflOVkDlCE6Lb9OYfHOKMMgKA0DFTFQUFBQUFAGgEKb4QXcPXC/64FX20CgTgGeAKbJOasF3qCw+EFgA4uLDHUqdRucIwn79qSszeUGmAQMSMLabKOgFzBIfnZpDMOgGnibwuI9iJ4H5fK7GkRn5iCLi9SRVuhUuD3eLOA0Oj+CXGLoke1ymynARJqUyULAWkOPhNox/gLiO79MYIOhR2oSWDbueJM5hqjfuYDxCIdUZyLuGNqK758/UYuEw6m6rvc19Ei+BlleX0qaprmUQEyXhoVpmrquR+pBq/B4fQfdbk+Nx+OLPLL0U2UAdEsUFvcFfoIoiu0IwvIm4e/QGSa8nTskARoG9KFz6kYM4G+IfPBE5skDfF8SRxu9geuBM4B5FBb/j8VFKpWoe6A30D9pBoDXD6KWJrUTxxzLMDhPXndBadDW01RT8DaFxQdoihoEpXEQYnGRrk4BhSThNOC/dH5n+T8hRCsA8hEiFkPk+33AxdIQbituBb4W57tG4ErggwSWbWm8yRyDE37gIeCsTp77lsaQEL599ji3EQnnNNbXn2sY+lWWaU2xLKuPBam63uhG1Yd2CyvAgohLo9YwjF1ul+uDiCf07M1njN7q8noaf7dsU6tpqsoA6BrEX5ME+wFE2kJ7Lz4dWIUopq0CPiMJ8UiOLYBsybtQjig0/SVClccDjJY30MuSYKBE4z1gQRsI+3Tg6jjfDQV+B4ygsPjXLC5qPMnOlgiJpkl1H6Q6yEMSoJ3Ie5uLpj4I+cAI+fk1NI8aNCIUkD6msHirJEt1yjhQSOL515nwRW0z1bHNVNofgfC1MnZXG5aNN95kjiGWEZB2nI5zm/Gjy2dQV1GZGQ4GrjMNo9C0rAmWZWU0Y5XqGupO8BkW6WD0Nw1jpqbrX3K5XO+5LeOhb80s2DB6cF7kh//8SBkAXZj8e4ELJfmfQMdCt1sQqie7WVwEhcX/QeTJ3wR8DtFtOJPmkQGnx3IPsBT4J7A5ipB/QmHxN4HzgZ8jUiySESZchyjWPJjQ0m4vwGxJruIhG5gPpFBY/BsWF5WeRGdMtZyr0SchaTnpb9Y0RQ2Qx/Bs+e+gNO7iGQcN8rN6uUxA1RsoKCgkih9cNMlVX1k5QtfDdxqGebVlWb3UrJw8sMBlWdZA0zCuNy3zDMvtuXf7gcp/3f/lKxrv/NsLygDoguS/F/AVhAZ+fhLWuBzYczTXWBCE/RQWLwB+g0izOEWSePvY2zrspcAhoDquwsniohCFxa8C24D7EWHIjqQZrQNuBj5OOD/6K7/xAKcnsGQa8FNEJODHLC46cpKcNQFEVOY8dQHFuxMa9nlt0n3UtPzyFc84MCTxr5fX6VtSoahEGoSV0ihQx1/BiRKSk1qXichv79D15PZ4PcDlxM+xzwaWxfkuiKj1ioftcn9jjXes2+ONd3HowMuGHilxrKe9Y3DCBNa3YfmWHCSnIcQJ2oU7Lp1KZW3tpEg49BvDMKdYivudzHCZpjU8Yum/0jSt3+G9O34376pptQv/84kyALoY+f8RMLeDJNp5E/s0JnkXhkClfG0Enmv3VsT6d1JYXARsAorkzbwt51IAkb84H1jRRtLiR0Q1EoEXERHRKCz+0UlhBCwusigsfgX4snxYngwwEV7v5CAcQBq1P+TkiCzY94d0h3FwLk2ypaWSaLxIYfFmRN1OlYoQKAAvk3jue0s4i+TUFviAHyMUtmLhT4gie1og4PHwqPx9rPHOamGbjVHGw6PAb9s5hujlbqcDufoSaXJf2lVb8J3zxmuVNTVDw6HQz3TDnEbPlBjvcbAsKycSicwzLTOkRyJPEENeXRkAJ4b8Z0tycnuSyD+I9J1XjyMRraOweCHwL+AqRBqTF8hAFHW6pcfCI/cxIk/A/cBTwBMsLqpux5YL5CtRuIEb5Lz/6CSJBLyLqPU4WZrGBWlfwWBLiHDyp7M6ZUsLEBG5Oklm/k1h8fvAZmkMqNTengnd0CMdNq7dHm+wG4w3bP+2I+M19EhYGtdJubd1dP7dHq/tJGnfjTAQSDcjkXsNw/xMa+Rf0zTcbg9ujxs0VQfcNZk9WJaJruuYRstih6ZlZVu6MV/TtO03nzn6lSc+3GYqA+DEkv9ekvzPpW2FSS3eNBEKOnuP674sLooAW6Qh8GtE9aWdxuBGRAYyEYoQG+RrL1DWAe9kpjQy2nQPPcmMgEZg90l0VbQlrJ4oDiMiXuk96O7iksbAVGCKNAbWA3+lsPhNYK+Sx+25cHu89v05UWYXNvSI3s7zMNXt8aY5SH04CeN30dxhFs1ffI5tttWx5k9kvDHGkPC+uT1eXxs4V1Lm7HvnjHcFgw0X6Ib5GSuOvLjH6yW7T18GjRrDsLHjyR88jIzMLJQSaBe26iMRqstLObRzK7s3refw7p00NtRhmcfSKsuycg3d+JnL7V53942X7r/3qVeVAXACyf+PEJ5/XxLXvAl45IQ93IV3MeAgp5Xy37vk32RGJgbTvqjJyWMEPH0bfOnXJ5O60cZOMF4PAR8jJDp7oitLk8byWQglsN3A76QwwF6VHtQjkQ88DvRNcPmHgRfauZ2/0KRW9oJcFwhn1QuIyBQIJ9HlCXKR8QiZTb9jXcUOLnOdfMGxYhebacrrj65DsOU7a2OMt7UxtLRsNG4Frkhw2basNy4i4WCWEdFvtSyrdyziP/SUUzn7ius4dcbZZPfpi8+fiqY8/90GpmHQWFfLwV3b+PSd11n+6gtUlx3BspoFfDXTNCcZunF92b79v0LUkykD4DiTfy/wLZKX82+jDpGzuPekn0PR4Cmf9ucw2kZArSwM7p4k+ku/JonnkE78cHdbPYbtgQX8i8VFlUld659vDnDTEw8jvOHDe/jdxw2MAn4BFAJ3U1j86kkokavQMvyIxolDE1z+qXZuJwUh1ewk38DR9JqjxNbt8c5CpI8mwkVsg9b21BcbeuRmuZ40hKMpXp7/sqhlnc2+XIhGZseMN4ExbG7DvBS0ML5obO7owb7twslaoL72HMuyxkd/1yunN2d/9louufGbZPfpq0h/t6VEbjKycxgzeQajJkxm2gWX8e/HH2L7mk/QIxHnQ9ZnGsY1Rji8GKhQBsDxJf8a8FlEk69kkv8I8Gfg6R6R4/vV32nAuCSQoa8CB7pVnwDR/MyOGvWPemC1hWyXAwcQfSL2IqJHy+Msn45I38pG9KkYiOgBkU3yCsm2IvpAJNmssABWAt9G9IUYhmpu40aoifwFKKaw+FfAAaUcpKBw8qGxod5rhCNftCyrWd+e3n0HcONP7mH8Wefi86eqiTpZbu4eLyMnTOFbDzzKC394hGX/+xfhUFMpjGlZow3DGH9P4VXv3LP4P8oAOI6YgND5T2YDLR14HrifxUXBHjKPmcCYJKwnDaFAVEVhcXGXy4suLLbHOAQYgPDYjQNmyCXyEc3d2kL8S4A3ESkAOxApW8EEDMdXpQGbKon/QERTq/MQXuWOGAOHgZ8h5GCTj8VFJoXFbyCUoH6H6F2hIGpobgNOBb5HYfEOZQQodCL6SU+/je0Oyc2WCI0LkXKTKT8aD5Q5z2PHev3ymbjX8T4/QaPfQihp2c/RlqKRIUSn49QElj2hsEzTb5jmYMsxB3kDBnH9D+Zz+uwL7eJihZMImqaR3acv13zvJ4RDIT565b/oYRngt6xsyzQnle/e9R6yqFwZAJ1P5noDdyaJuDpvWCuAuSdZk6vWMFkaU8lAmiSfByksfqFLECBB/HOAmcA3EWH0HBJLw7GAjxDe/UGI8HYA4fHfAvwB2MDiorZ3ERZGQqN8HaKweKUk/qOkMTBTGit95Ly2NtZGRHHqfOC9To1eCSNgOfAg8FeSG4HrznABFyFyqL9BU72OgkKycTkizcfGLTTJdbYEOzf/LAf5LgJsQfP7aF5fdi/wrPz3NHm9J+LiDgLfc6y3roVl1yKioq4Elj2xF7impeOQik7N6MU13/kxUy+4HJcq8D2pkZ6ZzedvmUtlySE2rfjArglwAeP1cMiDTPtVBkDnEjoP8CVEF95kkv9PEPUEe3vQXGqI/MnMJK61P3A3orHZlhO8fy5p3Dwo97Ot6jVB+QB8Wz70suRFXo/w9Cev6FMQ9ipEd+iVkvT3QeS4XoaITuTQJAkLwlNWiyhG/R9CG7v8uKSuia7YJXRASu8kNgJmI2oCitplHCootA5PFNdoC+/w07z3wBFDj+yFo1Kfzu+qHd8NIXEZYMu53pZg6JEQyZcsTjo0AJc7w7LnR9M46zPXMO2iOd2G/IdCIQ4dOkRVZSUej5dBgweRk5OTtHqFmpoaDMM4us5gMMjBAwfIzc0jo1cGpaWl5OXl4vOlNJ0olsWe3XuwsBg6dChut7vLzl9WXj7X3vITiu/8AYf37MQCTMscaGqWVxkAxwfjEJKfyYq1RRDKJt8F1vewsP1I4POdsN7JwD0UFn8n6YWoiZN/EN7YxxFe9fYgBRjE4iId4ZU6Pp4pQeAb5GsP8AaFxbbcnbOzbZ00UoLHXYGm48XjJ7sRcKE03jao6VBQ6P7QNI3U9LS0YGODB6B3fj/OvuLzeFO6RwC0rq6OP/7hSV579VVM08SyLAYMHMB3b7mFKVOmtMuIKSsrY/u2bUyZOpWUlBReXrKE2to6vvHNb2BZFn9/5hn+8/x/+MGPfsjYsWNZcP/9fP+22xg9enQzo+HhX/yCz37ucwwdOrTLz+PQseO56As38ff/u59IKIRpWn7NstztscQV2kbqUhFhxWSdJRFEB98fAwd7DPkX5LgvIl3k1E7ayjXAOgqLfyEJ9Ikwbu7tAPm3idyVFBY/384Ga8k0CuxGOk5J2BOHr/7OjSjCT/TpZ0ljJZ4HsS163t0B/YBCCotvV/KgCu1AEBGV3iffZyLy9dtjcI91e7xFjuusn+M7D3CF2+MdK99n0yTtCU2dfFuDiUjlcY7/aB8SWVcwNsF1bTb0yLIuadlrbpeGhubSmHn5lQwZPa5bnEyGYfCnJ//I0rff5vs/+AFjx44lHA7xj7//g4cWLWLRQw8xfLgQdotEIjQ0NKABaenpeL3C12pZFuFQCJfbTSAQIC0tjfXr1vGbxx7n1489yqBBg5h1zjnouo7L5aK+vp633niTCy+6kOnTp+Nxe7j55psZMGDA0XHpus7GDRuYccYZzDxzZpf2/h89l90eJs66kFf++gfKDu5D0zTN5/OhDIDOxzSExzoZ8aoGRG7jT3tUzr9I+zkdIV84m85TcfEAP0B0133tBOzjd2gum9deXAicCbysLr9mGAKc3QZD+z/AYnndxcIMju1G3Q+R9oQ8T/MRURmX499dFXYqUDZduKhRocuiFPiK4/58FvBfmqfnJIpZxJfK9CEcYDb+BFzqeJ9o46wgohePK+ozGzciag0SQXGUEdLl4EtN5fRZF+D2dA+6t3//fpa89BJf/8bXufiSi496+7/1nW/z5z8tpqG+HoBAIMDfn3mGpW+/jWVanHfB+dzwhS+Qnp5OWVkZT/zu9wwZOoR333mX7//gNp7/93Ps3r2L3z7+G+64cz6frvqUYCDAgAEDeGfpUnbv3o1u6Jx55lkMHTaU5/79bwq//nUyMjIIBAL845m/8+abb2AaJr4UH5+78kpSU7u+ilJm71wKTp9C+eEDMYmPQhMZywByoz6t4883V2JZbVlPCqIhSXaSyP+jwAIWFzX0MPJ/KfArkltAHQ95wA8oLP7kOKcCZUrynwzjJlU+fJUB0PxaLJJGQCJ4F/gei4vKWlhmWYztOKMCGqIGwytJxlSaaiIK5N/B8pzLI3G1ks7ECETK4vvqpFFoCww94mwEaefmHw/ohh5pbMd4own/SQsLi/TMbLLz+3WbMW/ftp3GxkYKRo9pluqTl5fHbT/8AW63G8uyeO3VV1n69lK+WliIaRgUP1FM3759uXzOHAKBAEvffpt+/fsz88yZ5ObmMmp0AevXr2fipNPxer3s27eP+nqRKdurVyY+n4+srGzS0tMIBoN8uupTPn/d9ViWxfvLlvHKK69Q+LWv4ff7+d1vf0NmZiaXXnZZl6+p8PhSGH/mbD5542X73FcGQBTRHIPIwb4EoZPtxAFuemI1ojHHDkSeczmLb65socZoAnB9Esn/z1lcFOiB5P83HN8mTucBX6Kw+PHjUpwqiplmI6IcycJsCot7n7B6hq51HnmBL0oDINE6nP/QXGowMTSlPTmvXRu7o8blQqQjZSBkXmci+jqcAZzCiYkWZAPXU1j8QY/oKaKg0EOQ138QGVk53Wa8DQ31ZOfk0Du3d9TjUjua4hMMBvnvf/7DpZddyvTpIni+Y/sOXn3lVWadcw4AXp+Xb33728w6ZxaapjF58mTeXbqU888/H7/fj83f3G4306dPZ+DAgZx77mzGjh3LwQMHjppQjY2NPPfvf/O5Kz/HWWedCcC4cafyz2efZfa555Kent6l59PlcjFwxGi8KSnKAIhBEC4GFiLyy2N54YbSJEMWQKif7KbwiXcRSiZrgUNHH5qFxenAtRwbSWizdwN4WpH/4wofcDPwOqJBVWfv5wRESDsjiWsehCi8rezh17YGnAMsoEmJKBGkyPtA50qTNsmqlgJr5Hj7AnOk82AayYkgJmyOyvMxjfipTwrdG3XA39twPSTUjdbt8fZGpNTY6+1HU9PC1lCCSOWxl4/Ov1/Wwjjy3B7vE/G+Q0iEliewbKzfFie4bFvSfzpr2fgXtabRb+gwUlLTus1J2qtXL2pra6iqqmLYsGFHPw+FQix9eymjx4ymT58+NNTXs2L5cg7s3yca3RwuQdM0dF2U8fXKyGDEiBEJqwbFu+GHQiHKSstY/vHHR7dVUVFOWloaptk9SqZSM3qRmpZOsKFOGQAOjAeeQDQ3Smge5WuANAoCiKjAX6QcohsRRbiFjof0dwILexT5F2otF5wg8m/jVKCoUwoiBckbAUxBRJ2+zLG55B2+1pNsUHQ/iBv+CGARQuq1LbgY+D2OlIbjAuFAKKGw+I+SpM0GrpCEaBTHJyowCJGqpAyAkxCGHqkEftoZnA3RbG9oO8a0XT4vbWPiiSgD4ClDjxTHMTyeIH6ufiNwqV2g28qy0Sg29MjNnTD/TwFPHe97YXpmdrcoWLVxytixZGZmsmXzZk4//fSjBH7Txk089ItfcPc9d9O3b188Xi+Tp0xl1jmzwLI4dOgQ4UiEjIwM6uvrAQ0tCdk5brebFL+fadOmc9bZwhe8a9cuDMOQkYSuD2+KP2bX555rAAhP/Q/aQP7jka3xiCLVoCT9iTRtSgSlwJEeRdq++rtxiOYuw0/waK5FRF8+TSLxHyUfkl+Q/+6sa8+pvd8zcdMTvYFHaF/n33ROZD6+UPdqBF6hsPg1RFTgUmkMjEYoRqV04rmThWgmp6Cg0N0fq4gowAmvMGoD+vfvz/U33MAL//sf9fX1jBgxkurqKp5/7jnOOussJp5+On6/n0mTJrFi+XKmTJ2Crus8/dTTzDzzTEdOvtXMre/xemlobOSjDz/isssvO7qI+GM1W9wCu3kW6RkZnDP7HN5/fxnjJ07A5XLxzNNPc+ZZZyetJ0Hn0yvNdowpA0BiIiLcngy4aJ/iQUvIBYaBtunoxWs5ztiTj7T1QaRrzOwCoxmCqAVY0+EogJCDnSMNmzF0vhZ9BNExs6ca9qnATxCKSN1b91+ce4eBxRQWPy3vCecgisbtKI9XnleTSKzrqTIeexb6SVnLZDwvE72edITzSnc8y2JGJd0ebxai7s7lOAf3Op6rgx3jN4ENhh6pibPdSpr3Pxnv9niJs16nMpeFcLjZhcEZUXO23dAjJXHGWyKjGPF4wUTHGNoLP8ltgNml4XK5uO7669E0jZdefJElgRfxeLycedZZfOWmr5KVlQXA17/xDR5/7HF++dDDWJbFiBHDufTSS/F6vfj9fsaPn0CKw0NfUFDAlClTWb58OedfcD6DBg0mEBA15G63m1NPG0e/vv3QNA2/38/E008nPSMDj9vNtZ//PIcOHeLX//crLMti3KnjuOqqK/F4ug+FjmWq9EwDQHTo/RxNsn1dEWOBP1L4xPuOi78ekdf4DouLIifR8XAhOht/tguN6hrgz8D6DpLR7wB3HccbeI18mPXE69qLiLDcTNeW3WyPMRCWxsCz8mXvs4aoFfgRoulgKgoKTbhcGsMd5mUk3kfjCEIF76B8/wCiGD8WTqO5ZOi/EelvyHP5D/K8BhEZuxJRexcLDyHS50DU0BQ77gPR6/0LTdLLQUTPnk/k+/vkc9bGLYg6hVjj/ROOFKYYxP0hktOB3N+TTtqUlBS+8MUvcuVVVxEJh3F7PKSlpTUj3Ll5efx0/h2iD4CmkZ6Whldq3Ofn5zP3jp+SktL0GMjLy+Pen9+HZVn4fD7mfGbOUfLvdrv50e23H02VysvL42d334WtmZ+Xl8edP/sZjY3CYEh39BzozuipEQAfXcPT3JrBdoZ8OfEV4A4Ki/94UjTtEWGp6cA3EDUU7YWFqMdYLo/vFEQeeHtjdEOAy9ptAIh6hsuPM/m356HnqbgIInwhoqA/uwNrauhW8ydqB6ooLH4SUVMyBAWF5s/44/2c14GDhh7ZC+D2eOtbMSzSHIQ66PhdmrwW06KWj4dKx2+HSPIfb72hqHvmEcf3wahteloYb2vFzn51CrYPbrebjIyWy9l8Ph/OxlZNtEI7Jj9f07Rmy0YTeKexEOv38balDACF44k8hOLCe3S2Us3xwE1PpAG3dZC4WNJj8yM5Jy5EvvRPEZ789nhFNeB8Cot/y+Ki+jb/+qu/6w18m+Mfus0CBlFYXEGTEpUJlLK46ORMDRLk/3xEz4g+HTyPltDdNMJFRHMsyU9DVFBQUFA4ib0DPRE6sJ34HQe7OkYB36ew+AcnAambRcdrMVYAt7C4aKeD8G6isPjbiHD0d9ppBMxEhJKXtuO355+g8ysbUUvRiGjsZM/HSgqL1yCiJGuBnSwu0rv9lSwiSGMQofaONoyrA1Z3eR18QfiHIFRXhiHSEr4onQMdgSFfCt0XtYgUmc72PDvz3oOI9Jl98v2RVozoWY68+BHARsfyzvWa8l5lww/McXu8tkrQ2DasN9vt8doqQD5EOu2yBNebKKLH21kIyuPcrWCaJpZl4XK52lw8a/+2O6kZKQOgq2JxUZjC4mcRetvp3XAPNIRn+z/AG932ODR5bjsiW1mNkHvcGeM411NYfI981x4jIBPRpKttBoAnBURR5omKF86O8dlw4PPS+D0I/JvC4idZXLSlW5P/m54YDTxOcpqpbY0iIF2R9E+Vx/dShN56KsnT+KhB6LIrdF+sR+TJdzaczoNSRGqqU66iJQPgRvmCY/P69SiieztNaT9n0Tz/vi3rfQwh+W3Dmdff2nrbQsyd4+1sI+CEIxKJ8P6yZVRWVjFp0iRGjBzR7PtQKMTqT1ezauVKSo6UEAqFyM7OZsiQIcycOZMRI0fGNQYqKipY/emnbNq0ibLSMsKRCDnZ2QwbNowpU6cyfMTwNhfhWpZFTY3oMWAYBjk5OeTk5MTt5muaJpWVlVRXV+Pz+ejTpw+pqfFpRGNjI5WVlQQCATIzM8nNzW11jJFIhH1795GS4mPAwIHHtbNwT04B+gR4B5GnrXXD8ecDt1NYvJrFReXd9BgMkkSmvbCAvwFLpHwiLRgBucBX23GsT6WwWGuTV/jLj7nournYHoTn+EfAWRQWF3ZbI0DIfS6QRmRHr+GQJAllXWb/YpP+wSTe1bitKJMGtUI3haFH7CZzx3ObFh3rmxE09EhjjPU2I7oyN79d63V7vNHRzrDju2CS5qHLEPPjhUAgwGOPPMr69eu46557mhkAtbW1/PlPi/nrX/5MVWUVHq8Hl8tNJBwGTWPMmDHMm38HM2fObEaSLctiy5YtPPrrR3jv3XcIBAJ4PV5cLhfhcBiXy8WgwYP43q23ctlll5GWYCfe6upq3l+2jGeefpr9+/djGgZ9+/bjuhtu4KKLL6J3797NjJGKigrefOMN/vH3v1N6pBSv18vkKZP56k2FnHrqODyOGgLTNNm2dRtP/qGY1Z+uJhAIkJWVxWevuILrbrie3NzcmIaOZVls3bKVH952G6MKRvHw//0faWnHL5OzJxsAVYgc8ZHAKd10H84Fbqaw+MFuWhA8qYNzvwz4pVRIiQ9hBNyPCO3OaOM2hiNCxG15wPklUevqOAO4i8LiH7K4qHt5fguLbfL/uSQZ8MuBN054+k9hcQoidWu8PFc7m/Q7jek1dMPUAgUFhRMH0zSPpug4P/tD8R9Y/OST+FNTueGLX2TGGTNI8fvZt2cPL7/8Mps3bmL+vJ/yf4/8mqlTpx4lxCuWr+Dun/2MnTt2kNcnj89ddRXTp0/H7/ezc+dOXn/1NbZu2cK9d99N6ZFSvvaNrzcr4I2FxsZGFj7wAEteWoLH7ab/gAG4XC52797FfffcwwfLlnH/gw8clRitqanh/nvv443XXyc9PZ38fn0JBoO89sqrfLLiE371yCNMmTrlKKlfs3oN837yE/bv30///v3I69OHivIyHnv0ETZsWM89995Lft++zQ1Gw2DPnj385rHH2L1rF3l5ec3mUBkAnYnFRVBYvBFRgPo7TnzzqfbAi/Bqv0BH5CpPyMj9SILT3jSZI8ACFhftTXD5nYgi0T/RtlBvOkJNoi0GQJju08TtemA3hcX3dZt6EiH3ORf4epKIcSVC+q/kBOyLB9GMcChCa/0sREQjl+Pbx6AO+NtJURfSg+H2eAuAW1u4rz5ld8eN8dsbSbxuaZnsbNtex81m+e884Da57dbGWyLv3/a+zSJ+vr4P+LFjvbO6wLE4Omduj9cnv2tPJ/gw8GgL/QdOOAKBAB9/9BGBYJCib32Lm7/9raMk3TRNLr38cubefjsff/QxKz/55KgBUF9Xx+OPPsr2bdsYOWoU83/2M86YecbR3xqGwRVXXMGv/u9XvLJkCX/645PMmHkGkydPbnE8qz/9lKVvv42mwY9+8hMuu/wy3G43L7+0hIcfeoj33nuXtWvXMmvWLDRNY+nbS3nj9ddJ8fu5/8EHmDZ9OoFAgAcXLOCVJS/z9FNPUVBQQFZ2lmxC9hS7du7k8s98hh/88Afk5uWxbetW5v1kLkvfepurr7mGCy68EE3TsCyLVStXsWHDev7z/PNs3rgJ0zwx/tuerQK0uMiksPgN4JvAg4hQe3dLBxoFzKWw+OvdqiD4xkd9iOLFdt1fEHn/b7XR4HsReJ6mPNFEMEa+lif8i2du0/nir7uLFr8LoZu/BPiwm5D/ryNkY5NB/uvktf9+3DSy5I5fQ3T3HSrPqxnARcAAaZieqPvPBkQEQKF7ox/wtRacHKtoKn6NxiygLRdBew2Apww9UiyJ8CyEglur45WE9xYHwX6iBQPAg+ie3dWOxVNR42uPYdII/JOuWq+EyP2vr6vD5/My7tRxzTz0LpeLwYMHc/mcOWzdspWKigoMw8DlcrF69Wo2bNhASkoK3yj6JufMPqdZ6ozb7WbwkCH8+Ce3s3PHDjZt3Mj//vtfTj311LhRANMwWfLSEiorKjl90iTmfGYOOTmiBdRV11zD22+/xbtL3+GlF15g+vTpuN1ulr79FqFQiNnnnceZZ51Feno62dnZfP2b32TVypW8u3Qpe79WyITsiezfv581qz8lLT2NL335RoaPEGlQk6dM4YrPfY7HH32UJS8tYdr06WRlZWEYBk/+4Q+8/uqrJ7yTsKvH3y5F6sxbiAZCf0HogHcnaAgVnaskuegu6N9O74clj9MfWFxktPFYNwLPSQ9KovDR1ihFOADdS6I1F/iiTD/pDuR/AcnpWFsH/Bx4vFOMZ80lUpUKi0dTWHwehcU3A7+RhOc1YDGiOL0AEWk6UddvjRxXleLPCgoKHb71aRqapmHoBps2bqKuru6Y9JaLL7mEXz36CNdeey2apqHrOq+88go11dVMP+MMzr/ggrgEuX///lx6+WV4fT6WvvUWBw4ciDsW3dA5cGA/ADNmzmzWW8DvT2HEiJGgaaxbt55AIEBlZSXbt23H5/Px+es+3ywnv6CggKFDh9HQ2MDatWsxDIN1a9dx8OAhhg8fwdChQ5sZOufMPofMrCw+eP99ysrKjn5+3fXXcefdd3HHz+7kqmuuOWEdhVUfAEEMAXZSWPwdRGHwZ4BzEIW23QHZiKLO94BD3WTMtoxhW/EWsLBd2vzSIdDG5evlqw0migVCGUPvRtfY1cBvgU1dlPy7gJuSSP5NRNHvYywuCnZwbJq8VwxAKEcNltfkGESdy3D5PpmKPcmCiVBA+e9xiYAoHG/UAxWO5/1w6XUHUfi+1tAjtvFbCSSaUpnhWE80WltvfdSy+2hSaMuluSpcQQvbyXCs1yWvwRSHo6iU+EW57R3DeJoLBUTPw3ZDj5TEWW+l8ymBSBO1x++X49diHLdoBGjeyKzLIS0tjSFDh7Jt61b++Ic/8OmqVYw9dRzDhg1jwoSJDBw0kLy8PM4555ymnWpsZNcOIeY3ceJE8vLyWjQwLrjwQp7+29+oKK9g3759jBw5Mu6ybrcby7KoKC9vlm5jWaI+wDJNGhsaCAQC1NbUUFlZgS8lhX79+zczQnw+H1nZ2Ri6wYb1G9B1nT17dhOJhBkz9pRjGpf1yc8nJyebw4cPU19Xd9QAOP+CC8TN1zRZ8tJLvPzSS8oA6AKGQAD4C4XF/0B0FX2M7lMbcDqiN8CdLC6KdIPx5rTj/NsE3NWGvP9oopYKXELbPPrbaV+o9TAi0tBdrrFcRDpZ1zMAmuRi70gS+bcfzkvbRP41F9z0+96S5OcjNPjzEUW7M6VR65ev7hJd3QTcL6NjCicfXpDXDYhak6cQuedIcnoxsF++fwj4fYLrvQ8RyYqF1tbrJLZr5bL29fIAoqeFjVsRUbJY+DdNksepiMjwdPk+CHwPofYXC+0dQwiRJvVJnHlwyotGr7fOsZw9PrtfwzTgrw5jwXncYhntXTrFNCUlhVu//30sy+KTFSt4f9ky3n33HTxuD33y+zB02HDOPvtsLr38MoYNG4bb7Sai6zQ0NKBpGtk52a0TiJwcUlJSiOgR6mrjaxd4PB5OO+00PvrgQz7+6CMOHTzEsOHD0DSNw4cPsXHjhqOFzIauU9/QQDAQJDUtjZSozr8ul4uMDKE6VFZaimEYVFdVgwX5+fnHdBf2+/2kpqVhWRaBQOwyQusEyk4oAyC2IRCisPgV4H6EdnB3mCcPIo3pKbpHQXAubcvh3gt8F/ioA+T/Owi96raggralDNkol56iod3krPchcla7Kvn/jSTcyYIf+BGFxUMQ6VqHaWqC5ZZz4Ubk7w6WpL8A4QEcjOi4nN7N76G7gbsQzeEUTk7UG3pkL4BskuWiKSc91WmoGnqkkuZe6riQ0pnx8vYTXq+MEux3rLc+xn0pnsMm6Ni3NJp7xS3giP19S2jHGI44ths9D554643aph0BsLc5RI75mOPWXTF23Fge/r//Y8vmzXyyYgVr165h967dVFRUsHLFClZ98gn/ef557rrnHpHrD0fjHwmp4Vg2edZoKbCqaRpXX3stb7z+Ort27eLOO+7gis9dgcfr43///Q+bNm4SUQKXC4/Xi6EbmKaJy6WhxdDkd7vFIdZ1Hcuy0IX8Kx6P55iUJZfLJXT9LbCkUtKJzvtXBkBiRoBJYfFyeePqLqlAgxD1AN3BANgrvSCJNOcqk56Wd9uVplBYnIcodJ1H25uO7WhVZjT+/u3rRgbAcdcPbwP5/y0wOslr1xASmxfL/a6OMgCy5F8Xnd9V9USR/28jpE/V/V5BQSFpCIfDRCIRUlJ8TJs+jSlTpxAOh6mrq2P9unW8/dbbfPThB+zetYt//fOfTJo8CY/HQ0Z6BpZlUV1V3SpZrqqqJBQK4fV6yMzs1eJ4hgwZwlduuomn//YUa1avZtWqVbjdLnJychgxYgQ7d+4kxe8nJSWFlBQfHq8XPaJj6EaMfRN2ZmpqKi6X62hjsMbGxmPUfHRdJxKJgKbh9nq7FPlXBkDrCNA+7++Jgkb3SVmqQoREWzMAyhCh0L+0WaNdFLVOA34AfJa2q8boxA8hn2w43KUMx84l/82cNNIozOghx9kCViJ6oCztpv1DFNqHoLyf7ZPvj9C80VZLsprRiF5uO00yujpwvdvjrY7z22WGHtmchP0Z6/Z4bes1OoLpAa5we7z2ODfbcqJuj9eDaADazzHelx25+x3BLBlpOWa9Mea3pXlw7lsy56zzbzCWxctLlrBi+QrOPmcWl19+OS6XC7/fj9/v5/wLLuDcc8/lzTff5Ee3/YBPV61i3959jB4zmuEjRrBi+XLWr19PZWUlubm5cbfx9ltvU1VVRW5uLoOHtNx2x+12c8MXvsA5s2fz8ktL2L17N7169eLCiy7ipZdeZOeOHfTt14+UlBR69epFWloatbW1BEPNM0RNw6S2tg40GDR4MG63m7w+fdA0jYMHDhIKhfD7m/xFDQ0NNNTX43a5SD+ODb6UAZAc9EN4ArsLdLqP+sxm4H1E8Wk8HATuARa3SfFHEP9RQCGicDS3nWNcK8fYFVAHrEPINW6QhqktpXoWoqFae69nC5E6trGHkf+ehgbgX4jUxp3K89/jUIpIgdQc172T4dxI22RAnXiUptz3sxCF5fEYz8009QHoENkmvoymD/ix430xTfKn9nf2bxujDJiO4EaaZKaj1xs9vy3NQ/S+JWvOjgvWr1/Pv/75LFVVVZw7e/Yx3XpdbjdDhgwlPSODQCBAKBTC4/Fw/gXns+SlF/n4o494f9kyPnfllTHXX1lZyeuvv0Y4FGLmmTMZOGBgi+NZt24dO3fsZFTBKL5R9E3QNDSEXOlvf/M4aDBt2lRSUlLI6d2bvD55VFSUs33bNsaOHSvSeIDGQCPV1VV4PF5OG38aHo+H4SNG4Pf72bZ1K3W1tUebiQEcOniQ6qpqsrKzyejVSxkA3QaChIwhsRSVrkL+3wae6Raj/fPNQW564i/yJtcnBiFdJ2/SSxMm/4XFGYhmSl+QhkVf2l+Macq5PNDO3w9FFIUmg/i/CzwJLAXqmkVCxHk6GFGo9hlEZ+u2Xtdbgb93iSZQivx31r1hDaKe6WkpdqDQwyDzzjvr2IcNPdIIR/PiFXooNE3j3HPP46UXXuTD99/nueee49rPf/5oqgyIFKHlyz+mpqaG0aMLyOuTh6ZpTJ8xg0mTp7Dsvff405NPkpaaxtnnzDr6W8uy2LFjB3/8wx/YunkLvXNzuf6GG/CntkzTPnz/Ax5/7FGmTJnKY7/9DZmZmViWxUcffsjmTZvp1SuTc887H4/HQ3ZWNuPHT2DDuvX8/Zm/M/vcc8nJycGyLJZ//DG7d+4iNzeX004bj8vlYvz48QwbPpydO3ewceNGBgwciMvlIhwO8+orr9DQ0MC1119Hfn7XyyRXBkB85CGaDSV7jkIIqU676PAwIv84G6GNn4GQE3RKgrWGQ8D/EM2xSrrF7IrqnSWIvPx5CI89iPD0G8DDwNZWvZSCMA6RxP9LiJzu7CSMcAXw73Z5SUWe36nyeLZ7hqTHZwHwPxYXxe5PIYyBfRQWz0OoVl0DnCeN1yE0yeK1RAznSYNLkf+TCwFgNUJR5G/A4Tan0SkoKCi0EVOnTWXq1Km88frr/PIXD7F2zVpmnDGDzKws6uvqWLtmLS8vWYJpGFx8yaUMHCg8+JmZmdzy/VspKy1lw/oNzL39di7/zBwmT5mC35/K3j17WPLSi2zZvIWMXhkUfv3rjJ8wodXxnHn2WTz1t7+xevVq/vHMM0ydPp2Kigoe/dWvqaio4OJLLmH4CJE97XK7+MxnP8sbr7/OhvXr+eMfnuS888+jqqqaRx95hNraWr76tcKjaUf5+fmcd/75bN++jccffYxQKMTgwYNZuXIVS15aQmZWFpdeemmzfgLKAOjKEERkJkJaM1mkfwvwMSIM+T6iuNgAwiwu0iks9iBCk35J3GYDZwAj4hgDIUSKzCeI5laru4n8p5O8GhQW/xn4ADhbfvoxsK3FfRFyjHmI9JeLER0VR7VCdtuCMmlM7WsD64fCJ2w9+D6IULuvndsPSCNoPrAxIdImvPd7gf+jsPg3chxnImTxBsUwRg4juhv/o0sQQ9Hk68sIVZqh6ibUIcNxn7zHvAy8AlQr4t9jUIJIxbHvPfG6/uL2eAsQkUN72TxEqkwiiM5nv9Ht8U6R/+4Xde/bHDWOze0cQz9E7n6yeYsP+LHb470xgTGEadnJtsyxf3nAbY71RqcrOecsDyEnWh5nvV0y/UfTNPypftJS05pJYKampnLHz+4ko1cv3n3nHf73n//wwv/+h8vlOqqGk9enD18tLOT6L9yA2+0+ur7Jkyfzi18+zG8ee4yVKz7h2X88y7+e/adoLGYY+P1+CkYX8LWvf4M5n/0MPl/rj9mxY8fy+euv41/P/pP/e/iXQu3HMPB5vVx2+eX8+Ce3N9PwnzJ1Crfe9n3+9OQfebK4mD8v/hOmYeLxeLjokku45tprj+b6u1wuvlp4E4cPH+L1115n7o9vx+PxEI5EyM3N5Tvf+y6njR8fd2xer5fUtFT8fv9xbxKjqftlTDLSB/gPIpexo8R/FSKV5DngSJsexMIoSEfUIUQfqwgichDoEQ/3Jk//GGAKIt1lPJDsxLoAQgf6wYRSj4S86NnAuYiUoymICE4e7Us/CiA84PexuKg2SXPniWGMhLtEyk8T+U9mh9+eiHJEKter8t61rds5BBSOK2RR6qs05eoXG3rk5gR/+wSJ1wvEXW9bxhBj2bbg6HqlZOirxK8f6Mg83GzokeJ2jLcRuNQuVO4oXJrGbRdNnVRVXvripV/+5sDrbrujU+heJBJh6dtLKSsrY8YZMxg1alSz74PBIKtXr+alF17gyJEjRCI6Xq+Hfv0H8LnPfY4JEyeQkhLbb1dfX8+qlat45eUllJWWYZgmaampTD9jBpdcein5+flHDYeEyFgoxNo1a/nH3/9OVVUlXo+XWbPP4YrPfY7MzMxjFHp0XWfHjh38efFijpSU4PF4OfOsM7n66qvJzMo6Zvm6ujr+/a9/s/zjjwkFg2RmZfH5665jxhkzjukP4MSBAwd5f9ky+vbrx6xZs/B43Ek/TtVlR1j0zesp2bdrWa+srM889s6GWlARgFhkxIVIo5jawTXtRBRGPQ1UtCuVRBC0GvlKFhEcifAO210Kj3RZA0Lk9BfI1ySEks8IOq8uwwKeBX6dIPnvg2jmchtCJ76jsCMPT3Sg03G880jvose4s8m/XU+yBKEIdQHdp0lXoqT/U+Cfcj/rlLdfQUHheMDr9XLxJRfH/d7v9zNz5kxmzJiBYRhHpT3dbvfRwtp4yMjIYPa5s5l1zqyjv3W5XLjd7nbJaaakpDB9xnSmTJ2CaZhoLq3FdXk8Hk455RQeePBBDMM4Ou54y/fq1YubCm/iy1/5MqZp4na7EzJQBg0ayA1fuOGEHD9lAByLAuCHtD+dpAERev8FsKrLPIwF+b8CkVvfFxFB2Ab8ksLil1lcVHdCxmVfTJoLvvq73ohUlZGI9J6zgRmSXHf2uWpJb819CZFvQf4fQCgNJcNkt+VO26Z41P2N7Zs6mfx/QJOCxlREhKa7RhksRL3PToRClSL9CgnD7fGmIGql7GfbxESNYbfHmyXvyfbyGYiUw0RQ6ViPCxG5tR0m4+W97yjvk55zG9sd8py208p2AOXSXL63kubddomzXn8rDpt+LYwh1r7Z8+ACBjt+G71v0eNtab4LiN+Y0QQ2GHqkpruce0cbYh3n38ac2wSJeXu2r2kaHk/3odXKAGhOSFIR4bxR7VxDNSJ944G4RZsnDiMl+Xf2CZgGLAZeorD4T8BKFheVJ5HdQ+ETKYiIQ6r860ao1qTJm2GB46FyqnyfTfvz5ztC/r/L4qLdCZwnacDdSST/AUS0qOeQf5cbRAj+jk4m/0XAZhYXQWHxQYTXvDsZACFpvGxDFPQuAXYBjYr0K7QR+cBfaFIna0uTu9NoLu35b0SdWiJwknI/8BBN6bUheY3a/Vbuk/diG7fQJC+6FlHzZT8vHgC+6Fj2IeDvccYQvd6W9vty4MI4Y4jGQ8Dv5b9TgT8gHIix9i16vC3hVuBrcb5rBK6U9zcFBWUAJIH8awiPcyHtS5YrQRRtPs3iolAX3MOJknhHIxX4vLzpraWw+H/yxrKTtqQHuVzw1d/3RhRw5sttDZeEfqr0Otm1DH66ThpGSD4YfpAg+Xch1KGSSf5/S6JpRycLvvq7PHm9DDsu5F+gDPhInpNdtf7J9nLuRvRlWI6Q963qMjUbCt3W7Jb3+7R2/jbN8dugoUf2tnMc/qgxHLHXJSVE02JxFEOPhID99nu3xxsdqa2MN6YY622NF3kS4UmGHqlERjhkbYHVwr61Ja3T18p4Xep0PhamafLBBx8wbty4uE3EAAzDYOPGjezbu5fTThtPdk42yz/+mJyc3kyeMpnS0lIqKyspKChgzerVBINB8vr0adYTQBkAJxfyEF7dnHb8thwhpfi3LtlZ05tiGwAtHe90hGrMTOmx2Q18SGHxJkQDmcNyuXqaQroZiHSiAukhmoRQhkhrg2fpRMIm3wtYXFSV4G9OB37UzodoLKL6LHBPUnP+u4ex/TVE4XSyEUFI4t5JtIzsn2+OcNMTvwbOoet0zLZTCEqBTZLwfyjvKQHVrEtBQaEnY+/evdRUV9O3Xz8OHDhAKBhiz57dTJs2nbKyUg4cPEhOTg6lR44wZswYDh06RP9+/fnwgw+JRMLMmHEGGzduoKKigmHDhzNt2jTKy8t54b//4/RJkyh+4gkGDhpEv379WLd2HS6Xi//977/k9s4lv08f/vjkk5x3/vnk5uWddHOrDABBSDpS+KsjNLaf6ZLkH8DttQ2cRKAh8iMnype9j2Hb80NTSDcVocLjp/spSrW94FacJ18iOQ2+QEjG3dejyL9AL0Q9ircTDLpngHkxU9lE74l1iH4J95J8BalEyH45Qr53l4Pwb0aE9YOK8Ct06Fbv8UZLZW5uQVkmhEirsSPW2x3ryZDXqJ2zPhhRbG5HhLPdHm97TlYfwolkj8kPzHF7vLak6Ng27Fs2zeVFS9qwbKJwARMd+6oDL9s1ATLff2yC+9bSGIKAU/VtexuWPalhGAb//e9/GT58BAcOHCAYCDBk6BD++eyzVFZWMnrMaLZv20ZmVhbvv/8BmzZtQtd1KisqychI5/nnn2ftmjVcfMkl/OEPT3LKKafQu3dvvvDFL7Bly1YyszLZuWMHl112KZZlUltXyyWXXMqGdetkMa+HTRs3YZomBQUFcVWLlAHQfTEQkefXniO7BZG+cTJL7jlDoml0b6lGC1gJLEQ02GpL2s1oRIfhpDg2gJ8llHZ08uE0hJxrMlEC/Ar4bYsG1eIik8Li3yEiXrdybBfqZJ1jpYiC3SpENM0m+7vpSfK9CscbBdLAPSqr2QKRLAW+SlO/E2eKWS4iZ93uybEfkX9vL/sYorN0e+DMqT+L5rUFbdm3PwGXOr4Pt2HZRJEmx/cd+b5RknPb2LiR5jKgLe1ba2NwdlB+FBGdTmTZk5ucDRyIpmksW/Yes8+ZzcqVK4WakMuFy+NhxhlnsG/fPjZu2EDpkVIaGxtpqG/g9NMnkuL3s+TFl8jPz2fChAm88tqrGIZBKBTi2WefJTc3l8KvfY0//2kx4UiExkCAwenp+Ly+owW9199wA4OHDGbRwoVccMGF9OvfTxkAJw0Ki1MQSiQF7fi1DjyPIy9RoUujTt6Q7wV2tsPbOhqh8d9RNCKiD8t63BEQ0ahzSTwilQjZXoOoJ3gzIUN8cVGQwuIHER7Nb8rxZLdz+3YKT5Xj7xZE4d8+RFQiqMi+QheECQQMPdLY1mXdHm9H6lHCjvV0hMjqCY69rcs23a48Xnvfk7FvCY/B0CPhKIOmx8Ln83H22bNYu3YNs8+djW7opKWlkZ2dQ21tLWlpadTX1zNy5EjS0zPI79uXsePGsmnjRjweL2edfRYHDx4kPSOd0049DZ/XR21NDZFwhKFDh7Jr507OmHkGK5avoLGxgVGjRlFVVcXAwYMwDINVq1Zy8OABpk+fQVZW5kk1t8oAEKTu27QvHWEL8Ef1cO/ysL3+DwMvsrgo0M715NLxtBULocTxlx553nhSIHmdfusQkrv3IPL9E59PEfl5mcLipdIAuAgYh+ianIEI/efLpUslCbA9+/U09+pvVkRfQUFBIfnQNI3Z587mnNnn4Ha7+fx111FXWyeKfDUh6zls2DAqKyrIzsnB43bjcruZNGkSkUiErKyso7r8t956Cx6Ph16Zvfjp/DuO9iXweDycVlWF3+8nPT2d3r17M3z4cNxuN9/93veorakhNy+vTfKhygDo6hDe/xuJr7fbEkKIJl9d3/tvGkjS0hOJ/w7gBeA3wO4O5lhvR+ReZnVgHSuAh1hc1IhCR4j/B4iQ+ksdMOiQv32FwuJXaNIHT5UGgF0TtNJhANQgPHOK7Ct0x+vm7zSlcLakmx+9bAZwn8OrnYdIL2oP57jA7fFOke/70VzyeTPNI6ObW1jXLNmJ18ZTjnqHEnl/sNd9dJ1uj9eHSP+zo/5h4FFDj2yX399IU5dgD82zA3zAj+UyEL+bcIuIMYbW8FSyugR3RziVd9LS0khLSzv6iLcsC6/HQ37fvuIWbVlYpkmqP4VUfwqWaYAFhq6jAaauC8PBpYnbvAZYFjk52YCGZZmAdpTs+/1+/H7/STmvPT0CMFIaAO0pYF0F/KFbkIBwwCavPQn7gH8hdJm3J6lAex0ibeS8dv6+GpH6s7vHXnF6CLn/Vjuvu0MITe+nktprQxiGQZrn1vbc46Rw0kFKVv60PcvKYtdXcdQWGHrk5nYQ3zS5nuviLLKsDesdS/Oi4VU20Zdk/pYWeM8VDvLeiGiqt91B6ota+W0yuNcVbTAgVtHNUkYtS5JxLCxTEHXLMjEiESKhEJFwCD0SQY+EMfQIRiRCOBwS34WCRCJh9HCIcDCEHgmjR8JEwmGMSBjDMDAMA1OPoOs6pqFjmSamaWIauvxrCjJviW3bsDv5apqG5nKhuUTEwOVy43K7cLncuD1u3G4vLo9HNA7zePB4U/CmpODxevH6UvCl+PH4vHhTUvH5U/ClpOLxeuWyPjxeH96UFHz+VNxuD5pLQ9NcoGli29qJ103puQZAYbEXuIH2e/+fASq60R7XI7yYJ7N+sCmJ//OI6MyaJCsz1SIa4JxF2xuV6cCTwJIerfRiRAD+g5ABbWvdTQBRv/Fkl1XcUlBQUDiJYBN3y7QwTYNIMEiwsYFQMEAkFCQcChIOBAgfJfWCpIcCAUKBRoKNDQQa6gk21BFsbKShuor62mrCgSC6HkYPhzF0XRB6w8A0DSzTwDRNuW2OGhLiP0tqUR0v36uG4OqStGvSiNA0XJrmMB7cuNyeowaA1+fDn5pGr5zepGVmkZrei9SMXvjT0/GnZeBPT8frS8Hj8x01KFJSU/H5xSslNY3U9Aw8Ph8ulwtNc6G5NJIpuNiTIwDDEQoI7SHEq4B/dDMitx/h3Uw7CY9lENHg6UXgNWBLpxBE0U32GUTH4qI2XD86IhLxIIuLVGGX8LT9FdEFOLUNxt1fgb8r8q+g0Ha4Pd4UhLRzPLW7EjsNJs7150xbDLdhuwU0OdrsNLvo+7fZ1vXGQIGMVNjj3WDokZo4Y/A79icMTJAFvyDSm+KlaLbWPdk5hglR+9PavjnnIdYzpJN8MhEa6moI1NcRaKgnUF9HsKGeUDBIOBggUF9LY20t9bXV1FVVUFVaQm1lJeFgI5FQCF0PY0QEgbdM4XV3etxPAhNIKkjbfx1z11HTwo4GuETkweP14vb5SPGnkpKaTu/8vmT1ySczJ49e2TmkZ2XjS00jxZ+KPz2d9F5ZpGb0Ij0zi7ReWbjaWKPQMw0Aoed+Me1TdKlD5D5WdLO9LkdEAU4WA6AcWI3Iz/4A+IjFRZWdvtXFRdUUFv9MmuHfTOAassn/ncdlfN0BQorz1wjlne8kaAS8ByxkcVGdmkAFhXYhHyFAEK+PyZ+InzazAbiSJodZSRu2eysi4oeDgDtJ7+2IfgRtXW+s7TjlOq+Uz4ZYY3gM0dDRJur30xTVfZX4cp0TgYdaMAKcYwgjGhKuS2DfouchltOk7dTVgqrSEratWYkeDtFYV084KLzywYZ6GuvrqKssp+zgfmory6mvriLQUEc4GBKeeMsS/mZNU1dPZ5gWdnqSaWKgEwmHoKGpYPPQrm3NDqYlj4VLc+FN8ZGWkUlGdm9y8vvSZ+AQeuXkktZLRhrS0klNzyAlLZ2G2hrCoaAyACT6JEjeYmEZ8O9umMZxWN5E8rvpMWsEtsrXCvlaDTQe92OxuKiSwuI7ETHIbxA/HegAovi4WJH/Y+awnsLiexB1Ea3p8b8HfJfFRXvUxCkotBsuaWzHcwLFTWuUnvQP2rldXwvbNIG1SSpw9UXtg6uFMeyytyk9/87vy+ONJwFZ0OgxrEtw35I5D06KySdvvsLa95eiR8KS2As9g0Ry0LWTlPjb6j/dCpp2NPnHskzCwSDhYJDq8lIO7NhyjKGgaS48Hg++VOFfCzbUE50+1FMNgLGIFKC2ogp4JKnFh8cLT91SyY2PvYvIX++qMKUnZC/Cw38YoeKzW362FqhkcZF+wkcqjID5CL33q4AzaOqauUeS1qcQkQmVshLfCHgQUbdxB0KSV4sy+p5CqCbtUBOmoKCg0Cb+TyQscvMdPJJk5pEnRrA1bMUe+3O3x8vZn72WPgMHEwoG+PjVFzhlygzWvPcmYybPIBRoZMjocfgzelFXWc66D95l+kWX4/J4qK+u5KOX/0vB6VPJysvnw5eeY+KsCzi8Zye9cnLJye/LitdfIiMrh5mXX8Unbyxh7LSZbFrxIePPPIeBI8dQdnAfq999k+kXzSG1Vy/qqypZ/9F7TLvgcla9/SrDT5uIPy2DI/t3M/K00zEMnRWvL6Fk7y40zcWYKdMZOGI07/33WSacfR4le3eJbffJp76mmtGTphMJBVnxxhIKTp9KdWkJI8ZPxpuSwq71n7L6vbewzE6gBkcNBQtdj6DXNbXGcaop9UwDoLDYA1wG9GrHrz/qgBfkxCISAuExj9BxLfuOIozw/G4HDiLk6LYjNNb3SwJdBoS7BNmPT2CrgT9TWPwPaVTaBsBe4IAi/gnNoUFh8V8RdTXXATMQ4fWdiHqOl5RkqoJCuzHW7fHaIdLeiDQUu5tvJjCeBOrg3B5vP+DyBDlDPfCCoUfsTIbtxFew8QNz3B6vreaz2eGZ98ht2rn7I4CNNCl1OfP67e3YaTZBhGhDPMxy5PwXRO2Xc86iEb1sCU3pOS5El/OsOHM4iybVIp+cp2WtjTfGPOjAy4YeKemKJ1xar15c9IWvkdk7l00rPiTU2MDk8y5h8ycfkpqewcBRY3jtqSepr6lm0uyLqDhymFOmncm+rVuYcv6lbF+zklPPmEVdZSWnnTmLT958lQmzzqe6vIxTZ5zNJ2++QunB/WiaxrnXfJH8wcPZsXYVp55xNqZp0G/IcIaMGceqt14lI6s3F33hJlwuF2OmzKCyvIIzLr2St/75F2ZfdQOBxgCTz7uET995g+kXf5ZAY4DzPn8j4WAjUy+8HM3lZsNHy0jv1Ysd61YTCohHkdfn44LrvkK/oSPY9MmHjJt+JpZlim2PHkvJ3t2Yhk5qRiZnf/Zaho+bwAtPPo4eCtJ/+Eg+ePHf0AXqJHpiBCAd0finrTgC/LJbev+b8A6ikLKQ46MGpDvI/UFESsx2hJTjfvnvYJcm+YmR2KA0rhTaN38AGyksvlsSApc8L5QBpaDQMcyiudTkLYhcfxDR4P+SWF1YASJvPpFl9yIcZbYB8Cjw2zjLRo+h2EGKfcCPaS7XeSVNTrjHaJ7X/6hj36C5pG80bpSvROasJbxMU91EmtyXs1rYZlGcY9HSeGPNg9PY6VLwpvgZPWkaK996lcnnXsS+rRtJzchg1ITJpGX0omTfHhpqawCRYpST3xdfSopUuOGoB9vCwuv1MWzsqaSk+AkFGvGlptJv2AiCjQ3k9R9EWq8sjEiIkeMnYZrmUZlNUYQsXof37GTMlBnk9R+ELyWVxvpaNi5/n1OmnkF6ZiYen4+hp4zDLSMLVaUljBg/iVBjAy6PB7DIye/HgOGj2Ll+FQB5AweTlduHytISTplyBpZFs22bpsHhndvQ9QjTLpqD2+ulpqKcw7t3kJHTm5J9e7pEoXRPNACyaHsevAk8RzfT4Y1BtMopLL4LEY+7kbZLWbaEMCJlZwvCe7sZ4dHfftIQfYXjYQgE1UQoKHQawoYeaQRwNPXqVBh6JEwcBZx2jCHoGL8eb9+OI3THeGyu0OZjcbLB7fEwcEQBgYZ68gcPIyMrh/qqSkzTZOeG1QQbG0hJTUPXI9RVVeJPS8c0dOqqKjn3qhvIGziYA7u2U19dxWtPP8llX7kZjy+FUGMjVaWH0TSYcekV7N+2mYbaGgYXjKXi0AEmn3sxmb1z2bVhDYZhYmFRU1bKmvff5jNf+y6NtVV4vF4u/+q36D90JJs++Zj66ipef2Yxnyu6FX96LyoOH6BXTm8O7dpBTt/+mIZBXXUFVWUlom+ApjHzss9RdnAfZYcOMHbaTA7t2s6U8y4hIzuHXetXY5omp59zIb7UVNYue5vJ510CWJiW6FWgcfxETJUB0Bz1iFz+YW34zUHgNywuipwEJOsQhcU/AtYgCljHteM8MBE5+psQRbkbEGHl7Yh8/WCP1rpXUFBQUFDoibDAiOg01FbzyZsvk5KaxoDhoyg7tB+Akj270DQNPRJm6b+fIie/H+s+eJvtaz6h/OA+xk4/ky2rlrN3ywZK9+2mZM8u3v7nX6k8cph3nn8Gnz8VQ4+wfc0n7Nm8gcb6OoaPm8DhPTs47YzZaC6Nde8vxdAjVJcdYdkL/2TXxnUEG+o5sGMT/yt+hOHjJvDiHx9n79aNRIKNlOzZwRvP/JHKIyVUHt6Hy+Wmsb6O9KwsGmpqGFxwCpqmYZmCtm9c/gHlh/ZTX13F6EnTOLxnJ6dMnQmWxdr33yY7L5+a8jLqqivZ+ukKqkpLqKkoIxIKUFNZIbsNn3j0PG2nwmK7E2GiIT4T+D1w20lhADTNgwYMAmYDZyNCvP2BobE8FZLoV0vSvwaRi7kFocJjqbuegoKCwolFjI690bjZ0CPFcZbdTPwodwYipdP22Dvz2aOxF5ht6JG9cjs3Rj1vn3Lk+RcgVMDsaHQewrkEwjGVIZ879nc4vm9p2Wg4l20LYubf05R+s8zQI0/JffHJfSlox3jDwKOx+jDEWG/cZW24NI3bLpo6qbL0yIumZQ48nuegL8VPwelT2bVxLYF6pdrcleByuZb1ysr8zGPvbKi1T8KeBh3hqU7UANgPPH5SkX9Akvb9wFMUFj+NyL3OJ7ZGtG0ABFHefQUFBYWTEWPbQOqfaGHZaMyiee77KtvQkCT2FgfZfSJq2ZYMlmJDj9wsv7Mde9fFGcPRZdtoUKXRvNg4DDwcS65Tpjo93IIx1tJ4G4F/EkPvP3q9XR3hUJANHy87aSVETyb0PANgcVGYwuKPaF48FA8RRJHOtpN8TiwgIG/ye9VloaCgoKCgoNAeKPKvDICujP0Ib7a/leV2AotZXGSoU0VBQUFBoYvDRHiTbfhaeM63ZVk/MM3t8doR4ryo30ajpWU7Swwi6NiOK97z3e3xuhDyp5kJrNOf4HIdHW8YmOCQJo3G9q4q+9k1DA5hdLg0DbdLw+1x43a50DTRyViT6jwWGqYFumFiGgaGaWKZQnHI6oGJzD3VADiA0NxtyQCIAM8gCoAVFBQUFBS6OjYgpDJtmecfA1ckYdl8hIS0TZNeBS6Ns+x4hJxnSpxlt3cSmb7dQdYnAg/Fecb75XeJNsX0H4fxTgDuJ74yX7RkaI+CIOcWPo+LjAw/2Tm9ycjOIj0tlfQ0Hxl+D2kpblJTPKSmuPF5Xfg8Gm4NXJqFpoFpipM3YkBYNwmGDAIhncaQQWPIoL4xTEMgRENdPdWVVdTVNRAI6RiGedJGNHqqAXAYkerSkhzoB8ATSotcQUFBQaE7wNAjNTiaVcoC3A4vixAMSXW8L4+VBy/XgyT/aa0tm8T9NhGd4p1jMFsh9Wkn8DjFGq+vhTH1KK5mWRYpXje9e2eRP6A/mZkZZKW66J0OfbO89OmTQ3qqDzcRCDdAqA4rWIcVacSKBCAQBtPAMnWaCW5qLjSXB1weNK8fLS0VUjLQfOng643l9hMxoKKqhrKqIBX1FlWNJjUNIarKKyk9Uk5tQwjL5KSQ0OmpBkA18GfgdGJ3xV0HzGVxUal6pCgoKCgoKCgodC5SfG4GDuzHsJFDGdI/m6F9UsnLdOMJV2PVHsasO4IVqIU9OhbtyyWzCMm/NTG/dwF9NI18Typavxy0XvmQNpBGYwQHykPsLW1kz55D7N9fQlVtI4bRfX3EPdMAWFxkUlj8P+B64BynYQ68B9wBrFCXo4LCiYPI3QRTicwqKCQEt8fbDyFbaT/bs2mS9kwBpreQZx6t6tNSt9ntx2G80HK327FujzeeJN0IhFS1LVua7VjWR5OqTyyUtLB/fmCO2+O152qzQ9I0WjK0IIpjtWW8scZ0UqJXup8Ro4YwcuRQBmRp9M8Ik+WL4AruwawowzpUi27qHFeXu2XJaEIj1B4ANPwePwVpOYwelktgaC4VgX4crvewv6SGrdv2cvhINXo3MwZ6agQARG7/LcBCYAawA3gd0bL8sJK6VGhGRF0ajf++3C6SG4oobEsDBtOUQ5sIShCN6EA0TysD9LRrloQt6JGFSMHn59gP1uE09aLwyjkeLB/G9fKa/ch/9ZJKdVYqKMREAfAYTakkf6Ip/36IfMZ9PcF1PUr8vHP9OIwX4nQQlphFfDnvRkR9g53i9BjwRIJjehmHNGkUzgL+6xhvscNg8SHqKGYlYbzRCJ9MJ6nH7aJv395MGD+acSPzGZARJjV0BKv2AGZpFZZlYDQj/Ccy30Zs29KDWLWHofYQPjQGePwMzMxjSv9+VJw2hZ1HQqzdtJfd+0qpqw9idYOHec81ABYXQWHxOuAGYAywByhXTa16ONHXoPG5OR5JSAvka5Qkpf2AHPkg7UMLShMtIOx4eO5FNIapanxuTon8926EStU++X047ZolyVXN0JoZM8f4PoCg/+olnXYdaBoEnpvjk/M6FZGKNw44BVGX449zxw8CrwWfn/Md/9VLDqkzVkGhVeiGHmkEcHu8AVrOiz/mXmX/9kSMNxm+Bce+68kYg9vjDXamL+QEzPdxhT/FyymnDGPKxAJG5EKmfhit7kOsyhoM0+gihL8NBkH1Aag+SK7XT252LhPP60d5ZBSbdleyct1uSspqu3SKUE+OACC9/LXAJ+o50QUvM81xG2iZtB59YMUky7F/24empmf9EaHnPEn0s4GBkvz3TvJ14qNJ6SFeI50gcEQaAYcbn5tT3QnTaxsz0YgAnwSfn/MssCaZhkDw+Tk+hAdtJiLqdjqiG3WiERQ/cCEiXK4MAAUFBYVugPS0FEaNHMQZpw9nzEA/KdXbsEoOYBlhur/H1RKFxzUH8GmHGOhLZ+DooUwumMTyjUdYs/kgR8rruqQh4FGnpsKJIPaB546mfbiInVLjkgQ8IwHSaqMlshz9W5vs26S8K10Lfjm2oSdo++cDVwNfQHTtTAb59yJqa26RRpWCgkLyUYJIo7GdDHmyuy7yXroJeC3Ob2dFOSVudHu8U+Isu8zQI08lOIajOf1uj9cH3Crv7fZ9+FVE9LO1ZfsRXybT/u1m+e8wzfPml7XiDHHWIcxyzFmsZX0JHgsdkU5UEmd+WxovLcxDGHhUdlHu0vC4XYwcMZDzzhzLKfkm3orNmLvLMa3Ob61kmBZhwyKkW4R1CBtgmeD1gM8DKR4Nn1vD40pi4zLLxArVQekGcj0pXD52KDPHnc57a4+wetN+KqobulSarzIAFDqP6AOB55ul0wwGBsh/Z8r3aXQspUahc1CAyEldlaT19ZEGRUfJ/3pglzo8CgoxSI8ghbc4yOMTgLOg7WZDjxTHIZpPRBHUlnLWAZ5KZAwxOMcVjvU2ApfGkQmNXrY1PBVv36Sx8lSc/Z6FiCzafGgs8aOzbUEYeNhRJBw9v3HHm8Cc/ZPO6aeQNGSk+Tjn7Emcc3o/etVsxNy3v9OJv25aVDUaHK61KG10E/DnYWUMQPf1QvP7wOXGioTQQvW4a8vxNh4hSwvQJ0Ojf6ZGus+VNGPA0kNQsY0c30GumFzA+JGTeOndLezcX4HRRZQtlAGgkFQEBeEfiGjEcpr8a6fTZLfBe6Jw4pGXxHXlA1kdfJjWAr9Q+f8KCgoKXROaBqNHDuTCmQWMzq7HXfI+ZrCm07ZnWVDVaLCjAhp6jcA1fCJV/l7sM0OUey0CKR4iHo2IZmFh4bLAo1v4wiNID0bwNIZpqDrIhIYDfNZdR7onuak6VrgByjYwIi2PGy8YzKpduby7cg/V9SFlACjEh0uLfXUlkAvf7PwDgmnXNM/lTqbijEzp6Y1Qb7gMmAKMVGS/WyNCcqVwp9By4714MIAlwN8QxdHr1KFRUIgNt8ebhXC8uBxGvLOwtC3FsOEWls+TnvNYCAFrDT0Sj+EEHWMKAxPiSJP65cteNjpCrNNcHUdvYR5K7JQZt8frQnQrdnYNdrWwXj/x65T6OeYherzR+xZ9LEY4fmsCG2RzttbmrJG2FXMfP0LpdnH2GeO4aOpAsuo3Y5WWYFmdM1TLgoaQweYKNxW5UwifNZldfpNtWj17Gw9ypLGaumAIvdaMTYsMi7QqnYmefC4dO5npDTmklK0EsxPqvE0dq76E3p5qLhgziL5Zo3nx/V2UVJ7YlCBlABxny1hrTuAzEJ5xF8dKSjq/O+amQ8u58NFEbm/jc3MiMW7uWx03Oqc8ZbxlYo0rDaHgMgcRolSkv/sjDPwFeDGJ69wMVJB4VCEoyf7rwKP+q5eUqcOioNAqTqO5TOWrNJfVbEvayKPAC3G+u02uOxb2ARdLgz3WdX27g3xPAO5v4bnxGPAjB1F/yGEEvAw8HGffoufhTzSlJfnles6KY1g412svOzHO+C5HpA/FGm/0vjmPhR9Y4BhTSzKg0XNmAhu62omXnuZjzvmnM32Iib9yOVaovtO2FYwYbC3XKMuZSOWMiaz0BVkf3MGBskoCRqTFwmLLNLGqQ4yO9OKbIycy21NBn5qPMav3EQwFqA6ZBHVhYHjdkO4Dv9eNx611WJvI0oNo1bsYn5NHzsXD+e8HB9h+oAbzBKUEKQOgE0h+4Lk59g2lD8ITPhRIR8iN+hwE3kmmT3T+eyxvTyIGgMrb71oIRnmHEo0W6Qit/Y8Q+aX/9V+9pDqJ41oN/AGhQZ4R7R+RD+8qhAzqJnnerQDKO1OSVEHhJIPtTLKJb3mc/PpEsD3eb90e742ObUQjlTgec0OPmMBax3rse1S8de1y5NATdW8raWHfouch2sDwt7DNEsc20xCphy1xKE8L4/XFOhZyvcGoMSQ0Z10R6ale5swex9nDIrgqtmIZndO2QDdMDtZa7GEApaOnsW9wPm9Vb2NXeQWR1iINloUZMsiqsZiTPYJvDM5jSPV6anZtY3O9SQU5NKaPotabTiTVhwW49CCpeojMxjJ660cYnKGT7XfhcnXAFLBMaCxlsD/M1Wf25eVPNDbsrj4hdQHKAOgI2edokWtvhBd8OELbfAjCm58PDCO+rnlXgi/GTTINIdfYE4hymfRcJfqQdSoUHS8VobB82WR5LyLcbjfKMqXXzRlmtiVOfQ4DNJaRVyrXt9F/9ZKku278Vy8JBJ+fcw/wrxYMgDo6uQeBgoKCgkLykOJz89nzTuXMoQZa2TasTij0tYCaRp2t9b04MvhMSkaM5K36XWw4+DFBs/XtmbqJqyLAGSkD+M4pwzjD3E/l+v+yotpFRe9J1BeMpKZfLmU+nUPBKqrCDRiWSZo7mzxfL/JMHznlNew8uI2hpZsZna2TkdKxgmErWM1An8k1M3IJhyNsOVB/3NOBlAHQVtYYu8i1ABgtCbOmZqnLwJRkeLskxofkv2tjEOVySYDbYwDYJHuoNP6GItQe8pIw7u2ILtV7EWlaFd2VLPuvXhJGRAIUFBQ6B7WINBI7KpsUpRi3xxstlZlNk7RminwOpsT5bbT8pRMFUTykxDFmFzDR7fEWxVl2rOO7aIwANkpHT/Q8tOZR78iczXLk/Be0wLGix+AH5rg93njztMzQI5u72snmdmnMnDiY6YMNtKod0AnkXzdM9tVq7EmfwL7xp7EuC5YdWU6VHmyVMFuWhVkbYqSVxZV9hvP5fmn49rzH+sPVHOl9OvtPHcyRQTmsq9nH1pJNNBp6zPQhr6YxKDWbCePHsu9gPpXl2ymo3s/ATAuv29XufbPCteR4dD47JZP6QIT95ce3MFgZAK0TfhC5d1MQjYumy5udKnLtumTfJs2bJXHeClRLAposrI5zvtih54nAOcBFwDTiF5Ed7QYsH357aeoCvBWo9F+d5E7ACgoKJyvWI3LJj/KnJK23AJHf7sypt/PZhyBqdQbH+e2NNJcibQkv05QXn4bI4/9OPLJNfInQ6Jx65zzYOfXx7skdmbMb5atVahE1hrNoXrMQjZtp6hnQZTBqcDYXn56Lr3YzlhlJPv+KmKyrTKFkyDmUjzuVg1qQ2kA1w3IG01Cxh5ARf5umYeKuCHF5ZgHfGT6AUZWfsmfFZvb6RlF12rls7OPj3bItHNy7idaybyKWxe7GKvY0VNLfk866vGH029fId0IVDErrqIUTYHCGm0snpPP3D3Xqg8ZxO37KAIhN4jRJ+icjupZeKA2ATDU7XecwIfLF18cg+yeMNPuvXmIi0nE+0DQ+CDw3x9Z+jvew2YdIP9KTbKAoKCj0MMh88cbjsCnd0CONAG6PN0DyVGmc66WD6w3a64qaI/v5cSKPU7MxuD3eYHc713IyvFwybSC9QvuTnvNvWVBab7A50peyiRewNtvN3prd3DnzG1RVVpKalsbvNr/Im/tXYsXw2ZtBnewqKBwyma/0NtF2vMwnh4NUDj6X3cOG8G5gH5sOHCZsJnZ6mREDakL0DacyOjuLKfn9GT5gEL1KPoaGfdChfsYWROoZ2zeDcQO9fLLLxDpOuUA93gCQefwuRLrGOESe9CTgVEQVvyL9Jx5h4DAiZLpDkvy9wBbgYFf1kFsW+K9eUklsZQcFBQUFBYVuiemn5DEqsx4aqpNsWZrsrHKxK38WB0eN5fXAHjYcPsyIzIGUV1Xy6Jt/Yfrw8fR3Z+IywXC41izTRKsMMdXTl9tOG8GUxq3s+2QDu1NHc3jaRD721LO87FPq9FBClN3UDdwVISb78rl6+Gimp4QYZJSh1a7CKK/ECtRQZyTJY6/Vc/ogF5sPadQFlAGQfLIvFHps+c2xiDSeITR1/jsFlcd/omF7sLYivPqbEZJn24GdykuuoKCg0HG4Pd4C4FaaUlnzALszbQZwpdvjneJ4/2+avNZO9Z064O80dfmulJ8lxPcQaT8lMdbbEfiAH0u1IhA59E8lOA/RHKmgvVy2DftWgkiripdW3KXSfzL8Lsb01XAFy5Oq898YNtnamMmuIWexdUhf3qhcz4FgLab0iA/pM5BbLvwy/bPzefy9Z+S2BV0zwzqZdRrX5pzC14b0JnPXO2w6Us+uvLM4MHoEL1dtYU91FUYC3nXLNNFqwoyyMrkibwTXD82l1+FPObxpFxutDOpS+hLUBmIxMLnGTy+N3iNqadi6C1PvfL9mtzMAZHpOGqLoNhMYhMihLpUk0aR5kaaX5jKc+fL9GPl7FwonEtHe/bWI1J6tCAlIU02RgoKCQtLRD/gaTXnnxYYeuVmS4qHAu4jGjiAirrMNPXKMUIKhRyqBn3bg/v9wB6RKW+I2V0R99lSC85DMZ1tC+yablN3SXU6cUwb4GJoZwNKTk7lkARUNBpvMIRyccCEfpdTx7pFPqdeb5/jvKtnLL5//HUMHDOOs06fzzrrN1IQboSbEOKs33x4xhguMXVSueofl1mBKTruAj1MbWVbyyTHrigczpJNb6+KqrNHcOKwPA0s/Ye+Hb7LBNYTDueehjxlDWYpBjR7A7IQmZ6Fh5ZgHD0L1CTIAHEo3QxB69f0QXtn90gOwFWhMvWZJGEt41gEahXc9lgXbR67r6BzTJF14zPwjOteKN9bRwsohwPmIItwxiHSdDITyQAShfhDLANDoHjKcPQHRhbprUd59BQUFBQWFboPBvT2kaDrJSFQxTIsDtRZb0iewd+x03gztY+2Rg+jHeOo1cnPyOPeCi8lJy6TsSDmhugBZAbg8YyTfHJJH3uGVbCupYk/mVPaNGcfbdTvYWFqCbpm01sbLsiy0ugiTyKVo2EAuTqmkYdPzrKlysyN3JhWnncbKwEHWHn6HWiMcU4HIsiw6Oikew2SGzyT7OBxHj4P0g/COXwmch1AxGSqX8dnEnCbd8COB5+ZsABrkciCkwfrH2E6eY5nWDIBGYH/jc3NMudxORKrOOYgUnVgee7ck+fnq0uwyRD+IKG7dKb1Hh+kihboKCgoKJyPcHm8WQp46kcj2eEQfkaPPaSnZCdCX5g0e/cA0t8drO/JKpNcat8fbogyofP7HK0wOAxMc0plH1xsH0f1biBpjvP3u59g3EE3OShKcVmeTzLY0vrRlTBN9Zm4w9EiNnNMChOO1PePtVHjd0CfdwEpC4yrDtNhWabGl95nsO3Uc/6vcyL5AdUxyXV5fxTsr3yPH9NIQOsyza16lj8/FjyecwaXug5SveZ6PQn2pnXI1GzN0arUIIbcHt8vN2f0nsLZsB9Whhrjkn4ogF6YM5u5xIxh4cCkl2/ewtjaLqmlX8H5agHcPvk+jEZ+yGCGdlMownjAdMgI0y8I4TokpHkn+XQgZqvuAs4kdGXB21rObQ13RgW1PUrfrbgedpq7AEaBGnuqbENGheodhtx+RlrUH1dxJQUFB4XjgNFqWk3SiDCHPeUS+vw141eYhUUQ3H/irg9r8iaaUlXzgLzSP8jvxKk2SodGYANxPU+aAc72xyP/txNbw9wMPSUMkFi5HqPnZuEVuKxE8Crwg/z1RbicRI8AeUyJ5ItGypbci0pLaM95ORapXIytF77CnO6ybbKr2s2vYbNYP6MMb5esoCdXF1fYvDVXz8MZ/YTZESKmKcO0pk/lC/3SGV37Iun2lVAy6gJ39+vNOZA+7D1Xw2wt/QmWojp+9X8xN4+aw8OO/xjQAzIhBWqXO1waM58uZYXrveJENB6rYnzeDPacM501K2FhW0qJikNEQZlwglVtGnUpfswHM9qcG6YbB8lKL7eWNSTGyWjQApOd/ErAY4WlXUIgm/bXAe8BzNDXLCkmCbwEVndE9VkFBQUGhTXA66hLBJ3ZevyyYjfc7DUh1vPdFbTO1hd+Wx8uDl95xn+O3LfXWMYG1sdbl9njT5HMqLtehuWOzLfWP2+1ttkOa1N/GY+ec37R2jrdzSaPbwusywGq/lzqsm6yvSmH3mDks7+3mjbJ11LWSo6+5XdArhdxwCt89azrXp9cQ2PoO71emEJxyDet6Gbxeup7ScD0p7hQius4ATzZD0vJx4Yp51MywTvYRnVsKpnBjWjnGno/55JBOacGlbBvan1crN7MvUHO0CDkm+Q9EGF2fwgOnjmNi5Qq0ukN0pKVvMGKwudGFBnS219QjrfefIzrnKfRs2Dn61Qh9/dXS27Id2K5IvoKCgoKCQs+FZUFEt2ivczoQNllfm8HeUy7hgyyT9yp2tEr+LcNEq4twargXPzxtHNMatrH70+3szR5PxezxvNm4m3WHDtLgaAwW1iOs2LWZi4dMx625jtkJs1FnZH0KP504jbPCO6nZupr1DTlUn3Ep73nrWHZkNTUtdRu2LKyGCJMDGdw9dgQTKpej1R6EDhYGG4aBYR6fklUPIrf+XFSRbE+AnctoINJ3DET6zk5kt1yEAs9hoFQRfgUFBYVuhRCiuWBqAssepHnX20qaIrytobINYxrr9nidnYCXGXpkc5zxDnYs65Mve0wu4DNuj3esfL+5DepB9UBF1PvOWLYl5CKESeJxsSsc+za2q55gAV1jbbmP/aHWgxKW/J8m31kWVKX0pWHaBbxqlrCiYh8hs2UdfaMxTE6VxjdHTePKXhECW97l/fpUIlOu5yN3Le+WfUJ5uOFYL70G6yp38dmB5zI8q6k01e4VcEnqUH48Pp/Bh99l574j7OpzBocnnsJL9TvYVlHWYsqPZZpQEeSS1MHcOa4Pg458iNVQlpwLWLcIRDSORy8wD/DVBG8WCl2HwNs3noD8dxWwShL66JuTrYwEQmu4Si5XIv+q9B0FBQWFkwNrgYtJrAhYpyn/H0S++u8T3E5dG8Y0S75s3EyTrn30eB8AnnAs+1NEjwGAaYg6BJuvFJN434AXgDsc7ys6admW8ADwxTjf+YAfdwsSYmisHTKDfqeOw6W15jfWjqbDaIh/1ngMPmzcw/q6w0RaINlmWMdTHeHCzOF86bS+jKndwa7VJZQNmsb+Cf14p34XGysOxzUgNDQqzAZe2fkxk4eeioWFGdbJqrT4yoDxFPY20Le9ycf16VSMvoK1fdJYWrmeQ6HaFsm3GdHJqYQv95/AV3Ii5B16BytYk7T5rQqY1DTqx6UbsB0BUDjxpN7plXcS+nKHB8Qm8LYHxibuQYTHXhXaKigoKPRQGHokhBBgaM9vK2mbZz/p43V7vNHOqEpHjcIQ2p8WXR+rh8HxXDbGvnVLWIbJBwe2cqBvDW5XonUAGnZSe8Q0CFl6XJJt6gZWeYApqYO4oWAUs6wjHNn0LutyxlIyZQrLjCOsPLKc2kj8br4RPcJTH77AjuoDrK3eReRf9ZQcPkCBmcrcU8ZxZngHO1as42C/M9g//RRK09zk9cqlpmxji+RfrwtREMjgp2NO4VxzD54D67H0UPKuB9PicC00BI9fJ+BMddtM/jUiSbn9t07+XYHw2js987G88orQKygoKCgoKHQ5cpNxqJZgvg/d5xbEXmv6zib7ljM4oLWeYa4ZJp56kzP7jebSgn6cpVWjlaxih9GLIwXnszrTxfKajextrGy1m69umbxRvho8Lkzd4tW17/LVsVO5KsukT8mHrCyLUDHuKlZmu/moZiNfGfxZLhs6k6V7VrO2atex+2xaUB7gyt6j+eaQNE6tW4VWvTepXZAB6oIG+2o9BHXo/BLgbtgJuAvC1rwPInIZP6KpcDYiyX4lMtyqtO8VFBQUFDoDUj/+VlpW00kGlhl6xO6sW4dI0+kt3/dDyG62h18si+InF7g93imO9XbGfpUgJDZ9McbQlrn3ybkvkB+FgUdb6GuwjKZUqI7M2XFHXlmAL2nD6TtiFGgalmWJFBvAtESuv/grPrewM4FsUmtr3GhHzQqv5qIgPZ3pvhrSStaydsdBqobNomTEMN6q3c6akv0t5uU3tyZAS/NiNUQYUu3h+2dcyGXug1RuXclycwg1U2fxlnmIFWW7cbs8jMkawspta5mQO4p1VbuaUW9TN/FXRvhy/gS+3c9D7wPvYQWqkm9YWbCv2mRPuYeIbhyX4+hBSGepKEB82I1HbN37AMKTX0NT4ex+OY+HUJ57BQUFBYUTg34I/fi047Ctp+Bo6tBPHUR4FkJzv81kVhoVT8n1pCF6CFzXmTshCfotSeJTV9BU79AI/BPhDIw5f4YeKe7onJ0IeAzos2Mrl/UuZ1COD5fLLvNtCgdYmiY8/xq0pDFjGweGoRM8XMu+kioO+YdSP+1a1viDvFuynCOh+halOI9ZZ8QgpVrn3NRBfHfKYIZXrGHr7v3sz5vKgVGjeK1uK1vrStEtk+m5I/Hi5qPDm5lacBrP7nqbsCn6HJghnbxqjZuHTuSL6TWk71uFFarrlDmtDxlsKdOoqjePS/6/fcK+Q8caenUXOJtY2cTePpImsJKm/Ho7796U5L6RJt37CMqTr6CgoKCgoNBDsXPXEd7XD3L5ODe909tpt1gWVREve2o9VLn7Euk/lsCMAta763i/ait7KyuJtCHNxjItrKoABXoWt4yZyHnaQeo3vcBHDTlUnX41K3yNLC1bSXU4eDT+cMWocxiZM5AvTroYd4qPdLefkF6LVRlkstaHOyacwqS6Nbj2b8MyO4f26YbF+sM6W494CYbN43YMPcCvEJ19+3YDAh8gdqFsNJyFszaqEfKWRw0umgqeTITnPqQuawUFBQWFkwTRjq/2wkWcplZuj9cj+YPNAvvS3OUbPQbd8dsURC8iu5q0TkYU4sGOyJOk/Yo1hmhUGHok0QLeIMJhiPybKJszHb+LhWy3xzvUyVdkAfUJQ8SAjYfd9MkwmD3Khd/rbtd6AnljWN5vNGXpvahJM1lXu5p9jZUtKgQda0dYmA0R8hq9XJt3Ktf1y2BA+cfs2HOQfXlT2X/aKbwV2M360kPN0ohS3F56ezP4+b8eZUPZbr51wRcY5smDQ7Xc0Oc0vtjXz8AjS7HqSuisnHzTtNhRHuHTgx4q645v8ogH+BDRAvwReRF0FQQkYV8GrAMOyJcqlFVQUFBQUGgdLwMPJ2E9ExEyobGMgL6IVJeB8r0/arnoMWyPWu9faJL2/DuOdKIY5Pp2RI0dkguQpH1zjiEadwDPJEj+b6cppdoENiQ4hg3AlXGMEL+ck+84uNFXEanIJxT1QY2PdrvJSo0weZCGz9PG7sCaxkD9CFf3HsDzNSHe3r6H3Vo9ZKXg9rhaLR62TAsjECG1KsL5uQUUnjqA0wObqdzwFh+F8qkYezVrc1y8WfYpZeGGYxR+dMPgkdf/xu7gEQKZ8Oibf+MULYvvj57M2cZOXHs2YOnBTps/y7I4VKvz/h4Xe8td6IZxXI+fx3/1knDw+TnPIdJhfg6MA1KO0/Yth0Vfg0ix+QRRGLMR2AHsU+k2CgoKCgoKbUZJG5plxYXb47UJbUweIcn/0HaMIQUYQlPNQu8WhmECa5OxP62MIRoZiazE0COmwzhpEww9UgN8EGfu0+Qc2/PbeBw5WquobNBYus0FhJk8yIvP07ZIgNVYQd8D7/Ot3JGcP6wvHxmjWNHQyMoj+ykP12L6XFg+F5ZbGAOaYaGFDLxhGN6rL7MGjGRavs7MlFqsva/xaVmE2iHnsa1vfz4ySll9aC/BOL0CdEw2uY5gegx6l8FlAwdxQ5bB0NoPsWoOdGouvmVZbC+LsHwf7Cz1EAwbx/3YeQD8Vy+JBJ+f87K0QicC5wOzERGBLI6t4LAkYY8ksI3oVJ0wong2LH+/V/671DYClFdfQUFBQUFBQaFrw7LgcI2Ld3ZYeFwRxg/QSGljJMDSg3BkI2PcPsZmD+a6fiPZM3gGB3Q/B4MhDtXXURMKomkamb5UBmRkMjwjjRGuOgYF9xE+tJHdh8rZ6RlJZNqFbEgN8nLJekpD9S0m7li6iac6zMhIOj+ZOIPZ5m68B5Z3qtcfhELS/qoIH+xxsb3UTUPAOCHH7mjlhiTde4G9wefnvOgg//lxDIBSRGFsa1CpOgoKCgoKCicQbo83AyH4kZHgT5YZemRzOzZldxi2I/eVjjF4EHKX/eRHIxGddsvk+8Fuj7dI/tvnWM7mK1e4Pd6x8v1mRzTAktuM15SrpTEU0Fx9p57m3X9byv8f6xhvaxgb9X6WjKzYc/ayoUdK5BhnOZaPnocuaQSUVLt5fYtJbTDM1MEeevk9icj/N1+PEcao2Elq1V7G+dI51ZeB4fYRdrsxUl1oGrix8AYMqA3SUFPFuvIIh9MLcM24hvVaPe83bGJvRSWNRqSF7ZhQE2Z4KI1vn3YmM60jDKh4C62uBMuMdOpc6YbJhsMRPt7nZk+5i8aQwYkixzFLtyVZPyJf29StU0FBQUFBoVsjF3iA+Kk60biZJp36tuAIQrrzoHzv1E30AT+mSSozAHwFkfqLHN8TcdZr/9ZGMU2a/UHge8QpVG5lDNF4AZH3b6OihX2d1cJ6WsON8gUirWc7TXUNNwJF3enkMkwoqXHx7naNsgads4db9M/0HJUIbRNMHStYgxWsQSM638kibLpYW+tnl2sI/jPOY4/f4P26HWyrP0KDEY7ZzdeyLCzdxKoN0z/g47rhU7mqj5ch5R/hrt2HFelcr78F1AcNVu6PsOaQl4NVGqHjqPiTsAGg0DWxYOGiAcClCRy3euCF+fPm1qtZO2YOo70/ze5hwMfAtvnz5kbUbCkoKCi0GTpw0NAjexPkRUfsZd0eb7ueWYYesZ2WyUB9gmNXOIZki5qAlXvdVNQbTBlsMLafl15+N1rStqLhSs/DHHkWVWSzvnQvmyv3UxFpJKQZoFnihfjjNjVSLA+Zbj8j0nKZ0TeP83I8jA3twbV7E1a4odM98GHdZF+Vzif7LbaXealqAF03T/jxUgZA98L5wB+IL1dmYyPwJi2HLnsqWvL+WIhuzm8sWLjoofnz5qrol4KCgoKCQhsQDGtsO+KhpNZke1mYqUNcjMj1tl0lKB5xDVYws/xjpmUNpj4/l6r8AqosH9Wmm1rLRcjSsNDwaZChmeS6LfJdIXqbNaTXbsTavx8rEuh04m9aFqV1BqsOhNla5uNIjYtAyMTqIgnxygDoJtBEMl22JP+taTsfUuQ/LoYiFB+guaa0rXM9FPg6MHzBwkVfnz9vbkxP0IKFi9yI+hgTKJ0/b66qcVFQUOiJqEPId9oKPhnAfW6PNxiHcxxGpO8A5AG3uT3eGx3vix3LOqO1OkJS1E6TyXN7vE8kOMZlssuwvZ4XaEpv6ie30x4+tJmmNKTWxuvM64+GD/ixYx5mdfeTwjChqsHFmv0aB6pNTukbYky+m+G5HvzeDhoClolZV4Kr7jCZaGS6vQzzpKB5U8GTiuaWtRWmgaUHsSKNWOFGMHXM47LvFqX1OptKDHZUeNlf6aMx5CJywr3+VrOOysoA6Cbwp6YCjJFvW9N2rpXkVuFY9JfEvRGh2bxefp6GkMD9EjAFEW0pWrBw0Z1xyP1s4DFgKfADElPEUlBQUDipIBt3HdXulwWsrxJfVvNmQ48Ux1m22NAjN8vv0hAFujahDgMP24W/kvy3JU/+KTnesPP5KcdwYTv50LI2jjeeAeBBFGgnieZBKBwMW1gnPM8kpGscqnZTUe9iW5nFiNwgEwa4GZLjJcXjanOhcHPIHxsRLCOCFTpxfk8L0dG3JmCy9lCEXZUu9lf5qA9CJGIBJz7lx7IwAw2NljIAuhnuvOvuDIRiAsC++fPmLlOz0i4MRXj61wD/nj9vbunRW4mmvXb/gwtfA54EZgKfAX4P7HeuYMHCRT7gy0A68E9VL6CgoKCg0FVgWRZ6MFRPkrolJ4F4EoxoHKrSKKv1sr1MY0BWmME5cGo/NzlpHrwurYPGwAkygE1oDBvsKNfZcsSkXk9lbzkEwxDWrU7tJdBWuDStyuVy68oA6H7IA06V/97aJhvZcVUd75PR3nZXuAg8Hg+ICIAmSX119E3zrvl3bLpvwQNPAtMQEYGZ0QYAMAM4F/glTeHfE4KuNL8KCgoKCaC32+O1lYj60lxmPMPxXSrNBWA0oK/jez8ikovjvTO3xJni2RIRNqPWc3RZt8erISLGfsd4nfLn/jaMN1p+NUyTVKqL+ApG0cs2koA72TSNRg0autKTwTDBMDUOV0NZrYftpRbrD5n0ywwyvLeLwTluclJdeD0uXBp0RXvAtEA3LRrDJiW1BjvLDQ7Vuihv8IjiXsMkone957EGuFyuPS63SxkA3RB2X4Z6YGciP1iwcJEXkc7yWWlAlAP/BVbNnzfXBPB4vdz78/tnIfLiX5o/b26Nk1ze/+DCidLweAEYTPPcxABCNefA/HlzA1G/6wtcA4yXN6y3gbedy8UYrwacB4xyfLwf0V2xzPa0ezwe7r1/QUv5lI3Ay/Pnza10fnjv/QsAhsu3h+bPm3vMQ8EQrbjfQkiyjZXzzoKFi04FzpKL9QPekzfsby5YuMj+eYncrh61X2PlvFUi2sTHu+42y2M0C1g2f97czS3M02DgWkRaWBj4F/BRK3NkIJry7Zo/b25t1Nic2IiQ/y2fP2+utWDhotb0w53jjqlAFXVsNwMfEV+NCbmetxGpWOXy3NEd67PzbRuBXkCfFi4FpYqloNB1cDvwLQdpdxLfKxz3WZd9/3Us+zhN6a0fIFTx7O8eQjQytcn/7TR15i1pYTwbgCsdxkNJjG1Oc3x2J02po98C3k1wvLlR231UPleR436oBSPAuawpx9yad6jBpWllZhd0DlkWRAyoadSoC7jZV+Fm/UHITjPok6HTr5fFwGwX+b3cZPnd+NwnNjpgE/6yeoMD1QYldRrlDS6qA25qA24iOuiG7Yjros44TQuhaauye+Xptrq/MgC6DzIQhUJHJEFLhPx/Hbg7imR9CbhrwcJFT82fN9e89+f39wYeBKbK5Z8+evcSdQffQKTCvI/Ie/+d87pAaD2vXrBw0UJg+fx5c7n/wYWj5Q3rAsc59k3gzzKnvjbOsP3AfEn6nOTtEPCvBQsXLZw/b279vfcvsJV84uVMLgdeirP+wfLf21uYvlJEodpYYIzf7wf4GvDDVqZ9GUJ9SY8ivjcBtwHPIPSx4+XGPgA0yGP2eWJocC9YuMglj+FPgFMc83st8PCChYsenT9vbuTe+xd4ELrY1znvu3Lf1i5YuOhHd985fwNwFbAgajOVCDWkOxcsXPQyMBD4hfwbC/MR6VB3yN99yLFF6LnAQvkgfQD4VD6gz46zzg/kOh5D6HBfRPMmP73levbKeRjRwnHZI89fZQAoKJx49KapYDjWcy6eo0FDeOBtvObIr09D1L7hIMlrHY3C4sLQIzXyftPSNoc6nEvrHdu9kfh9FaLHG43tjvXYY2512UTh9fiClmmu0SKRWZZl+brqyWBaENbFqzbgpqRGY4vbJMVjkpNu0D/TIDvVpFeKRu90N73TNDJ8LnweDZdLS2qUwLJAN00awhbVAZPKBpOqgEFj2EVpg5sjtdAQ8mBaHoIRC13vwoT/2JOxxO1yrfrF6x+qGoBuCDt3vRSoaYX8eySZX4AoTv0/RNrQKdJjcZ98vxyhLDQUEbq8dMHCRc/anlZH3YG9zQKE4sMLkqimIlJhrpTruXbBwkUh4C6Et/d/khCnAV+UxsQW4Ldxhj5Mbs+prDAYOEeS75IFCxc9Lg2hXER04HWEZ7vZzZLmIV0bfRGRDguoamEKgw6y6fvZPfd6gEHSM/Syk+BLhCRBjYUhwGWImoN1iKY3y4jdYOc1RG1BIzE0rWWk4XpJxrOAP0oi3Vce7zuAXcB/5Bz1l8ftJXm8kIbehcC8e+9f8C157CNyv444zrXzJcHeAkyX24g37velkQNN3cP3NDkeNIBLgAnyo92O5ZzHOtqY6ieJQioiCuU0AHLkOfeanFebUMxCRBmc+7Oflpv5KCgoKJxU+N2Hm82imaP/quv6lZZljewOY7YsCEUsQhGNetxUN2ocqAKXZuLSTNJ8JtlpGlmpFpl+8HtMvG4Lt8sixa3h92qkeFz43OBxg9slrDBN07AsS6TvGBAxIahbBCOmIPIyNSliumgIu6gJWFQ1Ql1QI6x70DQ3uiFUfERExeh254PL7frQ5XY1UzVUBkA3gC8lBUlqNEl8vrxg4aJYOY2HEIoKE4CfSY/It4C35s+bqy9YuCgd4d29C6Fws0qSrCzpfTgVkaJip87kIvLg1wJuhEd8M/Dd+fPm1khDYwrwCCJX/lJgkyS8y4BvzZ83t1ymBH0E/BO4ZMHCRU/GSr+RhLAP8Ov58+bOl6S3F3CDNGJuQqQw9ZHGyBLgm22Q4BwiyW2Q+C3jeeDn91l3/OwuZ2GvTaa3ArfMnze3MYqYa5KMny/Xv9lBfC+Qc3gfwkuuAw/Pnzf3hRgE3y9J/FZi13nkIrz6WcDPgUfnz5vbILe/HRGduQcWG9MAAEzOSURBVGXBwkXvymu7tzSQvj5/3tyQPA6nAP9ARHMGyeNfBvzE7nuwYOGi3ohC6Evl/pwiz494405FRC0Mud1mjRvvf3BhKiJC4ZVzvx+RipUH/N4+1s3OeZ+Pu+/7+QJprPmBWQsWLnrFcayny/Nlw/x5cxfLcfgQqVBZzv1RUFAAmiK2iSKhiJnb441OESxoA7ewo5LONBlnBKCS5l18nRjs9niLHPfoflHc5gq3x2unQG6O50F3e7wtyYD65Mt+XriAzzjWG52G2tJ4W5rfECJ6mtqRY9GcTFtoGtvcbtdSyzSHW633D+pyMEwLI4ykPm7qg1Ber+F2abhd4NI0wELTwOu2SPG68LotfB4Nt2aBZeDS7EeGhomGhYeIaRExXIQiGhFdwzAteTK6ME0XumFhmEIyUzt6mhrd9sLXNK3a7fH8PTO3T8CZ/KAMgG6Au++9zxlKLECkRcTCU9IAuEqS5PuAN+x8f0kWnwEKgUmS7OdJwrZNGhkzJbFGEsheCM93L0lkdyKLpObPm6trmrb8/gcXPoxIHTpD3sT8wM758+aW2zciaUTslgaMh9hFWYPlWHbbH8yfN7duwcJFT0syehkwWj4gsoEdbdTf7y9v5ttpoY7ijp/d5XyYhGnqHbCMGPKqC+6715p/190hOed5DuLrB+Yg0omWSGMsTHxvtF/u1xGiIhiygPk6YDLwZ5v8yzmyFixc9D9E9OAMOd5Ge13z580NOY7DVkTU4Fq5T3nygWVHCLjzp/Mq739w4duIyM4wSbRDiFz8WEiVx/UTeQz7R30/WZ5XO+R3dcBp8vzaHfOcv+/nmly2Wo5tDiKf9qCci8GS0DgNuRS5P1VEFXgrKChwRN5DEn3uJxo1y0VEC4e2Y0xB6dT4xPa/IKLFNh5C9BiI6asB4vUBsNNEbRQTX7DBfqbGS838qWMM04C/tkDUWxpvS/O7FriY+CS9XRFMd2pKyND1RzXDOMcyrdEnw0lsmhamaTl0tzXp5Rfufg27XkADy5Eg1CxXSMOyBOG3LByNuZoTfe0kmC8NIm6P+xmX2/3uL176sBlfcqHQHZCP8LTbhLQxzmuXJECfRXjiF9vk34F98kZok/sB0rvwd4SX/xLpUUYaCH5Jsuzl9zpJsCSVmyXhypfrsIA+0jOMY9wPy9cx5F+SuiGIdJRmqjt3zb+jEZGjaTfqGiBv8KVtsIDtefTI35W1sLidYmQTZrt3QHWM+SQYDEHsmoKZiBSpd+R6Bsvl4tUfjJGvYwqUZd3DpXLun7LJ/1HCfOf8gJyjDLkdO22nJcWobGnorCBGypGDVA9GpBLFK6TLkufdCknKs48aRyJK9DVpQBxyrMeOxOxvwRiyoymvSeN0IoDPl4L8LkDzVK4suT+VqHx/BYVmMPSIbuiRg4Ye2Zvg63hcQxZwxN5mjOu2Mt74juM1XunY5hFaTvqubM/8GnokZOiR/ck+Fr95c53l9ni2eDyeRzVNqzpZz20L0XXXNIXnXjfky6TpZdgvq8nDb1onu4Ke5XK5Nrjd7kfdKd5jIlMqAtA9kCdJrwX8iiYPfTS2SxI9DHgR4Xkmikzr9y14YJ0kprb3oxaRM30pQuIyWxKrwfIc2Y/w8KYS2+teL8lYf4SX+Ij0ZixcsHDRI8BB6YV+Id4OpqQcJXVBory3UpmnXhrkXjnmEFC2YOGiaK+NHiu9KKqR2n5abpRWIF8Wwvts11/sjrE9U66rnqZUITst6FLpVfqPnMdsSX7DMdYTlNvJiGMgZCPqIzYSIw9f13Xk3NvRizw5tn1Riw6URLrEMaYtToUdmbJztjQqS6TxcxCIxBn3VLm9fZJ850Vt70xEPchIhHpGmZynAFAXY51haWz2lUbNX4DPAacDL8+/62iEpobmUYksOX/L6SL61woKCgonEr//YGvk5rPH/NGyrExdN+6wLCtDzUqPgOVxuz9xud0/dHs823+7dKOlDIDuid6S2JQC/5g/b+6aeAsuWLjoHESu+eZY3mpJpu30EjcibaVUks4XEeHOMzwezyvSmChDeHbPRHiDY3mKNfk6jEjzeAQRnv0OQkFow4KFi/6MkBmN2TTLkXYTL//dua0caQjcC/wo6vv/IuoFmuHOu+720CTRti/W3DgwRs55rZyXc+R2v4VIi3FipZyzagdRh6bi348QEQDbux+MYQjZknW95TGJ5alJR0RklkbLm8bBcEQs07dg4aKhiGjfdEQR8njgfprUOEy5DIg0r6vkcXsbEVXqLY/903HGbaenbZWG0FB5LgJ8VRqvbyOiWJ8iogRDpXH0K5rraoOIEq2X+7tXGj07gTkLFi4qloZDbzn3zihQvpynTdFSrAoKPRSzZAfajqKfdC4kA04xgTzgNqmmA8dKErd3vcc40aLm4ak2qOrc6PZ4p8SZB6eIgQe4wLHsMeMz9MhTAG6P1wfcKh1NttPjUUOPHOP8acuy8fDE+1uD3znn1MdpbMQw9O+apjWAkyPDRSEWSdIwXC7XUpfbPS89I2v1I0tXx+Q7ygDoHrBz18sRaRQtIVse15j52lLSssBxM5suiVtAEn03MOve+xe8IkmanS4zSv5dFWO1do+C6vnz5gYXLFz0R0ncbkIUm35WGhA/W7Bw0RNx8vbTJJE8JrTra4oOhCU5tpVrejsIt414oVI/TTKWe1swoDwIRR+PJKEbJIk1pBE2JOonK+S4Dsu/Lkfx71hg/vx5cyslwc5AeOWj1xGQBLuA+AXKU+U8b419wWvIc0SX6xtMcx1qW6Pai1DteVoaaNBcl9suwtuLkHIdID8Lxxh3rdyfMXKbZfL4pMp5zEBEgt5F5PrbhdS2dz9CbJm8DLm/tnFaJ40Au+/Bbrkva+z6Bnlen9/a8VVQ6GEYS/x+KScKTxl6pFiS21mIurW0ZK43Bol+AihyfLSKxJs4zmrBMFlm6JGb5TbS5L5c19IYHdzrCsd6GxEiGdvj8LREl42L3763se67s8b9MhIKfRLR9Z+apnl2V5YHVWgfXJpW6Xa7F3t83sfwuvc+snR13GWVAdDlLblmuesdzm3+2T33ZsgHQj1NDZTenT9vbnjBwkU7EKke0yWBPFWSvJAkavEMkGEIz2s5iGJj4H8LFi56iyaP8vcQRVnvIKQlo2F7yFdHe2/vvvc+jzRAGuWDYiQiL/w2jtVOjlcsZaf1hGm5KcxpNEl6fij3fbA0Br7KsRKsdbIINyzXXeAo/t0OPCeXs737DwD/jlqHKY/tIJp6EEQjRxoJMVNb7n9woSbHbhfr9pLzvCxqOxsRkZ59cp318qHlPK/2yM/WS8MgHbgnxrh1SfiHyHk5JOd2tjxf7G7KtyCKt/Pl/tnRjH/L9RLjGN4q/73/zp/OM+9/cOGLiN4IZ8n9S3caQ1KqdbTc/yp151BQUFBojt8s2xT+0ZwZb9VVVu40df1aQze+ZVpmf8vCj4oIdF+eCLqmaQ0ul2u12+P+tS8l9Y3fLNvY2NrvlAHQxRGVu36Yjuc2D0OkYmyQxz+VJo/pQUkOb0TkgA9GdLzNkr85xgCRnt4ZCC9zxYKFi4qQXWxl59UVCxYustM5ihASpbEMgJby30cj1G02yDH0QaTx7G7DfudIUhxTY1/uSwbwfUnE7U60KYgowz5Erny8+bdTlzJoKv79C7DbEXUJSgNnb4xtpyE85HuI7cEOSMIdz2OTJg27SrmdfsCb8+fNvTnOvqbKOa8A7og1ptTUVO68+54xrYw7nebpOGF5TmUgVIm2A0tp6hNwiKZoxqpY60xLS2f+XXfZSkalskjrPYRS1ecQkYMcmtc32PUXtSjNf4WeC5PYPVCSjXDUNgNt2K7ehvHqrYyhMQnLdmTOop8HwRbW1dKyjbTcCKwty7aIXy5ZbgXeenv3j+/93mPhQOBF09SGai7XVNM0zzRNc4imuTI0TVMCMV0clmXpYFW6XO6NgqtYO90ez25/WkbJo2+vSej8UAZAF4ejGRdAaQK5zSXyRjNswcJFzJ8310nWNERDpt6I1JW+OPL6Za+ApcB3EY2lsmjyFA9AeO+P3sRkdOJ0hE7/VknCngBuxpGLOX/e3IA0Auyi01iwGzkdiCKYGiIffSBCqSgLkdqytY1TaRfyrov1W0n+70E02tIQXXuXIfLlxwBrWyD/9s09jPDyXybn4rX58+aa0khqybtvjy+u1ChNSj0TFyxc5HGeB/I4nC+NqyVyjvNpORXGTsPZFI8w33n3PXbdRB3xVYLshl5r7vzpvND9Dy7cKj+7RBqGj0rSPxwRJShF1FS4iaPi5CjyraOpJ0U1QirvGkk2LMd3SIOjNwk0ylNQOImxAVGn1NkEzhlFLUVER1MS/O32Noy3pTSXRxGpMB1dtiNzVhJF0m+Xzq62LmvKccQj/4kumxBSLzjfXu8WYMutF0xcGqhvyLR0PdXn83k1+VBR6LowDMO0TDPkTfE1pPXKqPvlKyvbbBQqA6DrIw+RikOCpHc/wns9G5G7XeEgiWMRXvjdCC35azg2r38TIhIwk+YSoBlOA0Q2lRoNLER45P+C8F7rwMgFCxdpdq7/goWL3Ij0lJjpNw4PedhJkBcsXORCeNK/I8f0T4SyjkkbJECjGqlVynXbOad+Ob/flg+BVETB6e/nz5vb6Mjdby2v3B77THldLaOpvbztnd7TwnpalBqVx6kE0bDmdITHHYD7H1zYH5Eyk4JIq+mHSJE53MJ47TScnTJSEwsp0vBrQHjWY8Fu6LVVeuoDiDqDQknyX5NzPJimfgNDaZIFjbfdPKdxItOAPkJEp2ZKg8B5DtidgZfLMSgo9DxSoEdqHPed47XNkHRQHNfxyiLY7R1dNllzZugRUzopTtiy7cWjb60NE7/Pi8JJCmUAdH3YBbb1tNC8Ksqz8S7CC33vgoWLHpJkaRKiW+swhMrKTmAEx+b170Mo6fxQkuWNCO+7D8iXKT5IUnwVorj3DYTyT39E/vUXgC2yORUIr/p1ktAdU5Ei87cHSRJ94YKFi+yitVPkNgYhFH/WIKILJjBtwcJF2VGr0oGX58+b28zIuPve++x5RM6DU4UnQxJSOwKxG5Gzvka+7y2vk7GOfXfi3fnz5m5dcN+9+vy77q5G5LzrwCIHsba9++XAVxYsXBRN8DfTFKHIj7GdeoRn/x3gBwh51bmIlJhTEV2fz0VESN6R74OtGC0tFhVL2N79BuDKBQsXhWKMe6w0JGwyvkoaC6cimu9skcZGviQJVdJAMeWxHhdjXz+Vy6yz51AaF2/I4zNGnkfOB5bd92B5K5EaBQUFBQUFZQCoKejyyKCp6dWm1ha+86fz6u9/cOGvEAWYNwMXIlIiRkhC9zRCejGXGHn9Mg1ouSSx1ZJETpLnynU0VzgIIYpFfzB/3twjCxYuqpak7yeIkOstcrkCSfgeISrFR8L2kGcDd0V9Vwv8Gvi9HIMtw/bjGOvZDLwV43PbA438fb8Yy4QQ6jj3AB/MnzfXilJMulG+nAgiogZbHTr8yOP0hmM527s/lKaGbk78HhG50WLMMfIYfIDoVnk6cB5CV3+/NCz6I+RGH5DHchDHNslquuhF07UCWkjDkbC9+73l8YzG4/L4OCM3VXIuI8B/5s+bG1qwcNEAuZ4tcpt5iBSku2OsczcwX54L0R67g5L4jwE22nKojs7AJi0XeCsoKCgoKCgoA6BbIAXRJn03CeQ2S0/pR4iczDsQ9QN9JdF/DHhcylL2RWj2b+PY4qRVktgfkL9zcaxkWikiJeed+fPmlkrjIbRg4aJfIzzGX6LJq75Zkv/n40iAZsttRW9jO/AP4H1ZR+CnqZNxLKwlfq76duJLzW1HNOv6dP68udFpKYdb2F7QJpzhcBhE+sky4JUoQ8c+hvHyKpchUm3ibecIELzzp/OO3P/gwpsRfQfOk8Q/CPwJeHD+vLk75RyVIgqYD7VgAIQRxbktRQByERGgeHgXEVFybqsGEYWooym1bKAk/xukMbYPZ7/1Y+dCl9vd4fziZ3fcof/8gQdelOtbHmN/3kVJgCooKCgoKCgD4CTAG5LY2B1nW4WjmHelJNcawiNb5mjEVYpoCmXEKCzehfBCW3Kbvwf+v70rj4+yutpP9oQwSYBA2BEQEFCQ4ldEllEUi1XUWmvVaqlLXYfaijaRYQ8DM7a1CtMWsVpbbV2q1lq1FoE64AaKyA6mLGEnQEgyIXtmvj/Oc3nvvHnfycSv2n74nt9vfpCZ973Luefe+5xzzzn3t6ZnIgDq9CBj1n2MbkdPQvzpQTBYEefyrcMAbrf43nyrrwqGsgvWsuNRa+9Z3h5cV1cHiOX713HYrdf3JoDlLC9qMYZ21MC22dUTBVAXjUZBkD+V4DyFQPq4t6iw1tTXJDt5MfUrnkyp/rTW7l9p5VRAUodGNJ5+CDkpaWB7b42jDDVxHN8wK6aRSDOodL6q/9aG/jjk0GlPSUnx8zlGAUSjib0bjcrzbX1GUXJS4nUDQDjoTqaRAADqXJ5QRK+3avGp3yMA6nI8Icu6rXhgVXdyUtv5o7WhKXdqqCFe/23HiGUlQqr8eOPaGl9t+pHEfjTnTg01RKKf771E+p+clITKxePTuWfV5XhCcZv7udsHoCroTtewbZRyFI0jc2A9yTqOcHlCiTxflzM1FEl0PlmClsTnQ9y+aDxOBdCQMzXU1JpMOJHeDjnkkEMOOXQaUDjo7gjjVnE7KgOwDHLCdlgBCpt3X3R5QitaKf9Zlye02gKIjaBhRzc0fgjgaTsQEw66zwXwMEHYAy5PaHM46E6DuCNeCWA4xN2vDuIC+T6NFAeUshAWAKjfnKtoJ4BFLk+ojs8NhLipmlMrr3Z5Qs+a2mXVhkoarz40tyGBcRqHli6ldvRs12nvrj78i7E3wf5CshK24xCA/S5PqN6mXr0fQyBuqdWQE+u3Ia6mx8zjEw66MyBxXd+CnMCq9/T+79ffowxkQVyIr4V4I6iEGu8AeN3lCZVbAN7+kHTPVu1bZX7Hon8qJg6Q03OPyxM6EuedHAC/gJFufQOAB5WcaKA/D5JcZRJ5mEkZPApxrd6s8z0cdHcBMA32mQ+VEW2RyxMqsQH/95B3yXZ9YZ/P4dgMgyTEOARxmX0VwFq9Lzo5JwAOOeSQQw45dHqQC5KEoU+cZyKQSxR3A5gVDrpfpbXT6t0e4aD7I5cnVBWn/Ba36lYF3amQVNL3mOoeATlZbAHIaI0cBrlFfT2AsnDQ3Q4S73UbxE3SjFluZj/mhoPuFwhAzTfn6orPCgDrWNf5bJ/VyfCzGojNo0Jh14YpbIM/HHS/6PKEEslCpjLyJULrMlOTV7M/du80QWKvygH8MRx0/9LlCZWZwHhHjvsUm378AHL54wPhoPs9TTFsB6AIElOYb8GvKRAXT496j/V1AeAjmM9HrMH5egArw0H3VJcntFsDvNdCYtn62LTvn+Gg+16XJ1RqAZgBcY29C5KZEFQ2MuOA/2QqqTci1kX4VB+T5ahmICQWcTwkqYVOUfbnxXDQPcPlCamYyjMh2QVdccbW8lZn9mWISZFt0Rcqu/dzXDubxibKsXk2HHR7tXa17KRDDjnkkEMOOXTaUzLEEnsOJE6sIM6zEwDcS6DUFuoNyUQHCwXA6ntUCeg5l+3bAkkBfCOAQpaXqikwijIg2eKKYaTLtqNTKbVNddlSlYDfeQTAvWFtNFVteBTAlHDQnfIfGNNUAtNeEKtzcTjoztb6kQlJcPHTOP1oB7m75XHyBuGgOwlySjINksgi2WYMhkPi/PqwvhTybAqBaRIBqTohyKIcFIWD7ixqBkM4jv3ZviiMCzBV+y4DcCvbZQbyo2CkJW+VaDmfBMmsZxcfiMrF47PYrm9YgH+lX3UD8EMAk8NBd1J2RgogGRKz2jqQ7NtgiOt1/zjPAcBEyIlcAcdGXcoXZbs6UsGZyOcdBcAhhxxyyCGHviJ0GGKhXw+J0dFpGMSqaUdZEMv3kEQrIzI7D0bmNTNQHWejUGRq9WyA3CdyjQbOopAUzrdAMpDplvb+EOtxa4rPcA1Mnt0KEAMVkNtMQK4JcppQbgLCeQBmEIi2laKQU5FSi091nHdqNcCnKA1yMnIFAKSlJAES0/cDxF7W1ghJ3nDC9P5gAHfR7ccFYLLNGPzRNAbDIRZ4UBGYzLaouoKQFORhbTyuA/A/VQJ6b0Os29Zf2YdfakpAMuR0p4sC8eGguxdB8J+V4hJPNsNBd1Y46B4EcTV7GpI1Lx51h9w9k6z15S0qprtMCtQUAFmHfzEWEJeiVNNY1Vh8lOtaUjjo7sa+vGSq04pcVF6UO14zlbArAbyujWk7SFKWTKvJ6JBDDjnkkEMOnZ70JsSKm0lQtkQDAxkQn+F41A+ANxx0355IZXT/cWvgz0wTIBZzc1rrvvy+ARKf0Id/K4pALhZ8AcArEKvn5QQ6lUjsJuIz6TYxWFMG7CgH4tqhW4drADwCyU6XCXG/+C4kuBUQ//jLw0H3+3ZBpDZUB8ADyRZnpuM275TxnXICvO/CsFBnQazRr/LvbyPWFaWOYPwZKi7385lU4uTLCdgr2SdFDZD7Zl4iyOwCYAzBZyWAM6gAjoNkiFO0EnICUQNJw32zpjSdDYk9WEGl8Sy2dYnLE1oZDrrLIQlL1ElVLoy4jW9C/Pd7JjL+rqxUALgP4vrVXRs3S0qVKPEhkKQbivaS77shMQBPafOpL/sUMSnAaqzMrm/6rc5dAPyJwD8RWY5QDptYbxOAJR3vW/VZ+WPjcyGnA6pdHa2UCUcBcMghhxxyyKHTl5pyp4ZqKhe76whAdGtvLQFkPEqi4vAdSOrg1qg3xLVCUTkkUHKQ9vv5FgrAOQSbJZATgFrEnlikQO4IuQySVe0liBX6BOSUw+4m28MEQOkE/f2pAOS30o+haHlvy/MAFro8oRr6uf+UQPcC7ZmRBF5tyUgWBXAkd2qsb7vKsNMpO81OafgoxxMqrQq61xAYf1v7fTx5fdKkSAESHPqwyxMKsx8PkEf5BOLvEOi60NLdZyEk4PQfkMxrj3GcDgGoIMgeZsKXq1yeUDkz1azVFAAAGOzyhJrDQffrkGDiHLYlHA66z+CzOgB/F8b9NQWIdZNpjKN4Ik0AfV8NnEfZv3iKwA6C9zQqWF0hJycRGCcTik5yXMyKdSV5eRH58iHn0l4tcDyTbVPgv57PWrbN5QmdDAfdT1JpyOOnuvyx8QOpMKlymgH8zUoeHQXAIYcccsghh05fGle52P04xJI9ArFpBVchfqpfRdkEQXFvo2fA5GjEWj9XQlJS+9VjAMaEg+6nFfhJFTeVnsQke6moNEGsoyO0srrzMwlyCeFuiKvI0jiKzAYC4cFUMM7h/5MtFASd+hOMKmoA8DeXJ1QDQ4s6ALmTRFcAziKQ29aGMUoH8EDlYrc5M1CLDEtWmkOH+1adPPHY+PdNCkBHAuRqKgf6K++4PKGwqR83E0BXuTyhJgAIB92NBMD9tPfP4Odq8nwngN8B2ObyhMqprLQ3NfMYADBfpjnldkE46M5gBp06fsrCQfeNVDY6a1j1ACSLlDnLUS3kBvkVkDiHzAR4XkXZzIZYy1tqzpEoXJ7QZ5D7kpR/fjr7cBYkzkGfT2+x3O6gmxKpLyRdtnIlmwJx75oXDrqfd3lC+r04zZSdpSy/u10HGKhdA6Amr13qwX0Pj1kIyS5VACPuYjmA560yVDkxAA455JBDDjl0+pLKOHMTxKqtAig3Q7K0xLtgUgcNwyE+x7aGw8rF4zMgFvo0DRStA7CWwEjRxdCCdk88Nl73z98KoC536qomiJ/2hxZVpRLgjoSkfXwFwNdsmnUAkt1Gvfc/iPX/34CWllxQYdIxUhNM7jg54ubzmem9zgDyk5LkngH9Eyf3v8pcdIfpMziRAW5qjgItYwWS+BlpAqN1MGWdcXlCUZcndMTlCZUr8E+qIQjfiZbp/tMh1vAxkEtG/xAOuvt8Dvk8z9Q+pUh2pOKmx1/sBXBCCwIOQyzpUyCnEitMMhtDzaKAlEEu/rwGRganhIiAuxHA1yF3HZ2r/bwfwHPkXyeT8pgGseQr3mZAMgv5IaclSr4+hLgnKT/+xkTbtu/hMekQd6We2vyLQE7fkp0gYIcccsghhxxyCAQgPsQP8P1EAyGpEMt7lzjPDwFwqfb3EcjN6J8A2Kh93xtGrnYQLA0gyNzi8oSUtXgzJDj0WYil3gqop0Es8D8MS/xBC3yM2JvZryKAA8SSu6mtjFMXPEVbKkmnwHHVYvcDlYvdj+ufqsXuBxiD8GVSCkx3t8F0EzuDY1vci8Y4hvcgAdZPETxb9Vdl9blrT+CCtnqWJJuxaE5mCiCnDOYg5fMhcQsKNL8GOYl4yeUJHUUrd5JV1TYDEjNwE4AVZxS+X9WWhmqZg55DbJBuOcQ9bbvG0sNs/0mIRf8WSCpV3c2rB4A7KRNHIJmEnmBq1Egb+ZhKxeIgxH1Ijf0NkIsyc6xecMghhxxyyCGHTk9aTQANiNvCLRB/4QwAYyF3Adxs8+7LAPbAyLBjm9aQVtsRiPXXVkGkuTCyvyiAdEk46H6ClxSdTeWhCuJygqQkIHdqCJWL3Z9BglR7QXKrT6Ly0Bux/tFXQ9wmdlg0bwMBVTJiM83s5G9W1AgjnaICqu1oSb0Zxo3lZqt3NcTKbnUXwWpY3/jeQJBWYvF86wqJ0T4r2kKAqrLFZMKUoalKsjJ5qoLuMMQt7GCOJ1QLGYNI5WL3ZkjWm6Ucp8mQk5QeWr0qq88TbZTPrTCdrFQ3NAPAb1hfZ4j7zHB2dQgkvmGDyxM62ZaKItEoXJ5QhfrbJrbCDvyrnPv3IzbV6AEADwF4weUJKWV5EyRtaDsqzEdguM+lQ+Im0rX+pNK1LPx/mOd1kHStjay7mPMuBXLidjbk4jxHAXDIIYcccsihrwBtc3lCSwliMiAW8Qc17DgU9reVlkPcO9xoJb863X8mmIDoAEh6RgV8dBoNYFiSuAcNglgoPwSwOSstGWW/HHcdgUseJM/6Jrb7rxA3h2JIlh4F0HPQ0vdcB8HH0PL0YhMBnBXthrjAZGvA+SLIacadEPePtyBuMGZA+1kbx6gJwGut+fvbEQH8UAsFph5iEa7QFIBkACPoe65OVHpBLtDqB7Hyb6wKuudT4RqnjcFq8v0FKj7zERt3UADxWTe7I/WJo6jsc3lC1XTryaSSmQ3eaBwOukvI8+GazA75MicQLf/3E+grS3oEkrXpQQAfauAfOVNDjVWL3QfYn/0A6rSbqrdwvNP/De1KZh3tISdhO1yeUFM46D4MsfyP1ubGIEcBcMghhxxyyKGvDqXyNlcQKPQ2/Z6N+EGTH0BysRcjfrYUs/uPAnt2lyzlAxhVFXSvhRGbUAKgqr4pqn7Xb74dDPH1XwGxpq6EWJxTNEBm5zaxDWLpNwd77oe1W5FSGrbAcBcC69tGkJwG8TuHhVJRDeuThQ1ou2uH7bhCbmpOomJivgdhD8Rnvor80gN5bwSwPBx0v8/xv5/KWiqVAWU5HmExBq+5PKE14aB7OyQjz7dNikwDxN2rScOYA8NBdxYVErOiUkrr+jQAl0Cy57SnQrISFi5LccbsiwD/IH/vR6wbzSZIkO4+AN35XBOV5nvYzz7k48/CQfcbfK8rWsaWfJ529aVCMpBzpRqSCrYUsZeuKWXwuJUAOXSaks8fyIUc+7QW61EPYIO3qLDe4doXxuvjAEq9RYUnHW455JBDXyJ9E4bbSw5apoQ8ALEQW94H4PKEGsNB93OQNKAjrJ7hZVOjEOv+E0HL1IPpGu5IIuB7BoZF91MtW8k2gtccTWFYRGWkEpLPXVdI4lnea6hcTDS1b0Mcvh2DBIuO1Orpy/oPwXAp0qkKEvNQC7EMm3+34snnpQIALxIcd0LsLbURiJ+6Svv6PMTdK0sDob+HnHLksF86HvwnQXwSJKWkSpnaCcDD4aB7EeXlTlOb3uW4HaMCcia/nwTgbo7DtSbssZHtHQI5QVL0/XDQvYNt1S9Xa4acCHxZlAPJLGQ+ATuDPIya5tL1nG8/gHE6lUpls5rKQaY2Tq9/TplogrjCDdB4eTXn6vlUDHT5P+QoAF8tOocLWLtWnttLy80+h2VfGK+rACz3+QOzvUWFuxx2OeSQQ18SdUVLNxVFjZBAyjDiXwhWCrnI6RlYBBOWPzY+H3IZlQ5434ZkkNEt3tdB0okquoCA8CyCIP1ugDUQdx89PmEIxB88gthTixpIPvRjsIhTyJ26CpWLx29ErE//MYiFv52N4hNlnvVRkPgCRR3i8KqSwCyNsQ2WZJWR5XNQKmIv6dLp7wB+z6w1CAfdL0Ks2N/T+t8Z1m5dZQAed3lC4XDQvQHi5jIJRlah8ZBTkWTEurGcZJ3hcNBdA2AZJJVqEsSiv1BTAnWlbVPu1FVNlYvHP0GFUMnq9QSy7RB7W+82JHYfxf+ZGNfyNUimohZihdj0qqdeg8RBXKGNz2jKcjNi4y9KAbxhlaIzATpIzPFj8jQDEtR/O3molLYo5F6HHVYNdej0pTMgfn+t5cQ9wcnr0BfDa5Uu7UYAi3z+QL7DLocccug/SFEaJZ4B8FsFFO2Iv78NCWC1enYQjMwsila5PKGQyxNarT4Qn3kdGOdDLOU9INZolUUFORIUuQASlNpoWk/1dbaCwOcJu34wo9AWxKYi3YBWcvXnTl11FOJm8WIre6QCcL0gOfFv/Q+Naw0k5uIBlyd0WONlNYAZEN/92jjvH4GcrKi7IcIQ15x3TYpcpgnInwAQgNw6jRzJa/8IxIWnURu3dE3+9kFSuO7l+HwAydCj0tJmUK56wUi6tA/AbMRm0vnCqHLx+CSIi1NOG1/dSIX5MNudDHEH6gdxHYtCTkgegtx63WYijxcCeFqbU9kQTwSFMZrJ15km2T+lQTp0GlJKSgogAU/JAD6FHGHZWSSqEHvjokNtoCSxEuSR1xu4oem87gk59hsLic6fBCMrh0MOOeTQv4vqIBbbvXGeWQPDXWaLlhXF6t3DmhJQGw66fw857cwxPZPDfUZZl09CLMBWdb+AWH/0jhDXiRC0gFwi+e00nIyDnBT04/NRiKV6M5WYNS5PqFYD47prT4kGyl6AkVt/OQFzFSTVZabpeUSiUeR4Qturgu47IVbv70LcoPQ2vANxEbqN+0AuLNwtTHQYsRl+6qwAmqLGSFS1yy5IuIRAbzeA9S5PqNys7fHG4HshrkHft+DlOxCL8joV0OryhBAOurdB3FkmQk5CekEs+vp7f2W9tdrY7YSc3lwOOfnpzz2yDBLH8RyA7Uppo6tZkHJ0gwWfW7xjg2X0sTwSB/fY8VWP00inAvNugvPvCCTgt5FzZT0ktec5MHz/VV+ehQTtNic4l2P6wjGt4G3UyymbZ3FsmjmX/kKZP8SUro4C8FWgjMxMwPAN2wxghbeoMOJw5t9PmcJrdc39DgD/9BYVngrs8fkD+uYzlAubowA45JBD/24qI7hLivNMg+myp3jvmm9t3QGJBbB6JmTCnFbA6xgkuFP3PmgPcdsJm9tF0HIgHHQ/D+BViDuIi+VXAqh1eUINFsBJ979v0sDhffr3BLibEOvi02QGzy5PqCIJWFYVdL/D9uptOAmx6q6FWKf3EhTHozfR8gZme5eh2iZA4h9+bfNIkwUfYNGP8nDQ/RqVMzMvT1rJBcdgVzjoXgrgD3wnK8H3DtGN6jmI21RyK+/UJQHLq4LuVVZ8tpFbncxjGf0cfNXjNOoBTEfi3jKn6nN5Qo1JwLoqka8MKobJbeiLeT626AvHtDIcdP8ZwN+oiGdRAagAUBPPvSjJWS9PT/L5Ax0hvp1jADziLSqc1pb3adVGNBo9bXjyRfXJ5w+kQ45drwSwxFtUeLfFM0mQmwNvAbDUW1R4539THz5vXZ+3PaejfDnkkENfXWJKxh4Q63OJlcXVIYf+m8g5AUgM4GXAcKfRqRJAhbeosLXnTq0R3qLCch0EzV/o70iN7YhuNbYCTHzWBeC4t6iwupVm58G4oKQkwX4mQdxVLoEE35RAjvZ2qtMDUztgxw+fP5AKyVKQau63BV8BoEzPQuTzB1L03yBHcZ1bUVpPwsjWUOYtKozS+t4DEuSs+vQa+9ScCG99/kB7yFHkcZssPukwsl9Y8to3b27UO2t2o4nXXdAyZiBqVY/PH8iCHF1/i215G8Aqna8mnpspAklPlhdn3odnPFRUPn+hPw9ySjGZ378M4BNvUWGtaeyG2rVH61+qkm2ORVeOxRiO10sA1qmxT3AsOkGyKtWxvw0AjnmLCqPac8msPwq5Cr0z7GNhmiCWyXz+v0wvyySrJ6zmXgJzP5E565BDDv0/JVpanUQaDv2/IScIODE6D3JcFzJ9XgdwNcEOIBdVLLN4Tn1irPDzF/ozIEFOSxCbwqsFzV/o7wI5fguhZb5fK+oKOXIqRwJXnfv8gTSID9nfITfw3QEJMPk7gHsJyDF/oT8JciNgyIYfkwn0VIqyEIxLZ2IUGgLMEHk23PTIaILKtyD+c1fE4av6LIAExHgBJLPN17Bdep+WAfgxATPmL/QDEiMRgvibmtt5Ldtyrg37BvATobLSgryzZpvnWz7batWP3/j8gW7a2HSBHFP+HXIceQ+APwL4g88f6KuVOQHiW2hV5jKID+eL8eRz/kL/QIh70quQ7AI/psI0y+cPZLM9OQAetmmPUjrbkeePA8gjIP8W5ObMJRyLH7OeGapsulM9yPbcp80tRVdDMkBcAvF3fI196m56rgu/D1LpCcbp93Mc25cBzIL1BS1qbl9pI8sX2KwRIcrO/zjLqEMOOeSQQ44C8P+LBkICZk5A/PsOQCzNoyHZB5SvfQdINpgGPmf+bLEAKZdCrJ2NrbRhOCSNVx9IXuJWDRIQv8Sq1qwSBFlXQW587E3gdCf/7gCJIP+Gqc15kLy2qm8N5MdMgv8uBGh9AORTKdAVmlRIcFBfiAVZt44nQ4KAhkLyCOdCfPH2sa79MIKt9DY0QwJt0/j/yRDfvoEEd3dCruDOInC9nFVmEgD2AXC5zx84ZSnOysoC+d0F9hd2dCC/6+LwOg9GTuRqtmksxEKu2r+Pbb+BgDuDYPsRiC9gJcTH9F4A6wjoi3z+QBZB6EDKYoWF7G2nUjgsjnz+iwB4Ep+fxs9hiO/sFRzHOyCBTVVaez5ge+6iYtWBMnsYYq0fBsDPMV0PuVTlEYiFfhoVPMyYPScdkuqvDxXSU8CeysEIjkU55W0EJDjPnNu8HWVrD8d7sIXM6vPSxXo3UdaMRTI5BZDAN6sbLlW7JnONsOL9HrbXIYe+TMqAnOj24ae1E1QHSzj0n8SbX3UZUmlde3HuKkr7ouat4wLUChGM9oC4EUwhSErhd8UQC/PNPn9gJhfZdMhFIb+3KM4cpJNPELsPcQJV6P5xPcFHA4Bsnz+QZHZTMFEfAtt6AGdrllmdqgh4ehMQZ7BPv/IWFdbQrWEjQfRtPn9gBeSkIh8S8HS91u5uAH4O4DJInuAyGC4Xvfh/vY9fh1xQE4EElumuM0MJzku4gfWCXGSigqYGQyzHqwjqVZDLdQSnJQSJ9xHY+QAs8hYVVvOkYz3ECv19nz/wD0jgjHI3Gk2wuhYAvLNmp5M/O2CRR9fE6+0Ee+bxS4OcLIwiD0IwfEWLIdZpwLji/Hfs/y8pX9ew7/ezbxFIENmf2Oc/ZmZmroIEIqsAuPdMzYhCMjlkQ1KtPWPRj3zIzYYrIRkt9vP7jeT/JZDTlEsoO7eyHnWZyWuQlGlLqABkA9hFMD6HynGAiuUxrj/vQGIj7vb5A/+EuAWpK+v7QTJHHACAmXPmJrHcSioWV2kK3MU+f2ClNie6cly3wgjAWsNxMKfBiwCYSv7vVi59iooXLAD7nGIF5Km09Odvt8E6tWCds5o69CVSD65742C4RZ7g2vKbBAxObQF1QwFczHnvyLlDZkqD5NI/A5IIw+73fpDT2K8q9eY+m0RstZtGrJuIwY46CsCXT1lc3MIQP+Mafr/d5w8sBOCGHO9nEoAdBfCB9lw86sDyy1rJ0DMC4j7xKoGMApyW+XxNWWkGQAJUregdiHvLRRA3m6cALPYWFdYBgLeosN7nD7xKYTwb4nutXIt2AyjXwNJOgumr2S+lwR4hAEzWAHESxJUinZtSKSQdm8qYcy1B4K8A/AhAe8ZHNPGZXLblsPKrpu94e1ZRRuViDBWxR9V4eIsKG33+wF9Yx1gqE+3IpzLWO0opADD8+0thYf1NT08HxLKfROVsoM8f6K090oV1TeBYrwDwPnmaDOCgLis+f+Bj1n0dx3Ay6/2Ft6hwh/bcHgLnIICJM2bPeRdi4a42l6lkYuacuWdygy6xkk+OSwaAZd6iwn2mNu0imOhFpeo9AB8rufX5A/upTF5F8DGUFsdDBM8TAPyDY6FAdKPPH3ibitxlECv+v8iz9axrOH9XQL8P52IN5ayCSsMVlJcDtNh3g5wClWoy+xZl1uzfD8jpSZRlt5hSXIgrYe3ilUa5qYbEO9Q4y6ZD/2G6gsDhBA0T6qby2Vy7//ZvqkcZKj7WDBkOOaQriPdD3D0ftvg9icaXByFupF9lBaAT99Y9NCb9AOJufZBGuy9kcByKT7mQo/8yGBdUKDrATzZBZK84IMGKFJC3DdKlO8WVBJdPQiyn7WHtpwwAmDlnbiqMG/7ipZpSIO9iAvVfK/CvaPYMbwUBWHeCsZ4Esjt0SyldUFJZXy1B3FFO6t4wApIVKJ5ABWQPJHA4ov12CcRv+nWCqgGt8Y2uOsoCfoBgtRbA82ZANnuGtwaSX7cjy1bW+CchubHP48mPUqAGEDi24OXsecWqzaAS9SqBpvo8S7DfhRuvj2Oo2rrPYkFMIx/dVP5egin/M3m/nAC7G+WvN8FwlYVMqKDYBitFxkT9eGqh6CTbPY+AO0qe5Gs8jQBYyoV+F8F8PeQU4UrKxlPmYPCZ06fXQ9yH2kGs6F04514leL9OuzgtnbK/lvOsD8TF5n0YpwXIzMwA5auBct2Nbd5pc2qWqc3dwzYA30W+VdusEV34bqWzZDr0X0DnQiz/f6JyfRnXkTAkpi0Dcgp7AQ0H4Do4jnNb/T6K6/4vIDeM6phhAMQ1sT/3hL6cK2cBeAAS//MTxN5CrOoYwrUulWvcGM6jNCoq6v0HIJZjK8rje1/jO8X8nGkysinjQDH7nmVqzy2sy+p33Vg6gkajr1vUlUw+jWHfpkFOozNoXFD9uQWxt/cmc+1RbZhm+j2fPH4c4jI5kjxS/b+I3/+KxreOWrlDTXzsx+9VW8dB3HXBMRrH8tNbKdtMGRyDYj57FdfLFBpHr2c/srX6VBvPg5zKdqU8dDWV9zj7r9c9kG3V481GcVwytL+LNZ4X2LS9I8dsJMf2Ee5zPbT9uBv7r2TobG0Mkimf0zQZ0n834239WX08k7jnz4d4Y/Rmvwdyj1Nzw4rPIK/1eVPMeRgX4zsnAK1TJgXqIEy+wQT66yBuI/0pzIdo2TRfL96gA0he1NWBFpp4QbpDaclZTSuLG+KDnxsHbBRwMgASPPqazXOHCejH00rUQhFpamqCpnT04uLQrANXWt/7cqLvpXX4QYKvg5z8+Vq/r+LCuRzAhZBgWPXb1ZwUP4ZcyFECoINyedL41siyBRAbrjrKUj+cY/NRnD6lcqFL5+RbzYk/npNnKwz//pI48tErjrIVIZ+XQ1ykNnNS5rGtezRlL5kb8niC6G6c2Mu8RYVWR/bllLeR3Iy7Qi5ROWmSvyYuHr2pHISt5JPg4BjE9/6ozx94EnKa0KRkiArpPoirz899/sDDALZ6iwprvUWFqwGs5klCB5bZTGVnP8SqH8ucSDM4XkrxGQnjxGUD5PRkENvVkbL9V27SBQA+hATHTwAw2ucPvMtx7UkFMEyFMtmCL2p8MtneGli7MOSStwdt5lx7fnYASDPVEQVQ14q7nkMO/btJrUVX0SDyDC2t2ZwTgwG8QuX+Mir2PwLggbjyLKHy0Iky3wtyQvyUBqwXcW5FCRav5Ty7iwaoCAx3hrsBfKLV8Tu2ZxjksqJUyCn3EBobsvl+OwDfI4j71NTHbxLs1HLudiEAHEVQ2RtyOjFCM5jdDXFB9BEw/ZbrSy3EZfBuWl2fNNWljDudWFc267qCbTsIca06h2tsZypcBVSclJFoCveAO7geXgc5lemjgfPvsswmAr3R2vr4bcjlWusg8WxXEZdk02L8Nssew7535BqcBXFPvAXioriI/b+O+/TdBI8vcu9+hIYbveyn+UytyTjyU46pi+2fQh4vgbiuqBui74VcqHVEs3gv5vhE2a/32PabuO5G+P/vUK6Ocx+dQIzwW47B45TzK9j/OzRg/X2WOwXaRXOk+3hCUc/9Kp99GEJenUfldyD34hR+PwviXTAecvLVC8ap9C2QxBhm3HUe509f7nkdyf/7IckxFlIJuR9ysjaG711NI2w+FeocrV+/o7yOJw/UeGez7JusMJCjACROypf4gIUFOIULSwUnWC4H4C+IvTa7jlrlqdvk5vkWJBFkVsDmWmsCqbEEi2/QJecY6+oI+9seszkZmwBsJDCzO2EYy7J2UoBbo0HcEJJ9/sA41nUpFY7zuHCe5EJYzXKjBLOY51vQngL9CUFhhuqH9ttnkAwzTSzjlMvTPN8C1YYabSFR1uFOBMS5fOZPiHO7oqlPdQTUH3PzOJ8KQB8uJHanOnr8wKM8tTDTcQClKrUnU1n2QazLUBcuXuPZjwW0clTEUT6atcVd+dyP5kalU5Cy15X1PG1SZpu5Ia7kicU8yBXl1wNY5/MHlkDc2hpnTp/eVLxgwVJust9hG9f7/IGnAbzOVKHKVaec9XTjAnwggbHox3d2c/xvoNXjPcpXAccim7zfxQ21lOP2NGUjn8/Vc8HNgBxBm9O4LqXi14XKmBXA78w5+IqFEQA8HVMuFmbeH+HmeMRZSh36EulNgsPenM83cW7/lvPyEs6lT7g+KUtoFsQNry/lOpOK7cMw4n3AOfYyDTjHCObTCPjSCCBX8vsrCVa2cM9rx3kbJdDqCYnP2cd1qAuMbG230VjU00IBGErFu471pfK9kVRw7uZ6+hG/70+wfTf5cyWfXUGL6cXcy1Q634jptKM7DU+P0/Awnyct32YZw7gubWU/8mjtzSJofZd/T6RS08h6zyAQXglJojGU6/iFVKxeoyJwF+uazLVqPNv4E66VHs2q/UOuwUsgLsC3cG3NZ30D+c5h9rUfx2UT672Wa+VUlnkH+dLRtI5PIhBX7aimrNwG4zT8a2zvfSYjUBUVllFUoDwc5zupZBRSWVlAJfUKYqt+xF7KCDmKvN5Eef0OZXAGZflHfN7c9nSOX3saYh8iz2azzQMoN8MhcXuPUFl5CEbWwKmU4aXce37A53MsZOh6Pvs6eXQzn/0a5FS7L4H9To6bUvx+xH1nAfex+znnHqWy+Czb0YPKyjJtvAucE4D/G/XkICyLY2kvg3EDWy3f0emQBVjvwuOxeG4D3TmRNwD4K91sDlPYR1osiLrSkkvQsbaV/qVTUHeYgx9NR1dNXLALCIh+x7+TOOnURVezyYs+nNzlmsUbXGDHQoJN1Y11x9m3b3JRe5j8inKSn0PB18GlOShXueq8wfdSEuhTlBM0TysvysVgDEGtsmTbZfdR9dYBWBlP2TK9M4iL8ataezK5Kczk5noD+2znsqPuJ1hLnhRwUe1tMc9d3JxOWiwKdZC7GiIE+4e4GA/lAnMhgAd8/sBztGSHuMD8mPI/iScXv/b5A/NZVwGVqaMci6Px7rlQh0lUFpQrzjaeTI3x+QNLtXbvozKQz7ZWaKcFZ8Lw+1+vWSsjlNtOFicAHSmzK2AdV5NH+dtq7gPjbS6GcfTc26ZfDjn0ZdJyWhFvItA4m4pAAS28Pbku7NEMNoO5l33A+ZxF0H4bWmawq+dao7KYvU3AlUcgu5AnDWcSaJ/DOdmL6+m/WM5grn07YdyqmwJJMDCKhqB5FutvsjbXXqHicQ2/L2G7LmZdPyNwzOMa8XXyo4L7zygCpzW03G4xATdo/HqXz1bQWHUu9/JBnP/bCWA/5XPKIBiA4c46kWvrBColH/P3IzR+FZAPD2pGpu/AcKXKYfuauM/PoSK3iDilkeMTJU+GcEzVLcU/ZB0bCCRdbJcaF+XunE/ef0oj0krExkglw3ANKiUflWE0m9hCJQIJUelqMsmQclF5jzL7B777B45pI/s+krxew3ZV0YCYDsMNaxnbd5J74/0cj5cIus1BtFnkaYSnKc9TiUnms52osB7nWKyjcncHsVkPYoUI+TyUz9wCI1mHTlHttKwTx/0etlHhgQrKeh/K0wEaqGZw/zpOxaCZ8tieMlCnnb6MJg6aC4ukJI4CkCDRAt8DxiVKsADxnclklelmHloGsjRZWABVNp0tsMjIQEA8jgK4D0Bg/kJ/lAKbQu3OjnpTuA/AOqhRJ5VyqjoOD85i+0sJvLZpk1NZYm4n0ArTupDLyXGcZbeni8tE8usNiK9bCYASpgW9jO0eRw0YtEp14wRZQx7ncaLUmcYih3X2bKVPYBvruNj10cr7FJJnfgLrHASTq46JVPxANctIhJRb0Z8Q69t/Oa0cWbSwJSdQTh4XawVyp7H95hOIb3HRn2khn6fuL/AWFdb5/IEXuZgOIMi/hgrbezzJiPj8gRAta2fQmnUPP/+gvOZQZpTFfKel9ilB1Oo05ASMIN+TbPcmysUQjkU9nxvKIkpnPFQUmb/Qv5IK01i+l8kNS13QtY6gos6CN2P5/AFzMD4B/gRVl7n9zEzUg+P1Q0jGJDNQKnNWU4e+JOpIsNKRlsFZ/PcnBCYjufcot4z93J+6EnBs43dn8/c1sM5qBQslIkcDc2EqvspHuZFgf6AGclJh+Pdv4xyaxffG8JTCzbbeZao7n+U1wDgtVu0p1Qwkuwm0lEGtG9tynKAwhwrSMFp3R/PvLSagq+6p+Rfbn6yB22q+nwSJR9qo1Q9+V621AVyzz+I7m7lGZMFII1zAtSvCda+/tgaVc231QlxyBhEkT6Al+AXurU00qI1lv86iMnc26/2A9Q7jultLw8t6SMrmO/j9IJZ9J5WZU8uj1i6Xtk7WcY2OauB8A1q6yOpK3KcEtZ343jqOUwqMmIwa9qOLpry055g2kO+HuGfNpKxfSjwxlHtYg2mudGM5/2C9wylDq2C4zu7W9v9MtqmWMjSPY/QNKpbnUy6/j5bxZIsob9+g8XcU5fxa7QSmlOXew793k59KVpI5J3Q+V7JvzTTWjWXZF1GWjzkKwOejTApQhRnAE6APhZFqsB0HY7W3qLA0gbKVld4yBej8hf58Trg0Lhrf06yJKdACMC3alUdBSSQo8TAnRfs4pxATYBwVdlQWF+XXTJ/n7lxIVCR7GsF9NSfLAPLrMogfnALeZdTmz+cJQBOtTxdoMhrRThAUKH/RxDelyOxIoE85tCbsJj8H0RJfN8s7HfN8C94lYP4623jICsSR1+q223hpQs3Uh20NeYsKf6spJu9wg+wP4/gwycqCnCyxEBez/i3cvOoBfGaWv/T0dMyeV3wWy9tqJZ8+f6Crzx/oD2Czt6iwkrK81ucP3MsFeCKAM33+QAGAvd6iwsNckLf6/IF5HLcZbL+6B0LnR38rRsyeV5xBuallnSrI98jM6dMjxQsWrIEcnZ5HGVCb3yCOcXU0GlXWn+20Nm5mm/dTHnN4OlViBvhZWVmYMXvOpXEAvgrcarJRKDM1BXJTgnPfIYe+KMri2jWIgGAbDUEKwDRzfp7Pv3dzH7qOsqzc60ZT5j+wsGSqdVkpEdu5XilwdQbnXE8CIXCN6s59ciPbcyFBfoRt/Db322cg7jV3UWk/k/Xp4G0IYl1oVQplBTYbWG4nvl/O05CeXB9qIK4VByAnmFdR+RjOtXSLab8YoP0/lyca48mjbTAu51yn8SuinXLksYxrNIDbSwPC2WzfvTxN+RXH6gSNa7sI3msJVpW7zD0c8wUEfhcSOH+DBiY/n7mVY95bW4tLOB4qSLaEbZvJdfgmGjd+Rl6PNSkADdwbAeAJiBvMYALu1WxzV+5Lu2AkCVGk7mppYN0pmlGxC3HEWQTJzVQSvs6x3kDcMIUKjdo/7uU7c8n/+QTM51nI0Jkw3ILKTe1ZzbZEOXbdWG8h27aGvJwIcXP6Ocd2Fvl8hqYAJLH+G6gc/5JyP5fztBcNf5mQU+h6DfD/k31XWGcJ8dMwvvMPjtEPIK5eP2M7pnEsXPw9h6dLR8wamEP2lE4BOWK27s5f6O9Ki185AfEgJHDplsl6kgWLvOOkYdRg3yAwnsTP97lId/X5Ay0yAWnZcEBLQm0r7ThJARtivnVVO4UYyAnXTJ6c0IMaFxTPqyEfMgj8+7DcTZqWmqFtMsspmF24eDdwAe3AhWyS9nmU7/bSwHN7aO496RkZ4MSthxEE3BSnT5OoIX/IjcClymtubgYtIDUE2B1YZgslzZRutRStZ9fR04ZauRXthxw9doXh/pQLCz++Yt+CbMpFLRfPPrDJYqNlKqqPYw34JuSI9hL9yzkzZ5wgP1SGht9DfGhPkbeosB6S0akKRlaLJBiXszUD6MV7Jcw0kJupCg4rAN2FGCD8FvlyGTfQjzkXVX/LNEv+BpanlOVjLM/Sug8AM2bPSeYpXjWs/fRVkHeFze/K3ek4Eos3ccihL5KOQDKvRWAEhS4nIKgnYNDXstsh7obf4d87uef15lqyyqaeTppV/AYC0rUs+2rO2xcJQj4gQIxqgPgpgpnOnKfbCKbuIIi5D8aFl3vQ8g6d/gRsWwlscrgWR7ju7CBI60RguoxtrGPd3VhHMcRf382966CFIWcwPxGuk69zHewFSae6jYCtDrEnnR9xH7me9T/HNexDgrU1/P1y8msu168D5P1WjsUMAvm7CeR7ErTfR17dqu0pG7i33QLxWf+JiY8VMDLU3E7D163aicBJyoKHZat9WZ2O69TE05cw19wFrNPD8Unj+KZB3JQmWhjiOhOYe6m8fMRyHyBPXiCfX+bfiiaSh7OJo/ZwL7iKiuMiGlD7cdxWW8jQ5ZqVvYJG1R7aSch+7usqP/+b5E0leXMBlavHqDRNZF92W+zDgyjbv+SzV1LpUy6sA9jODTASU4BKnzrVqabCs4CfGyl3F3IsH4W4PV1EZaqUc24Rx/lsWBzBOGRPedzcq3Xh8fkDLi6oo6nJH+CRTlkCFnfdcgwrhYFA6UYu2I94iwpD3qLC1fQv/4AC08HqBMc7a3ZHWjCA2PSadnSQm8YoaKk6tcw+Hk7I5TBca7bblFVPrXkQF4V9MDIljeTi+XduFIMo9DtouZnMyf8b1Vf2dyXLVcfLHSncJ04B3LnzlO94Fev7jIvnRZqVSilu3TipIpBsMqpPJ7THNkJ8Kq/hJnfCKosLwaM6mShPwMcds+cVq7bWoaXLkMoms48bwxYuEhcw+46Sj2TKx4W0EGwjED2GlkGuOoi1S3OprBQuSArQU0rTnOL5KdxclP9iJhWrLK094ImK8k0dQDkoJ1/3cyzONcl5NuSougc30kGcb/oGvI+g/1LKyRHW4SJ/jgHAzOnT1XhmcBM4yb7aWvc1i2lv8tvKXa49N4YjsHbxase2HElA2XbIoS+amgi2/bS6duCauY9gaSnnxVKCpjzK7eucIx9R0VeKv916cZyW+j00ClUTZCg/8+6cW3/herudRoIVXIeUX/q/qPxvoRX1WZY/lsaP1yAxYea1tYD1rOPc7cv1p4SfYwRDb3FtKyA/7iN/XiYoPcK9+2y28T6u/WZlI4cGrb9wz0imojWda10tgf1W7b3naRHez/1epWW9nSDxFf5ezjIrqASoRBo/5X7ZExIouoGg9jUC5A/Y74vIg2LW+TNIoHJE4+MKnniUEjh/xr0lk+0uhbgqKR6s4bp/IdtSjJYJDkAlbw7rP5+YxA/x4S+j4rOP62SVhQwt134PUwZ+w/HrwT3ndxzLo+zfevK8J/FBKRXbEuKyv7LP4/jcSyxTl6EMzo29lIVazpMajuFB/nYv50R7juFmYqI3ITEeS8ifsVQ23qeipsd8RtkmL8sdTd6uoYKm4giU7NZR8d7FubWbfJ7OuTOK3/8cEptRTJmup1LSlXOtEIYbVSmMiz1jjvEcsqcCLpDHARQQePXngnYVGbqQi0E+mVzg8wfyTOWE9fznmYaV/jiAAxa39J7F8jdzgTNbeNZyQWiPlpl7cjRreSIuKXu5yNwJwO/zBx7i5OsHCUw6n9rnq7REHIUprdT0mbM6Qtx7yjgZOitlyFc8L+qdOauRC2w1gLneosIm9jmTi97FkCOzpWjpalOjQCUt7irgttQEcPtoE+gkF8epAGb7/IFCGPnyF0Jcml7m4uPVTg4UVfG3i1rhYztNaSpJUKbsgphV3wYA+MhbVBj1+QNv0MIwDcAuugilUVmazUXrccpfVy7yVv7marGrB5Dv8weazfJJmTpIOfjU5w+sZV1X8sRkFxUjdWR+s88feIkLzDBaJqrIx8madb6Gi+VoAPN8/sBPWVY+N7HJ3KRfgfgrxoD1mdOnNxYvWBCiMqZcrVRazk/URXA8LVjHOvtzbjZQFmsBpFrMsyaNd5UAckzPRFlXLmWqm2luRzjXcqmkFPj8AbOieFy10SGHviQ6zPXhMRj+07UEmgoE/YbAKImyn8L95Dh/v5jrbDiOoqGXoWK9HoFkQ1EJHsq1PWo3TwuyuW5UwUiyUENl4C5a7ZNgJGSwasMSAvAwn9sGcYmAtgZupKEkV+PBMRiuOYuocGTZ/K6fACQTgHvYZgVgT3J9vZT9KDPtXYto+U9jO49rRhrz743cX5UbzDauibnavlTBct7mPqwMY818V8Vc/ZT7dwqfr9B49SSViDSWqYJ2j7PvrZWtUx0kg9HzLM+qHQuhxZmZDIYPUcFTv9drbVflHdeMKx/QkKiSgtQTo4U1C/oUjlGShQwqamA9mSw/SiV0EstRhqYQ96h22l5Zwd8aCLIf1k5V9DEy77FBAvl007MpnBfJ5EGEPFvK35TM/JrzLd2Czw/wHfN4p0ASeSjs6CgAbSB14dZlEN+zFBi33P4LEmzyHkFyLi2cb1sM/nMUdLEcz5qdQeWiEzXlJguQmEurTMzi5yue1+SdOUsFXGVbtFldpFQOi7zrLU4MBIw/AfFnvAbiq3aU2nU3Trh5nOgqO4HZjSSbFp8DMDIj7QFQX19Xp8BxMheVd5jLvwsXuhrIceUOAC9ZuEPtJSDsPnPO3CwY6Rr1o1YXx6UEzLnObDajOHnPJbjtTsD2McQ3sMaqPG9RIXz+wAecoOlxrMcqm08EiQd66m01A0OVB1rRdgLju2gFKWF7lIV9PhWVS9iP7Tb55tVFVQVcQCIW8jmHVvjbuLHu1uo6yd+38tlhtDLdBSO+oz0tP5/CSMFZybH4PRfWiynT+wnMe7OPc3zz5h71zpqt+nVK5gns36ZsdaM8nIOWMQYK+HxEBUDd29Gb/X/KYp4dgARPKUXuTRNv6mlZyWV7l5l+P0nFOIOK2s2m8qPcZP7sLKUO/QdOAuKtSbVomZnuuPb/RJRWqzJaq/eYaf8w13MS1qeYZipHbGKOeli731bAPjlDa21Va7IKVN3AtSlsAWTtXH9j7qv5HL/btV8pRyfijM3+NtR5rA1lt6UPVYjvGmn1e32c8tS9OjpVWoDt1pKfRC0AsdU4RtEye1CibTVTM4yYCbMcHkhg/OzejzfeVmXHCLdD9tSBzDtCRtZT+JZAfMHepotNI0HiYf6/yfQxW1w7ElAo33Lz89UQ144XzICYgHo9J82ZNoK9j9rs7gT7uZFa8z9p+T+fVtE3aBHeAeMoeb3FgnSU4EgB6irIMWodfeoPEmC/BKCKfvB5MHw08yFHeHss2lbGhbcGRgT+BtPC3Yvfl2huONshR3Erebowhv+u5PebCXCTLMpTPF5BRa/chm+pfG9bG04ArNqqW1N2AWjy+QOpvPxrPsRvMIWK1bms806Iu1QjjJSvdgtRdy7mB2m1MMvbYfrxz6aVwWWq6x5Ijv8IgbTK9zwCcuSYwncf5f/radUv04D5vZSnrpSvfpS3KQA+8c6arYK9N1ksWIeotH0G456HI2ZFdJZ3eiMVlG20cKXAOC2ymmcVlIFy7cRA/11ZJkttfq/QFN8TFuXXILG7DxxyyKH/TkqmYeRBGlsccui0of8FgHeweqmjyncAAAAASUVORK5CYII=";
 
 // ----------------- LOGO FDFP (reproduction vectorielle) ---------
-// Logo officiel du FDFP (image incorporée au code — aucun fichier externe requis)
+// Logo officiel du FDFP (image incorporée au code : aucun fichier externe requis)
 const LOGO_FDFP = "data:image/jpeg;base64,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";
 
 /* Logo institutionnel, sur sa plaque blanche.
    Deux protections contre l'écrasement, qui déformait le logo dès que la place
-   manquait — il est passé du ratio natif 2,22 (420 × 189) à 0,83 sur l'écran
+   manquait : il est passé du ratio natif 2,22 (420 × 189) à 0,83 sur l'écran
    de connexion, où le long sous-titre voisin comprimait le cadre :
-   — « shrink-0 » : dans un conteneur flex, le cadre ne cède plus sa largeur au
+   - « shrink-0 » : dans un conteneur flex, le cadre ne cède plus sa largeur au
      texte qui l'accompagne ;
-   — « maxWidth: none » : Tailwind impose « img { max-width: 100% } » via
+   - « maxWidth: none » : Tailwind impose « img { max-width: 100% } » via
      Preflight. Combiné à une hauteur fixe, ce plafond écrase l'image en
      largeur au lieu de la réduire proportionnellement. */
 function LogoFDFP({ h = 32 }) {
@@ -521,11 +528,11 @@ function PuceStatut({ statut }) {
     </span>
   );
 }
-/* Calendrier du projet, en une ligne — « Du 12/01/2026 au 30/06/2026 · 5 mois
+/* Calendrier du projet, en une ligne : « Du 12/01/2026 au 30/06/2026 · 5 mois
    et 19 jours ». Rien n'est affiché si aucune des deux dates n'est renseignée :
    une ligne « Non renseignée · Non renseignée » n'apprendrait rien et alourdirait
    toutes les listes. Quand une seule des deux est connue, on le dit en clair
-   plutôt que de laisser un tiret — un tiret ne dit pas ce qu'il remplace. */
+   plutôt que de laisser un tiret : un tiret ne dit pas ce qu'il remplace. */
 function PeriodeProjet({ projet, className = "" }) {
   const { dateDebut: d, dateFin: f } = projet || {};
   if (!estDateISO(d) && !estDateISO(f)) return null;
@@ -571,7 +578,7 @@ function ChampEditable({ valeur, surValider, className = "", largeurAuto = false
     <input value={txt} title={titre} placeholder={placeholder} className={className}
       /* « ch » vaut la largeur du zéro. Dans une fonte proportionnelle, un
          « m », un « g » ou un « è » sont plus larges : à N caractères pour
-         N ch, les libellés riches en lettres larges étaient rognés — « Or »
+         N ch, les libellés riches en lettres larges étaient rognés, « Or »
          et « Riz » tenaient, « Manganèse » perdait son « e » sous la croix de
          suppression. Une marge d'un caractère absorbe l'écart, sans faire
          flotter les champs courts. */
@@ -590,7 +597,7 @@ function ChampEditable({ valeur, surValider, className = "", largeurAuto = false
   );
 }
 
-/* Pied de page institutionnel : bandeau FDFP complet — sigle, QR code de
+/* Pied de page institutionnel : bandeau FDFP complet, sigle, QR code de
    vérification et macaron ISO 9001. C'est une marque de certification, pas
    un élément de navigation : elle se place donc en bas, présente sur toutes
    les feuilles sans jamais disputer la place au contenu.
@@ -599,12 +606,90 @@ function ChampEditable({ valeur, surValider, className = "", largeurAuto = false
    L'image étant incorporée au code, elle ne peut plus manquer : aucune
    gestion d'absence n'est nécessaire. */
 function PiedCertification() {
+  /* « section » et non « footer ». La page portait DEUX repères « pied de
+     page » : ce bandeau et la signature du bas. Un lecteur d'écran annonçait
+     donc deux fois la même zone, sans moyen de les distinguer. La signature
+     reste le seul « footer » ; ce bandeau est un contenu de la page, et il
+     porte son propre nom accessible. */
   return (
-    <footer className="pied-certification">
+    <section className="pied-certification" aria-label="Certification ISO 9001 du FDFP">
       <img src={CERTIFICATION_FDFP}
         alt="FDFP, Fonds de Développement de la Formation Professionnelle. Certifié ISO 9001 version 2015 par Bureau Norme Audit, référence BNA/SMQ-FDCS03112513, sur tous nos processus et tous nos sites." />
-    </footer>
+    </section>
   );
+}
+
+/* ---------- FENÊTRES MODALES : clavier et lecteurs d'écran ----------
+   Les huit fenêtres de l'application étaient des « div » posées par-dessus la
+   page. Trois manques, tous vérifiables : « Échap » ne les fermait pas, le
+   focus restait sur le corps du document (une tabulation ramenait donc
+   derrière la fenêtre, sur des boutons masqués par le voile), et aucun lecteur
+   d'écran n'annonçait qu'une fenêtre s'était ouverte.
+   Ce crochet règle les trois d'un coup pour toutes : il place le focus dans la
+   fenêtre à l'ouverture, l'y retient (la tabulation boucle du dernier élément
+   au premier), ferme sur « Échap », et rend le focus à l'élément qui avait
+   ouvert la fenêtre quand elle se referme. */
+const pileModales = [];
+function useFenetreModale(ouverte, fermer) {
+  const panneau = useRef(null);
+  /* La fonction de fermeture change à chaque rendu ; la garder dans une ref
+     évite de reconstruire l'écouteur, donc de reprendre le focus au milieu
+     d'une saisie. */
+  const fermerRef = useRef(fermer);
+  fermerRef.current = fermer;
+  useEffect(() => {
+    if (!ouverte) return;
+    const boite = panneau.current;
+    if (!boite) return;
+    /* Élément à qui rendre le focus. « body » ne compte pas pour un élément :
+       plusieurs listes de l'application se reconstruisent entièrement au rendu
+       qui ouvre la fenêtre, si bien que le bouton cliqué a déjà disparu quand
+       ce code s'exécute et que le focus est retombé sur le document. Le retenir
+       tel quel aurait rendu le focus à rien du tout. */
+    const avant = document.activeElement === document.body ? null : document.activeElement;
+    const focusables = () => Array.from(boite.querySelectorAll(
+      "a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex='-1'])"
+    )).filter((e) => e.offsetParent !== null);
+    const premiers = focusables();
+    (premiers[0] || boite).focus();
+    /* Une fenêtre peut s'ouvrir par-dessus une autre (un document depuis la
+       fenêtre de suivi). Sans cette pile, « Échap » fermerait les deux, ou la
+       mauvaise : seule la dernière ouverte répond. */
+    const jeton = {};
+    pileModales.push(jeton);
+    const surTouche = (e) => {
+      if (pileModales[pileModales.length - 1] !== jeton) return;
+      if (e.key === "Escape") { e.preventDefault(); fermerRef.current(); return; }
+      if (e.key !== "Tab") return;
+      const f = focusables();
+      if (!f.length) { e.preventDefault(); boite.focus(); return; }
+      const premier = f[0], dernier = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === premier) { e.preventDefault(); dernier.focus(); }
+      else if (!e.shiftKey && document.activeElement === dernier) { e.preventDefault(); premier.focus(); }
+    };
+    document.addEventListener("keydown", surTouche);
+    return () => {
+      document.removeEventListener("keydown", surTouche);
+      const i = pileModales.indexOf(jeton);
+      if (i >= 0) pileModales.splice(i, 1);
+      /* Rendre le focus, mais APRÈS que React ait fini de reconstruire la page.
+         Le bouton qui avait ouvert la fenêtre a souvent disparu entre-temps,
+         remplacé par un nœud neuf : le viser tout de suite laissait le focus
+         sur le corps du document, c'est-à-dire tout en haut, et la tabulation
+         suivante repartait du logo.
+         S'il a réellement disparu, on se rabat sur la zone de contenu : le
+         lecteur reprend là où il travaillait, pas au début de la page. */
+      /* « setTimeout » et non « requestAnimationFrame » : ce dernier ne se
+         déclenche pas tant que l'onglet est en arrière-plan, et le focus
+         serait resté perdu jusqu'au retour de l'utilisateur sur la page. */
+      setTimeout(() => {
+        if (avant && typeof avant.focus === "function" && document.contains(avant)) { avant.focus(); return; }
+        const contenu = document.querySelector("main");
+        if (contenu && typeof contenu.focus === "function") contenu.focus();
+      }, 0);
+    };
+  }, [ouverte]);
+  return panneau;
 }
 
 /* Date et heure de référence de la plateforme, en temps universel (GMT+0).
@@ -622,7 +707,7 @@ function HorlogeUTC() {
   });
   /* Date abrégée pour les écrans étroits : « mer. 6 août 2026 » ne tient pas
      dans le bandeau d'un téléphone, « 06/08 » oui. Les deux formes sont
-     rendues, c'est le CSS qui choisit — pas d'écouteur de redimensionnement. */
+     rendues, c'est le CSS qui choisit : pas d'écouteur de redimensionnement. */
   const jourCourt = maintenant.toLocaleDateString("fr-FR", {
     timeZone: "UTC", day: "2-digit", month: "2-digit",
   });
@@ -667,7 +752,7 @@ function decouperLibelle(texte, largeurMax) {
    un axe horizontal : la place y est comptée en hauteur, et un libellé de
    quatre-vingts caractères sur huit lignes repousserait les barres hors du
    cadre. La dernière ligne conservée porte alors des points de suspension,
-   pour que le lecteur sache qu'il manque du texte — l'infobulle et la liste
+   pour que le lecteur sache qu'il manque du texte : l'infobulle et la liste
    accessible donnent le libellé entier. */
 function decouperBorne(texte, largeurMax, maxLignes) {
   const lignes = decouperLibelle(texte, largeurMax);
@@ -693,7 +778,7 @@ function largeurTexte(texte, police) {
 
 /* Libellé d'un axe du radar. Recharts pose le texte sur une seule ligne et ne
    réserve aucune marge autour du cercle : sur un écran de 375 px, quatre des
-   cinq dimensions débordaient du cadre et se retrouvaient coupées net —
+   cinq dimensions débordaient du cadre et se retrouvaient coupées net,
    « Durabilité des compétences » commençait 101 px avant le bord gauche.
    On découpe donc le libellé en lignes et on l'ancre selon sa position autour
    du cercle : le texte de droite part vers la droite, celui de gauche vers la
@@ -751,7 +836,7 @@ function TickEchelleRadar({ x, y, payload }) {
 // ----------------- CARTE DES ZONES DE COUVERTURE -----------------
 /* Les contours de « geo-civ.js » sont déjà projetés en coordonnées d'écran :
    il ne reste qu'à poser un <path> par département dans un <svg>. Pas de
-   bibliothèque de cartographie, pas de tuile réseau — la carte fonctionne
+   bibliothèque de cartographie, pas de tuile réseau : la carte fonctionne
    hors ligne, comme le reste de l'application.
    Le <svg> porte le viewBox voulu et « width: 100% » : le navigateur met à
    l'échelle, donc rien à recalculer au redimensionnement. */
@@ -761,7 +846,7 @@ function TickEchelleRadar({ x, y, payload }) {
    lisibles ensemble.
 
    Les teintes sont attribuées de façon que deux zones VOISINES soient
-   franchement différentes — c'est le seul cas où la confusion trompe, deux
+   franchement différentes : c'est le seul cas où la confusion trompe, deux
    zones éloignées ne se comparent jamais du regard. Contrainte forte, car la
    carte les montre en aplat à 18 % d'opacité : des couleurs très distinctes
    en pastille pleine peuvent devenir indiscernables une fois délavées.
@@ -784,7 +869,7 @@ const couleurZone = (z) => COULEURS_ZONE[normaliserRegion(z)] || "#78716c";
 /* Cadre englobant d'un ensemble de départements, dilaté d'une marge.
    Le format n'est pas imposé mais seulement borné : le <svg> conserve le
    rapport de son viewBox, donc un cadre au plus près de la zone suffit.
-   Forcer un format unique laissait de larges bandes vides — la zone de
+   Forcer un format unique laissait de larges bandes vides : la zone de
    Korhogo s'étire d'ouest en est, deux fois plus large que haute, et un
    cadre en 1,25 lui ajoutait 40 % de hauteur inutile. Les bornes servent
    seulement aux cas extrêmes, qu'elles ramènent à des proportions
@@ -828,7 +913,7 @@ function CarteEnAttente({ hauteur, echec }) {
 /* Le réseau routier, en fond de carte. Il répond à une question que les
    contours ne traitent pas : deux localités voisines sur la carte peuvent
    n'être reliées par aucune route directe, et c'est le temps de trajet qui
-   décide de la charge réelle d'une antenne — c'est d'ailleurs le premier des
+   décide de la charge réelle d'une antenne, c'est d'ailleurs le premier des
    critères de zonage énoncés par la note de la DACD.
    Deux tracés seulement, donc deux nœuds dans le DOM : le dessin ne change
    jamais, il n'a pas à être découpé en éléments. « k » remet les épaisseurs
@@ -895,8 +980,8 @@ function cadreDe(deps, marge, ratioMin, ratioMax) {
 }
 
 /* Quels noms de localité afficher sans qu'ils se recouvrent.
-   Les candidats sont examinés dans l'ordre reçu — le plus digne d'être lu en
-   premier — et chacun n'est retenu que si sa boîte ne heurte aucune de celles
+   Les candidats sont examinés dans l'ordre reçu : le plus digne d'être lu en
+   premier : et chacun n'est retenu que si sa boîte ne heurte aucune de celles
    déjà retenues. Sans ce filtre, les dix-sept localités de la zone de Korhogo
    s'écrivaient les unes sur les autres et plus rien ne se lisait, pas même
    celle du projet.
@@ -922,8 +1007,8 @@ function etiquettesLisibles(candidats, marge = 0) {
    surface que l'œil compare, et doubler le rayon quadruplerait la tache.
 
    Deux lectures de la même carte, au choix :
-   « implantation » — chaque zone à sa couleur, on lit la répartition ;
-   « score » — chaque zone au niveau moyen de ses projets, on lit où le
+   « implantation », chaque zone à sa couleur, on lit la répartition ;
+   « score », chaque zone au niveau moyen de ses projets, on lit où le
    portefeuille va mal. Compter les projets ne dit pas comment ils se
    portent : une antenne peut en avoir dix et tous les rater. */
 function CarteNationale({ comptes, scores, lecture, surClic, sombre }) {
@@ -1023,7 +1108,7 @@ function CarteNationale({ comptes, scores, lecture, surClic, sombre }) {
 
 /* Carte d'une seule implantation : sa zone d'occupation, recadrée, avec la
    localité du projet mise en exergue parmi toutes celles qu'elle couvre.
-   Le reste du pays reste dessiné en fond neutre — sans lui, on ne saurait
+   Le reste du pays reste dessiné en fond neutre, sans lui, on ne saurait
    pas où la zone se situe dans le pays. */
 function CarteZone({ zone, localite, sombre }) {
   const { traces, echec } = useTraces();
@@ -1041,10 +1126,10 @@ function CarteZone({ zone, localite, sombre }) {
 
   /* Quelles localités voisines peuvent porter leur nom. La cible passe en
      tête et s'impose : son nom ne cède jamais la place. Les autres suivent du
-     plus grand département au plus petit — à encombrement égal, le nom du
+     plus grand département au plus petit : à encombrement égal, le nom du
      plus visible est le plus utile. */
   /* Seules les villes cibles portent un point et un nom : les autres
-     départements de la zone en font partie — ils sont coloriés — mais le
+     départements de la zone en font partie (ils sont coloriés) mais le
      document de la DACD n'y désigne aucune ville d'intervention. */
   const autres = dedans.filter((d) => d.t && (!cible || d.c !== cible.c));
   const nommees = useMemo(() => {
@@ -1160,8 +1245,8 @@ function CadreAccueil({ enfants }) {
           certification (max-w-md). Sans cette limite, le sous-titre s'étirait
           sur une seule ligne en grand écran : l'en-tête traversait tout
           l'écran tandis que la carte restait étroite au centre, et les deux ne
-          semblaient plus appartenir au même bloc. Le rendu du téléphone —
-          compact et centré — devient ainsi celui de tous les écrans. */}
+          semblaient plus appartenir au même bloc. Le rendu du téléphone
+          (compact et centré) devient ainsi celui de tous les écrans. */}
       <div className="w-full max-w-md flex items-center gap-3 mb-6">
         <LogoFDFP h={34} />
         <div className="min-w-0">
@@ -1173,7 +1258,7 @@ function CadreAccueil({ enfants }) {
       {/* Bandeau de certification, comme au pied de l'application une fois
           connecté : il est ainsi présent dès l'écran de chargement et sur
           l'écran de connexion, c'est-à-dire dès le premier regard porté sur
-          la plateforme. Plaque blanche obligatoire — l'image est fournie sur
+          la plateforme. Plaque blanche obligatoire : l'image est fournie sur
           fond blanc et découperait un rectangle disgracieux sur le dégradé.
           Largeur alignée sur celle des cartes (max-w-md). */}
       <footer className="w-full max-w-md mt-7 bg-white rounded-2xl p-3 flex justify-center"
@@ -1261,13 +1346,13 @@ function EcranFinalisation({ session, surTermine }) {
        elle que l'application relit pour décider si le profil est complet.
        Écrite après « updateUser », toute relecture déclenchée entre-temps
        voyait encore l'ancienne ligne et renvoyait l'utilisateur sur ce même
-       écran. L'ordre à lui seul ne suffit pas — l'événement USER_UPDATED est
-       aussi ignoré, voir onAuthStateChange — mais il supprime la fenêtre. */
-    /* UPSERT, et non UPDATE — c'est ce qui bloquait les invitations.
+       écran. L'ordre à lui seul ne suffit pas (l'événement USER_UPDATED est
+       aussi ignoré, voir onAuthStateChange) mais il supprime la fenêtre. */
+    /* UPSERT, et non UPDATE : c'est ce qui bloquait les invitations.
        Un compte créé par lien d'invitation n'a pas forcément de ligne dans
        « profiles » : le déclencheur qui la crée est attaché à l'inscription
        ordinaire. Un UPDATE ne touchait donc AUCUNE ligne, et le contrôle
-       « .select() » posé plus haut le signalait — à juste titre — comme un
+       « .select() » posé plus haut le signalait (à juste titre) comme un
        refus de la base. Le message était exact, le geste était le mauvais :
        il n'y avait rien à mettre à jour, il fallait créer.
        « upsert » couvre les deux cas d'un seul appel. Le déclencheur
@@ -1279,8 +1364,8 @@ function EcranFinalisation({ session, surTermine }) {
     // Le mot de passe n'est envoyé que s'il a été saisi.
     let { error: e1 } = await sb.auth.updateUser(mdp ? { password: mdp, data: profil } : { data: profil });
     /* Cas fréquent, et jusqu'ici bloquant : l'invité saisit le mot de passe
-       qu'il utilise DÉJÀ. Supabase refuse alors la mise à jour entière —
-       profil compris — et l'écran restait fermé sur un message anglais.
+       qu'il utilise DÉJÀ. Supabase refuse alors la mise à jour entière
+       (profil compris) et l'écran restait fermé sur un message anglais.
        Or il n'y a rien à corriger : garder son mot de passe est un choix
        valable, seul le profil manquait. On rejoue donc sans le mot de passe
        et on laisse entrer, au lieu d'exiger un changement dont personne
@@ -1340,10 +1425,10 @@ function EcranFinalisation({ session, surTermine }) {
 }
 
 /* ---------------------------------------------------------------------------
-   MOT DE PASSE OUBLIÉ — le parcours en deux temps
+   MOT DE PASSE OUBLIÉ : le parcours en deux temps
    ---------------------------------------------------------------------------
    Il n'y en avait aucun : un compte dont le mot de passe était perdu était un
-   compte perdu, sans autre recours que de demander à l'administrateur lead —
+   compte perdu, sans autre recours que de demander à l'administrateur lead,
    qui ne peut pas le réinitialiser non plus, la clé « anon » n'ouvrant pas
    l'API d'administration. Créer un second compte n'aurait rien réglé, l'email
    étant unique et le rôle attaché au compte d'origine.
@@ -1379,7 +1464,7 @@ function EcranConnexion() {
     setEnvoi(true); setMsg(null);
     /* Le lien doit revenir sur CETTE application, à sa racine : « origin +
        pathname » et non « href », qui embarquerait la requête et le fragment
-       de l'URL courante — dont, justement, le jeton d'une récupération
+       de l'URL courante, dont, justement, le jeton d'une récupération
        précédente. */
     const retour = window.location.origin + window.location.pathname;
     const { error } = await sb.auth.resetPasswordForEmail(adresse, { redirectTo: retour });
@@ -1424,7 +1509,7 @@ function EcranConnexion() {
   /* Tous les champs sont obligatoires à la création : le bouton reste éteint
      tant qu'il en manque un. Un bouton actif qui refuse au clic oblige à
      deviner ce qui cloche ; un bouton éteint accompagné de la phrase qui
-     manque le dit d'avance. Le contrôle est refait dans « creer » — un bouton
+     manque le dit d'avance. Le contrôle est refait dans « creer » : un bouton
      désactivé n'est pas une validation, la touche Entrée y échappe. */
   const manqueCreation = onglet === "creation" ? champsProfilIncomplets({ org, email }) : null;
   const creationPrete = !manqueCreation && mdp.length >= 6;
@@ -1512,7 +1597,7 @@ function ConcordanceMdp({ mdp, confirmation }) {
 
 /* Choix d'un nouveau mot de passe, après un lien de récupération.
    S'affiche AVANT toute autre garde d'accès : à ce stade la session existe
-   déjà — c'est le lien qui l'a ouverte — mais elle n'a qu'un seul usage
+   déjà : c'est le lien qui l'a ouverte, mais elle n'a qu'un seul usage
    légitime, changer le mot de passe. Laisser passer l'utilisateur vers
    l'application reviendrait à faire d'un lien reçu par courriel une porte
    d'entrée ordinaire, alors qu'il traîne dans une boîte mail. */
@@ -1557,7 +1642,7 @@ function EcranNouveauMdp({ email, surTermine, surAnnuler }) {
         <div className="flex items-center gap-2 font-bold text-stone-900"><Icone n="bouclier" t={18} /> Nouveau mot de passe</div>
         <p className="text-sm text-stone-500 mt-1">Choisissez le mot de passe du compte {email}. Il remplacera l'ancien immédiatement.</p>
         {/* Dit d'emblée ce que le formulaire attend. Les deux champs identiques
-            sont une évidence pour qui l'a écrit, pas pour qui le remplit — et
+            sont une évidence pour qui l'a écrit, pas pour qui le remplit, et
             c'est précisément cette évidence qui a rendu le message d'erreur de
             Supabase si trompeur. */}
         <p className="text-xs text-stone-400 mt-1.5">Saisissez le même mot de passe dans les deux champs. Il doit être différent de celui que vous utilisiez jusqu'ici.</p>
@@ -1595,14 +1680,14 @@ export default function MipPpaApp() {
   // --- Ecriture Supabase : projets (upsert individuel) ---
   /* « historique » : instantanés datés de l'évaluation (phase 3). La colonne
      peut ne pas exister si le script « supabase-phase3-trajectoire.sql » n'a
-     pas encore été exécuté — d'où le repli sur un tableau vide des deux côtés,
+     pas encore été exécuté : d'où le repli sur un tableau vide des deux côtés,
      qui laisse l'application fonctionner sans la trajectoire. */
   /* Les colonnes de calendrier (phase 7) existent-elles ? Détecté à la lecture,
      sur la première ligne reçue, comme la corbeille de la phase 5. Tant
      qu'elles manquent, on ne les envoie PAS : une base non migrée continue
      d'accepter les enregistrements, et l'application reste utilisable sans son
      calendrier plutôt que de refuser toute écriture. Dès que l'utilisateur
-     saisit vraiment une date, l'écriture part quand même — et l'échec porte
+     saisit vraiment une date, l'écriture part quand même, et l'échec porte
      alors un message qui dit quel script exécuter. */
   const datesDispoRef = useRef(false);
   const [datesDispo, setDatesDispo] = useState(true);
@@ -1655,7 +1740,7 @@ export default function MipPpaApp() {
 
   /* État courant tenu dans une ref. Une fonction de mise à jour d'état React
      doit être pure : ces setters déclenchent des écritures Supabase, que
-     StrictMode exécutait donc deux fois en développement — chaque
+     StrictMode exécutait donc deux fois en développement, chaque
      enregistrement partait en double. En lisant l'état par la ref, l'écriture
      sort de l'updater et n'est plus jouée qu'une fois. La ref est réassignée
      immédiatement, pour que deux appels successifs dans le même gestionnaire
@@ -1692,7 +1777,7 @@ export default function MipPpaApp() {
   /* Les setters gardent la meme signature qu'avant, mais propagent vers Supabase.
 
      ⚠ CE SETTER SUPPRIME EN BASE tout projet absent du nouveau tableau. C'est
-     voulu pour la corbeille d'un projet — un clic, une ligne — mais c'est
+     voulu pour la corbeille d'un projet (un clic, une ligne) mais c'est
      exactement par là que le portefeuille a été perdu : « setFormations »
      appelé avec les trois projets de démonstration efface, sans rien demander,
      tous les projets réels. Deux garde-fous désormais :
@@ -1752,7 +1837,7 @@ export default function MipPpaApp() {
   /* Mise à la corbeille d'un projet. Tant que « supprime_le » existe, rien
      n'est effacé : la ligne est marquée, l'application cesse de l'afficher, et
      elle reste restaurable. Si la migration de la phase 5 n'a pas été passée,
-     on revient à l'ancienne suppression définitive — mais en le disant. */
+     on revient à l'ancienne suppression définitive, mais en le disant. */
   const mettreALaCorbeille = async (f) => {
     sauvegardeSecours(formationsRef.current, suivisRef.current);
     if (!sb || !corbeilleDispo) {
@@ -1812,7 +1897,7 @@ export default function MipPpaApp() {
      Obtenus par la « présence » de Supabase Realtime, et non par une lecture de
      la base. Le choix mérite d'être expliqué, car la solution évidente ne
      fonctionne pas : les sessions vivent dans le schéma « auth », que la clé
-     publique du navigateur n'atteint pas — et qu'elle ne DOIT pas atteindre.
+     publique du navigateur n'atteint pas, et qu'elle ne DOIT pas atteindre.
      Y accéder supposerait la clé de service, donc de la livrer au client.
 
      La présence résout cela autrement : chaque onglet ouvert s'annonce sur le
@@ -1822,7 +1907,7 @@ export default function MipPpaApp() {
 
      ⚠ CE QUE CELA MESURE EXACTEMENT : les onglets OUVERTS sur l'application,
      pas les sessions valides. Quelqu'un dont le jeton est encore valable mais
-     qui a fermé son navigateur n'y figure pas — et c'est la bonne définition
+     qui a fermé son navigateur n'y figure pas, et c'est la bonne définition
      de « connecté » pour un tableau de bord d'administration. */
   const [connectes, setConnectes] = useState({});
   /* Journal des connexions. Il n'est PAS affiché tel quel : il ne sert qu'à
@@ -1830,17 +1915,17 @@ export default function MipPpaApp() {
      ---------------------------------------------------------------------------
      Complément de la présence ci-dessus, et non doublon : la présence dit QUI
      EST LÀ MAINTENANT et n'en garde aucune trace ; cette date-ci dit DEPUIS
-     QUAND UN COMPTE N'EST PLUS VENU. L'administrateur lead a besoin des deux —
+     QUAND UN COMPTE N'EST PLUS VENU. L'administrateur lead a besoin des deux :
      « personne n'est connecté » ne se lit pas de la même façon selon que le
      compte s'est connecté ce matin ou plus depuis six semaines.
 
      Trois états, et il faut les distinguer :
-       null  — la table « connexions » n'existe pas encore (phase 9 non
+       null : la table « connexions » n'existe pas encore (phase 9 non
                exécutée dans Supabase). L'écran l'annonce en une ligne et
                renvoie au script, plutôt que de laisser la date manquer sans
                explication.
-       []    — la table existe et ne contient rien.
-       [...] — les lignes, la plus récente d'abord.
+       [] : la table existe et ne contient rien.
+       [...] : les lignes, la plus récente d'abord.
 
      POURQUOI QUATRE CENTS LIGNES pour n'en montrer qu'une par compte : c'est
      la dernière ligne de CHAQUE compte qu'il faut trouver. Avec cinquante, un
@@ -1848,19 +1933,19 @@ export default function MipPpaApp() {
      enregistrée » alors qu'il s'est connecté la semaine passée. Le déclencheur
      de la phase 9 borne le journal à vingt lignes par compte : quatre cents
      couvrent donc vingt comptes de façon exhaustive, et bien davantage en
-     pratique. Au-delà, l'affichage reste juste — il dit « connexion non
+     pratique. Au-delà, l'affichage reste juste : il dit « connexion non
      enregistrée », jamais « jamais connecté ». */
   const [connexions, setConnexions] = useState([]);
   /* Deuxième source de date, et la seule qui remonte AVANT l'installation du
      journal : « last_sign_in_at » de « auth.users », que GoTrue tient à jour à
-     chaque authentification. Le navigateur ne l'atteint pas — le schéma
+     chaque authentification. Le navigateur ne l'atteint pas : le schéma
      « auth » n'est pas exposé, et il ne doit pas l'être, il contient aussi les
      empreintes de mots de passe. La phase 10 ouvre donc une porte étroite :
      une fonction qui ne rend que l'identifiant et cette date, et seulement à
      l'administrateur lead.
 
      Pourquoi DEUX sources, et pas celle-ci seule : « last_sign_in_at » ne
-     bouge pas tant que la personne reste connectée — quelqu'un qui revient
+     bouge pas tant que la personne reste connectée, quelqu'un qui revient
      tous les jours sans jamais se déconnecter garderait une date vieille de
      plusieurs semaines. Le journal de la phase 9, lui, suit ces retours mais
      ne remonte pas avant son installation. On retient donc la plus récente
@@ -1871,7 +1956,7 @@ export default function MipPpaApp() {
   const [session, setSession] = useState(null);         // { id, email, nom, org, role }
   const [chargementAuth, setChargementAuth] = useState(true);
   /* Session ouverte par un lien « mot de passe oublié ». Tant que ce drapeau
-     est levé, l'application n'affiche que l'écran de changement — voir la
+     est levé, l'application n'affiche que l'écran de changement : voir la
      garde d'accès plus bas et le commentaire d'« EcranNouveauMdp ». */
   const [recuperationMdp, setRecuperationMdp] = useState(false);
   const roleActif = session?.role ?? "";
@@ -1882,8 +1967,8 @@ export default function MipPpaApp() {
 
      1. Un échec de lecture ne dégrade PLUS le rôle. La ligne écrivait
         « role: r?.role || "En attente d'activation" » : si la requête
-        n'aboutissait pas — réseau lent, coupure, jeton en cours de
-        renouvellement — le rôle retombait sur « En attente d'activation » et
+        n'aboutissait pas, réseau lent, coupure, jeton en cours de
+        renouvellement : le rôle retombait sur « En attente d'activation » et
         l'utilisateur se retrouvait éjecté sur l'écran d'attente, sans avoir
         rien fait. C'est la « déconnexion forcée ». En cas d'échec, on garde
         désormais ce qu'on avait ; seule une réponse REÇUE fait autorité.
@@ -1909,7 +1994,7 @@ export default function MipPpaApp() {
            le rattachait à une structure. Or « org » commande la visibilité des
            projets (« mon_org() » → « peut_voir_projet() ») : un compte sans
            organisation est un compte dont le périmètre n'est pas défini.
-           Le nom, lui, ne conditionne plus rien — il n'est plus demandé et se
+           Le nom, lui, ne conditionne plus rien : il n'est plus demandé et se
            déduit de l'adresse email.
            Corrigé ici plutôt qu'en base : la vérification s'applique aux
            comptes DÉJÀ créés, sans migration, dès leur prochaine connexion. */
@@ -1951,7 +2036,7 @@ export default function MipPpaApp() {
          session à partir du jeton contenu dans le fragment de l'URL : c'est
          voulu, il faut être authentifié pour changer son mot de passe. On
          retient donc l'événement pour verrouiller l'application sur le seul
-         écran de changement, et on nettoie l'URL — le jeton n'a plus à y
+         écran de changement, et on nettoie l'URL : le jeton n'a plus à y
          figurer, ni dans l'historique du navigateur, ni dans un lien
          recopié. */
       if (ev === "PASSWORD_RECOVERY") {
@@ -1963,21 +2048,21 @@ export default function MipPpaApp() {
     return () => abo.subscription.unsubscribe();
   }, []);
 
-  // Liste des comptes (réservée au lead — la sécurité est aussi appliquée côté serveur)
+  // Liste des comptes (réservée au lead : la sécurité est aussi appliquée côté serveur)
   const chargerComptes = async () => {
     const { data: profils } = await sb.from("profiles").select("*").order("cree_le");
     const { data: roles } = await sb.from("user_roles").select("*");
     setComptes((profils || []).map((p) => ({ id: p.id, email: p.email, nom: p.nom || p.email, org: p.org || "Non renseignée", role: (roles || []).find((r) => r.user_id === p.id)?.role || "En attente d'activation" })));
   };
 
-  /* Les dernières ouvertures de session, tous comptes confondus — voir
+  /* Les dernières ouvertures de session, tous comptes confondus : voir
      ci-dessus pourquoi on en lit quatre cents pour n'en montrer qu'une par
      compte. Réservée au lead par la politique « connexions_select » de la
      phase 9 : l'interface n'est pas la seule à le garantir.
 
      L'ERREUR EST TRAITÉE, ET DISTINGUÉE D'UNE LISTE VIDE. Tant que la phase 9
      n'a pas été exécutée, PostgREST répond « relation … does not exist » :
-     afficher alors « aucune connexion » serait un mensonge tranquille — on
+     afficher alors « aucune connexion » serait un mensonge tranquille, on
      pose « null », et l'écran explique ce qui manque. */
   const chargerConnexions = async () => {
     const { data, error } = await sb.from("connexions")
@@ -1987,7 +2072,7 @@ export default function MipPpaApp() {
     /* Deuxième source (phase 10). Les deux appels sont indépendants : si l'un
        échoue parce que son script n'a pas été exécuté, l'autre alimente quand
        même l'affichage. Une fonction absente rend une erreur, pas une
-       exception — on la distingue d'un résultat vide, comme pour la table. */
+       exception : on la distingue d'un résultat vide, comme pour la table. */
     const { data: auth, error: eAuth } = await sb.rpc("dernieres_connexions");
     setConnexionsAuth(eAuth ? null : Object.fromEntries(
       (auth || []).filter((r) => r.derniere).map((r) => [r.user_id, r.derniere])));
@@ -1997,7 +2082,7 @@ export default function MipPpaApp() {
      ---------------------------------------------------------------------------
      UNE SEULE LIGNE PAR ONGLET, garantie par « sessionStorage » : il est propre
      à l'onglet et disparaît avec lui. Sans ce garde-fou, chaque rendu qui
-     recrée l'objet de session déposerait une ligne de plus — le renouvellement
+     recrée l'objet de session déposerait une ligne de plus : le renouvellement
      de jeton, à lui seul, en produirait plusieurs par heure et noierait le
      journal sous des connexions qui n'ont jamais eu lieu.
 
@@ -2019,7 +2104,7 @@ export default function MipPpaApp() {
 
   /* Dernière connexion connue de chaque compte, indexée par identifiant, sous
      forme d'horodatage ISO. Les deux sources sont croisées et c'est la PLUS
-     RÉCENTE qui gagne — voir « connexionsAuth » plus haut pour la raison.
+     RÉCENTE qui gagne : voir « connexionsAuth » plus haut pour la raison.
      Le journal arrivant déjà trié du plus récent au plus ancien, la première
      ligne rencontrée pour un compte est sa dernière : aucun tri, un parcours.
      La comparaison passe par « Date.parse » et non par les chaînes : les deux
@@ -2035,7 +2120,7 @@ export default function MipPpaApp() {
     return m;
   }, [connexions, connexionsAuth]);
   /* Au moins une des deux sources répond : la ligne « Dernière connexion » a
-     un sens. Si AUCUNE ne répond, on ne l'affiche pas du tout — écrire
+     un sens. Si AUCUNE ne répond, on ne l'affiche pas du tout : écrire
      « Connexion non enregistrée » sous chaque compte ferait porter aux comptes
      un défaut d'installation qui ne les concerne pas. */
   const sourceConnexions = connexions !== null || connexionsAuth !== null;
@@ -2044,7 +2129,7 @@ export default function MipPpaApp() {
     ...(connexions === null ? ["supabase-phase9.sql"] : []),
     ...(connexionsAuth === null ? ["supabase-phase10.sql"] : []),
   ];
-  /* Corriger l'organisation d'un compte. Réservé à l'administrateur lead — et
+  /* Corriger l'organisation d'un compte. Réservé à l'administrateur lead, et
      pas seulement par l'interface : le déclencheur « profils_geler_org » de la
      phase 3 fige « org » dès qu'il est renseigné, en ménageant une exception
      pour « est_admin_lead() ». C'est ce qui permet cette correction sans
@@ -2064,7 +2149,7 @@ export default function MipPpaApp() {
     /* « .select() » est indispensable ici, et son absence est ce qui faisait
        échouer la fonction EN SILENCE. La politique RLS de la phase 1 porte
        « using (id = auth.uid()) » : elle laisse chacun modifier SA ligne, et
-       personne d'autre. La ligne d'un tiers n'est donc même pas atteinte —
+       personne d'autre. La ligne d'un tiers n'est donc même pas atteinte :
        PostgREST répond « 0 ligne modifiée », sans erreur, et l'application
        annonçait « Organisation mise à jour » alors que rien n'avait bougé.
        Le déclencheur « profils_geler_org » ménage bien une exception pour
@@ -2090,7 +2175,7 @@ export default function MipPpaApp() {
   /* Attribution d'un rôle. Troisième occurrence du même défaut, et la plus
      grave : un compte ACTIVÉ restait bloqué sur l'écran d'attente.
      ---------------------------------------------------------------------------
-     Un compte invité n'a pas de ligne dans « user_roles » — elle n'est créée
+     Un compte invité n'a pas de ligne dans « user_roles » : elle n'est créée
      qu'à l'inscription ordinaire. Un UPDATE ne touchait donc aucune ligne,
      PostgREST répondait 204 comme pour une réussite, et l'application annonçait
      « Rôle mis à jour » sans que rien n'ait été écrit. L'administrateur croyait
@@ -2100,7 +2185,7 @@ export default function MipPpaApp() {
      a bien été écrite. L'écriture reste réservée à l'administrateur lead, en
      base : voir « supabase-phase8.sql », qui ajoute la politique INSERT
      manquante avec « with check (est_admin_lead()) ». Personne ne peut donc
-     s'attribuer un rôle — la propriété vérifiée le 7 août est préservée. */
+     s'attribuer un rôle : la propriété vérifiée le 7 août est préservée. */
   const attribuerRole = async (userId, role) => {
     const { data: ecrit, error } = await sb.from("user_roles")
       .upsert({ user_id: userId, role }, { onConflict: "user_id" })
@@ -2114,6 +2199,66 @@ export default function MipPpaApp() {
     notif(`Rôle attribué : ${role}`); chargerComptes();
   };
   const [evalId, setEvalId] = useState(null);
+  /* ---------- RETOUR À L'ÉCRAN PRÉCÉDENT ----------
+     L'application est monopage : elle change d'écran sans changer d'adresse.
+     Conséquence, sur un téléphone, le bouton « retour » du système quittait le
+     site au lieu de revenir à l'écran d'avant, et rien ne permettait de
+     rebrousser chemin après avoir ouvert un projet depuis une alerte ou depuis
+     la carte.
+     L'historique du navigateur est pris comme SEULE mémoire, plutôt qu'une
+     pile tenue à part : les deux se seraient contredites au premier retour
+     système. Chaque changement d'écran y dépose une entrée ; le bouton du
+     bandeau et celui de l'appareil font donc exactement la même chose.
+     « profondeur » compte nos propres entrées, et rien d'autre :
+     « history.length » comptabilise aussi les pages visitées avant la nôtre,
+     et aurait affiché une flèche qui ramène ailleurs que dans l'application. */
+  const [profondeur, setProfondeur] = useState(0);
+  /* Le rang de chaque écran est écrit DANS l'entrée d'historique, et non
+     déduit d'un compteur que l'on incrémenterait et décrémenterait : le bouton
+     « suivant » du navigateur rejoue lui aussi « popstate », et un compteur
+     décrémenté à chaque fois serait tombé à zéro alors qu'il restait des
+     écrans derrière. Le rang lu dans l'état est juste dans les deux sens. */
+  const profondeurRef = useRef(0);
+  const retourEnCours = useRef(false);
+  const revenir = () => { if (profondeur > 0) window.history.back(); };
+  useEffect(() => {
+    const surRetour = (e) => {
+      const etat = e.state;
+      if (!etat || !etat.mipPpa) return;
+      retourEnCours.current = true;      // empêche de réempiler ce que l'on quitte
+      setPage(etat.page);
+      setEvalId(etat.evalId || null);
+      profondeurRef.current = etat.rang || 0;
+      setProfondeur(profondeurRef.current);
+    };
+    window.addEventListener("popstate", surRetour);
+    return () => window.removeEventListener("popstate", surRetour);
+  }, []);
+  /* Écran effectivement inscrit dans l'historique. Le repère est cette valeur,
+     et non un drapeau « premier rendu » : en développement, React StrictMode
+     rejoue les effets une seconde fois au montage, et un drapeau aurait empilé
+     une entrée fantôme. La flèche apparaissait alors dès l'écran d'accueil, et
+     le premier retour ne menait nulle part. En comparant l'écran, un effet
+     rejoué à l'identique ne fait rien. */
+  const vueInscrite = useRef(null);
+  useEffect(() => {
+    const cle = page + "|" + (evalId || "");
+    if (vueInscrite.current === cle) return;
+    const premier = vueInscrite.current === null;
+    vueInscrite.current = cle;
+    try {
+      if (premier) {
+        // On ancre l'écran d'accueil sans empiler : sinon le premier retour sortirait du site.
+        window.history.replaceState({ mipPpa: true, page, evalId: evalId || null, rang: 0 }, "");
+      } else if (retourEnCours.current) {
+        retourEnCours.current = false;   // on vient de reculer : ne pas réempiler
+      } else {
+        profondeurRef.current += 1;
+        window.history.pushState({ mipPpa: true, page, evalId: evalId || null, rang: profondeurRef.current }, "");
+        setProfondeur(profondeurRef.current);
+      }
+    } catch { /* navigateur restrictif : la flèche reste simplement absente */ }
+  }, [page, evalId]);
   const [jalonAFiger, setJalonAFiger] = useState(JALONS[0]);   // trajectoire
   const [recherche, setRecherche] = useState("");
   const [filtreZone, setFiltreZone] = useState("");       // "" = toutes
@@ -2144,7 +2289,7 @@ export default function MipPpaApp() {
   const [lectureCarte, setLectureCarte] = useState("implantation"); // ou "score"
   /* Sens des barres du graphique « Score moyen par secteur ».
      ⚠ PIÈGE DE VOCABULAIRE, à ne pas confondre en relisant le code : ce que
-     Recharts appelle « layout: vertical » dessine des barres HORIZONTALES —
+     Recharts appelle « layout: vertical » dessine des barres HORIZONTALES,
      c'est l'axe des catégories qui est vertical. Cet état-ci porte le sens
      des BARRES, tel que l'utilisateur le voit et tel que le bouton le dit.
      « horizontal » reste la vue par défaut : c'est celle qui absorbe des
@@ -2181,8 +2326,8 @@ export default function MipPpaApp() {
       }
       /* Projets + suivis.
          L'ERREUR EST RÉCUPÉRÉE, et c'est capital. Elle était ignorée : sur
-         une lecture en échec — coupure réseau, jeton expiré, politique RLS
-         qui refuse — PostgREST renvoie « data: null ». La liste devenait
+         une lecture en échec (coupure réseau, jeton expiré, politique RLS
+         qui refuse) PostgREST renvoie « data: null ». La liste devenait
          vide, et une base illisible se lisait exactement comme une base
          vide. L'amorçage juste en dessous s'enclenchait alors et réinjectait
          les projets de démonstration par-dessus un portefeuille bien vivant.
@@ -2197,7 +2342,7 @@ export default function MipPpaApp() {
         return;                       // surtout : ne rien écrire, ne rien amorcer
       }
       /* Corbeille (phase 5). La colonne peut ne pas exister : on la détecte
-         sur la première ligne reçue plutôt qu'en filtrant dans la requête —
+         sur la première ligne reçue plutôt qu'en filtrant dans la requête,
          un « .is('supprime_le', null) » sur une colonne absente ferait échouer
          toute la lecture, et l'on retomberait sur le défaut qu'on vient de
          corriger. Le tri se fait donc côté client ; à l'échelle d'un
@@ -2250,7 +2395,7 @@ export default function MipPpaApp() {
       .on("postgres_changes", { event: "*", schema: "public", table: "projets" }, () => rechargerLeger())
       .on("postgres_changes", { event: "*", schema: "public", table: "suivis" }, () => rechargerLeger())
       .on("postgres_changes", { event: "*", schema: "public", table: "configuration" }, () => rechargerLeger())
-      /* « sync » couvre les trois cas — arrivée, départ, état initial — et rend
+      /* « sync » couvre les trois cas (arrivée, départ, état initial) et rend
          l'état complet. S'abonner en plus à « join » et « leave » ferait un
          rendu de plus pour la même information. */
       .on("presence", { event: "sync" }, () => {
@@ -2273,7 +2418,7 @@ export default function MipPpaApp() {
       });
     return () => { sb.removeChannel(canal); };
     /* Dépendances réduites à des valeurs SIMPLES. Avec l'objet « session »,
-       l'effet se rejouait dès que cet objet était recréé — même à contenu
+       l'effet se rejouait dès que cet objet était recréé, même à contenu
        identique : rechargement complet des données et abonnement temps réel
        détruit puis reconstruit, plusieurs fois par heure. C'est ce qui faisait
        sauter les listes sans raison apparente. */
@@ -2332,7 +2477,7 @@ export default function MipPpaApp() {
   const urlApp = (typeof window !== "undefined" && window.location && window.location.origin) ? window.location.origin : "https://fdfp-mip-ppa-apk.vercel.app";
   const [envoiInvite, setEnvoiInvite] = useState(false);
   // Regex proche RFC 5322 (raisonnable côté navigateur) : rejette les espaces, doubles points,
-  // domaines sans TLD valide, etc. — première barrière contre les emails qui rebondiraient.
+  // domaines sans TLD valide, etc. : première barrière contre les emails qui rebondiraient.
   const REGEX_EMAIL = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
   // Fautes de frappe fréquentes sur les domaines grand public -> avertissement (non bloquant)
   const DOMAINES_PROCHES = {
@@ -2376,7 +2521,7 @@ export default function MipPpaApp() {
   /* ---------- Masque de présentation des organisations ----------------------
      Projeter l'application pendant une soutenance, un comité ou une formation
      expose qui est noté quoi. Ce commutateur remplace les raisons sociales par
-     « Promoteur 1 », « Opérateur 1 », « Bénéficiaire 1 » — les mêmes
+     « Promoteur 1 », « Opérateur 1 », « Bénéficiaire 1 » : les mêmes
      désignations que le mémoire et la présentation.
 
      ⚠ CE N'EST PAS UNE ANONYMISATION, et l'interface le dit. Les vrais noms
@@ -2422,7 +2567,7 @@ export default function MipPpaApp() {
     const alertesScore = formationsVisibles.filter((f) => { const s = scoreGlobal(referentiel, f.notes); return s !== null && s < 40; });
     const enRetard = suivis.filter((s) => s.statut === "programmé" && joursRestants(s.echeance) < 0);
     /* Trous d'évaluation : un jalon dont l'échéance est dépassée alors que des
-       indicateurs restent à noter. Distinct du suivi en retard — celui-ci
+       indicateurs restent à noter. Distinct du suivi en retard : celui-ci
        signale une démarche non faite, celui-là un score qui ne veut encore
        rien dire. Un projet peut avoir tous ses suivis à jour et rester
        inévaluable, ou l'inverse. */
@@ -2478,8 +2623,8 @@ export default function MipPpaApp() {
   }, [formationsVisibles]);
 
   /* Portefeuille tel que la liste l'affiche : recherche plein texte, puis
-     zone, puis localité. Le calcul était écrit deux fois — une fois pour la
-     vue tableau, une fois pour la vue cartes du mobile — et les deux copies
+     zone, puis localité. Le calcul était écrit deux fois (une fois pour la
+     vue tableau, une fois pour la vue cartes du mobile) et les deux copies
      devaient être modifiées ensemble.
      Note : les exports restent sur le portefeuille entier, comme ils le
      faisaient déjà pour la recherche. Un export est un livrable, il ne doit
@@ -2495,7 +2640,7 @@ export default function MipPpaApp() {
 
   /* Score moyen par implantation, pour la seconde lecture de la carte.
      Moyenne des scores globaux des projets de la zone ; « null » si aucun
-     n'est noté — une zone non évaluée n'est pas une zone en échec. */
+     n'est noté : une zone non évaluée n'est pas une zone en échec. */
   const scoreParZone = useMemo(() => {
     const acc = {};
     formationsVisibles.forEach((f) => {
@@ -2522,7 +2667,7 @@ export default function MipPpaApp() {
   }, [formationsVisibles, referentiel]);
 
   /* Colonne des libellés du graphique « Score moyen par secteur ».
-     On part d'un plafond — 36 % de l'écran sur mobile, entre 88 et 150 px —
+     On part d'un plafond (36 % de l'écran sur mobile, entre 88 et 150 px)
      dont on déduit le nombre de caractères par ligne (≈ 0,58 × la taille de
      police). Puis on redescend à la largeur que les libellés occupent
      vraiment une fois découpés : le texte étant aligné à droite dans sa
@@ -2538,15 +2683,15 @@ export default function MipPpaApp() {
   }, [estMobile, largeurFenetre, filiereData]);
 
   /* Largeur RÉELLE du cadre du graphique sectoriel.
-     En barres verticales, chaque secteur ne dispose que d'une bande — la
-     largeur du cadre divisée par le nombre de secteurs — et c'est elle qui
+     En barres verticales, chaque secteur ne dispose que d'une bande (la
+     largeur du cadre divisée par le nombre de secteurs) et c'est elle qui
      décide du découpage des libellés. Elle ne se déduit pas de la largeur de
      la fenêtre : entre la barre latérale, les gouttières de la zone de
      contenu, sa largeur maximale de 1 024 px et la marge de la carte, l'écart
      dépasse 300 px sur un grand écran. On mesure donc le conteneur.
      La mesure est refaite quand la fenêtre change de taille : « largeurFenetre »
      est déjà tenu à jour par l'écouteur de redimensionnement plus haut, il
-     suffit de s'en servir comme déclencheur — pas de second écouteur. */
+     suffit de s'en servir comme déclencheur, pas de second écouteur. */
   const boiteSecteur = useRef(null);
   const [largeurSecteur, setLargeurSecteur] = useState(0);
   useEffect(() => {
@@ -2556,7 +2701,7 @@ export default function MipPpaApp() {
   /* Axe des libellés quand les barres sont verticales : il passe SOUS le
      graphique, et la place s'y compte en hauteur.
      Deux décisions y sont prises.
-     1. QUEL LIBELLÉ. Un secteur s'écrit sur trois niveaux — « Secteur
+     1. QUEL LIBELLÉ. Un secteur s'écrit sur trois niveaux : « Secteur
         secondaire · Transformation du cacao et du café · Fèves et masse de
         cacao ». Sous une barre, seul le dernier niveau tient, et c'est le seul
         qui distingue : les trois projets de démonstration partagent les deux
@@ -2586,7 +2731,7 @@ export default function MipPpaApp() {
   /* Répercussion d'un renommage du référentiel sur les données déjà saisies.
      Les projets désignent leur secteur, leur branche et leur domaine par le
      libellé, pas par un identifiant : sans cette propagation, renommer une
-     branche laissait les projets existants accrochés à l'ancien nom — ils
+     branche laissait les projets existants accrochés à l'ancien nom, ils
      disparaissaient des regroupements sectoriels et des graphiques.
      Renvoie le nombre de projets mis à jour, pour le message de confirmation. */
   const propagerRenommage = (champ, ancien, nouveau, concerne = () => true) => {
@@ -2645,7 +2790,7 @@ export default function MipPpaApp() {
   const ajouterFormation = () => {
     if (!nouvelle.titre.trim() || !nouvelle.entreprise.trim()) { notif("Renseignez au minimum l'intitulé et le promoteur"); return; }
     /* Une fin antérieure au lancement est refusée à la saisie, et pas
-       seulement signalée après coup : toute la suite en dépend — la durée
+       seulement signalée après coup : toute la suite en dépend, la durée
        affichée, les trois échéances, la lecture de la fiche. */
     if (estDateISO(nouvelle.dateDebut) && estDateISO(nouvelle.dateFin)
       && nouvelle.dateFin < nouvelle.dateDebut) {
@@ -2662,7 +2807,7 @@ export default function MipPpaApp() {
     setFormations((fs) => [...fs, { id, ...nouvelle, notes: {} }]);
     /* Point d'origine du suivi post-formation : la date de FIN du projet.
        « M+3 » veut dire trois mois après la fin de la formation, pas trois
-       mois après la saisie de la fiche — c'est ce que dit le modèle MIP-PPA,
+       mois après la saisie de la fiche : c'est ce que dit le modèle MIP-PPA,
        et ce que l'application faisait faute de connaître le calendrier. À
        défaut de date de fin, on retombe sur le jour courant, comme avant. */
     const ech = echeancesSuivi(nouvelle.dateFin, jourISO());
@@ -2683,7 +2828,7 @@ export default function MipPpaApp() {
   /* ---------- SAUVEGARDE ET RESTAURATION ----------
      Le classeur Excel est un livrable de communication : il porte des scores
      déjà calculés, pas les notes qui les produisent, ni les identifiants, ni
-     les suivis. On ne peut donc pas le réinjecter — un import du classeur
+     les suivis. On ne peut donc pas le réinjecter : un import du classeur
      rendrait des projets sans notes, ce qui est pire que rien.
      La sauvegarde ci-dessous est l'exact opposé : illisible pour un humain,
      mais complète et fidèle. C'est elle qui ferme la boucle ouverte le 8 août,
@@ -2707,7 +2852,7 @@ export default function MipPpaApp() {
 
   /* La restauration n'efface RIEN : elle ajoute ce qui manque et remplace ce
      qui porte le même identifiant. Un projet créé depuis la sauvegarde reste
-     donc en place. C'est volontaire — une restauration doit réparer une
+     donc en place. C'est volontaire : une restauration doit réparer une
      perte, pas en provoquer une seconde. */
   const importerSauvegarde = async (fichier) => {
     if (!fichier) return;
@@ -2815,7 +2960,7 @@ export default function MipPpaApp() {
          emprunté : un objet Date (classeur XLSX relu par ExcelJS), la chaîne
          ISO écrite par le CSV, ou une date déjà mise en forme à la française
          si quelqu'un a retouché le fichier. Les trois sont acceptées, et tout
-         ce qui n'est aucune des trois est simplement ignoré — mieux vaut une
+         ce qui n'est aucune des trois est simplement ignoré : mieux vaut une
          date absente qu'une date fausse. */
       const dateCellule = (v) => {
         if (v instanceof Date && !Number.isNaN(v.getTime())) return v.toISOString().slice(0, 10);
@@ -2856,7 +3001,7 @@ export default function MipPpaApp() {
     /* Analyseur minimal mais correct : le point-virgule sépare, les
        guillemets protègent, et « "" » est un guillemet littéral. La mention
        institutionnelle de la première ligne contient des virgules et des
-       points — elle est simplement ignorée, faute d'en-têtes. */
+       points : elle est simplement ignorée, faute d'en-têtes. */
     const out = [];
     let ligne = [], champ = "", dansGuillemets = false;
     const t = texte.replace(/^﻿/, "").replace(/\r\n?/g, "\n");
@@ -2909,7 +3054,7 @@ export default function MipPpaApp() {
     if (!a.lignes.length) { notif("Aucun projet trouvé dans ce fichier."); return; }
 
     /* Rapprochement sur le couple intitulé + promoteur : l'export ne porte pas
-       d'identifiant. Un projet déjà présent est laissé intact — la reprise
+       d'identifiant. Un projet déjà présent est laissé intact : la reprise
        sert à combler un trou, pas à écraser ce qui a survécu. */
     const memeProjet = (a1, b1) => memeNom(a1.titre, b1.titre) && memeNom(a1.entreprise, b1.entreprise);
     const nouveaux = a.lignes.filter((l) => !formations.some((f) => memeProjet(f, l)));
@@ -3006,7 +3151,7 @@ export default function MipPpaApp() {
   });
 
   /* Mentions institutionnelles condensées sur une seule ligne : organisme,
-     certification et horodatage de l'export. Une ligne au lieu de quatre —
+     certification et horodatage de l'export. Une ligne au lieu de quatre :
      les en-têtes de colonnes remontent d'autant, et le tableau commence
      presque en haut du fichier. */
   const mentionsFDFP = () => [
@@ -3063,7 +3208,7 @@ export default function MipPpaApp() {
 
       // -- Données --
       /* Index déduits des en-têtes, et non écrits en dur : ils étaient figés
-         à 6 / 7 / 9, si bien qu'insérer une colonne — « Localité » — décalait
+         à 6 / 7 / 9, si bien qu'insérer une colonne (« Localité ») décalait
          silencieusement les formats de nombre d'une colonne vers la gauche.
          Un budget se serait affiché en pourcentage. */
       const iApprenants = entetes.indexOf("Apprenants");
@@ -3081,7 +3226,7 @@ export default function MipPpaApp() {
           else if (i === iDateDebut || i === iDateFin) {
             /* Vraie date Excel, pas du texte : le classeur doit pouvoir trier
                le portefeuille par date de fin et calculer des écarts. Midi UTC
-               plutôt que minuit — Excel raisonne en heure locale, et minuit
+               plutôt que minuit : Excel raisonne en heure locale, et minuit
                bascule d'un jour dans les fuseaux à l'ouest. */
             if (estDateISO(c.value)) {
               c.value = new Date(String(c.value) + "T12:00:00Z");
@@ -3148,7 +3293,7 @@ export default function MipPpaApp() {
        rectangle à angles droits. On restreint donc le tracé à un rectangle
        arrondi avant de poser l'image, de sorte que son fond blanc suive la
        même courbe. Repli sur un dessin simple si la version de jsPDF ne gère
-       pas le détourage — mieux vaut des angles droits que pas de logo. */
+       pas le détourage : mieux vaut des angles droits que pas de logo. */
     const poserLogo = (x, y, w, h, r) => {
       try {
         doc.saveGraphicsState();
@@ -3177,13 +3322,13 @@ export default function MipPpaApp() {
     doc.setTextColor(20, 20, 20); doc.setFont("helvetica", "bold"); doc.setFontSize(13);
     doc.text(doc.splitTextToSize(nettoyerPdf(f.titre), W - 2 * M), M, y); y += 7 * doc.splitTextToSize(nettoyerPdf(f.titre), W - 2 * M).length;
     doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(...gris);
-    /* La zone seule ne situe pas le projet — l'antenne de Korhogo couvre
+    /* La zone seule ne situe pas le projet : l'antenne de Korhogo couvre
        dix-sept departements. La localite l'accompagne donc ici aussi : la
        fiche circule hors de l'application, sans la carte sous les yeux.
        Ces deux lignes d'identification sont desormais decoupees comme le
        titre au-dessus : posees d'un bloc, elles sortaient dans la marge au
        lieu de passer a la ligne. Mesure jsPDF sur un cas reel du
-       portefeuille — « Promoteur : FrieslandCampina - Transformation des
+       portefeuille : « Promoteur : FrieslandCampina - Transformation des
        fruits et legumes - Antenne Yamoussoukro » : 151 mm pour 178 mm
        utiles, mais 185,2 mm des que la localite s'y ajoute. C'est bien la
        mention ajoutee ici qui fait deborder, d'ou le decoupage. */
@@ -3285,7 +3430,7 @@ export default function MipPpaApp() {
     /* Pied de page. Le bandeau de certification y est intégré, centré juste
        au-dessus du filet orange : il accompagne les mentions institutionnelles
        au lieu de s'imposer en pleine largeur au fil du document. Il occupait
-       auparavant un bloc de 120 mm inséré dans le corps — et se retrouvait en
+       auparavant un bloc de 120 mm inséré dans le corps, et se retrouvait en
        double, la fonction étant appelée une fois avant l'annexe et une fois
        après. 45 mm est un compromis : discret, mais assez large pour que le QR
        code reste lisible à l'impression. */
@@ -3363,7 +3508,7 @@ export default function MipPpaApp() {
               doc.setTextColor(190, 40, 40); doc.text(nettoyerPdf("[image illisible]"), M + 2, y); y += 6;
             }
           } else {
-            // Encart descriptif (pour tous les non-images) — les PDF seront en plus annexes a la fin
+            // Encart descriptif (pour tous les non-images) : les PDF seront en plus annexes a la fin
             sautSiBesoin(16);
             doc.setDrawColor(210, 210, 210); doc.setFillColor(248, 248, 246);
             doc.roundedRect(M + 2, y - 3, W - 2 * M - 4, 13, 2, 2, "FD");
@@ -3455,9 +3600,9 @@ export default function MipPpaApp() {
 
         /* Géométrie des pages d'annexe. Les positions sont comptées depuis le
            BAS : pdf-lib a son origine en bas à gauche.
-           « HAUT_PIED » est la bande réservée au pied — bandeau de
-           certification (10,6 mm posés à 13,5 mm du bord), filet orange et
-           mentions —, arrondie au millimètre supérieur. */
+           « HAUT_PIED » est la bande réservée au pied, arrondie au millimètre
+           supérieur : bandeau de certification (10,6 mm posés à 13,5 mm du
+           bord), filet orange et mentions. */
         const MM_PT = 2.8346;                          // 1 mm en points PDF
         const LARGEUR_A4 = 595.28, HAUTEUR_A4 = 841.89;
         const LARG_BANDEAU = 45 * MM_PT;
@@ -3479,8 +3624,8 @@ export default function MipPpaApp() {
              avait écrit dans sa marge basse. Réduire ne cache rien : tout le
              document joint reste lisible, et le pied a sa propre bande.
              C'est ce que fait « ajuster à la page » d'une imprimante.
-             Le facteur est plafonné à 1 : une page plus petite qu'une A4 —
-             un ticket, une photo — n'est jamais agrandie. */
+             Le facteur est plafonné à 1 : une page plus petite qu'une A4
+             (un ticket, une photo) n'est jamais agrandie. */
           const embarquees = await base.embedPages(ext.getPages());
           for (const emb of embarquees) {
             const pg = base.addPage([LARGEUR_A4, HAUTEUR_A4]);
@@ -3497,7 +3642,7 @@ export default function MipPpaApp() {
 
         /* Pied des pages d'annexe. Elles proviennent de documents externes :
            jsPDF ne les a jamais vues, elles n'ont donc ni filet, ni mentions,
-           ni numéro. Les positions sont comptées depuis le BAS de page — pdf-lib
+           ni numéro. Les positions sont comptées depuis le BAS de page : pdf-lib
            a son origine en bas à gauche, et une annexe peut ne pas être en A4. */
         /* Le pied se pose maintenant dans une bande LIBRE : les pages
            d'annexe ont été redessinées plus haut, réduites juste ce qu'il
@@ -3569,6 +3714,19 @@ export default function MipPpaApp() {
     users: ["Utilisateurs & rôles", "Attribution des accès à la plateforme."],
   };
 
+  /* Les huit fenêtres modales. Les crochets sont appelés ICI, avant les gardes
+     d'accès qui suivent : un « return » anticipé placé avant eux les ferait
+     disparaître d'un rendu à l'autre, ce que React interdit. Chaque appel rend
+     une référence à poser sur le panneau de sa fenêtre. */
+  const refDocVu = useFenetreModale(!!docVu, () => setDocVu(null));
+  const refDetailStat = useFenetreModale(!!detailStat, () => setDetailStat(null));
+  const refCorbeille = useFenetreModale(!!corbeilleOuverte, () => setCorbeilleOuverte(false));
+  const refDetailLocalite = useFenetreModale(!!detailLocalite, () => setDetailLocalite(null));
+  const refChangeMdp = useFenetreModale(!!changeMdp, () => setChangeMdp(null));
+  const refDimEdit = useFenetreModale(!!dimEdit, () => setDimEdit(null));
+  const refIndEdit = useFenetreModale(!!indEdit, () => setIndEdit(null));
+  const refSuiviEdit = useFenetreModale(!!suiviEdit, () => setSuiviEdit(null));
+
   // =================== GARDE D'ACCÈS =============================
   if (!sb) return <EcranConfiguration />;
   if (chargementAuth) {
@@ -3607,7 +3765,7 @@ export default function MipPpaApp() {
            avec le contenu (background-attachment: scroll, la valeur par
            défaut). C'est elle que le bandeau supérieur laisse deviner,
            floutée, pendant le défilement.
-           Chemin défini par CHEMIN_FOND — voir l'en-tête du fichier.    */
+           Chemin défini par CHEMIN_FOND : voir l'en-tête du fichier.    */
         body{
           background-color:#e8edf2;                 /* visible si l'image manque */
           background-image:url('${CHEMIN_FOND}');
@@ -3629,7 +3787,7 @@ export default function MipPpaApp() {
            faisait des conteneurs de défilement, ce qui neutralisait le
            « position: sticky » de l'en-tête, qui repartait donc vers le haut.
            « overflow-x: clip » masque le débordement horizontal sans créer de
-           conteneur de défilement — l'en-tête reste alors collé en haut.        */
+           conteneur de défilement, l'en-tête reste alors collé en haut.        */
         .cadre-app, .zone-contenu { overflow-x: clip; }
         /* Repli pour les navigateurs sans « overflow: clip » : on renonce au
            masquage horizontal plutôt qu'à l'en-tête fixe.                       */
@@ -3684,7 +3842,7 @@ export default function MipPpaApp() {
         .sombre .horloge-date, .sombre .horloge-fuseau{ color:#a9b4bf; }
         /* L'horloge fait foi pour les échéances et sert aussi de témoin de
            déploiement : elle doit rester visible sur téléphone. Plutôt que de
-           l'effacer faute de place, on la comprime par paliers — d'abord la
+           l'effacer faute de place, on la comprime par paliers : d'abord la
            date en JJ/MM, puis les secondes, puis le trait de séparation. */
         .horloge-date-courte{ display:none; }
         @media (max-width:820px){
@@ -3740,7 +3898,7 @@ export default function MipPpaApp() {
         .sombre .bg-stone-100{background:#0d1721!important}
         .sombre .bg-white{background:#152230!important;color:#d6d3d1}
         /* Exception : le rectangle du logo reste blanc en mode nuit. Le logo
-           FDFP est une image à fond blanc — sur une plaque sombre, il
+           FDFP est une image à fond blanc : sur une plaque sombre, il
            découperait un rectangle blanc disgracieux au milieu du cadre.
            Règle placée APRÈS « .sombre .bg-white » : à spécificité égale,
            c'est la dernière déclarée qui l'emporte.                        */
@@ -3751,7 +3909,7 @@ export default function MipPpaApp() {
            littéral de gabarit JavaScript, où « \\: » ne serait pas reconnu
            comme échappement et deviendrait « : ». Le sélecteur émis serait
            alors « .hover:bg-stone-50 », une pseudo-classe inconnue, donc une
-           règle entière invalidée et ignorée — le survol repassait au gris
+           règle entière invalidée et ignorée, le survol repassait au gris
            très clair de Tailwind, éblouissant sur fond sombre.
            « \\\\: » dans la source produit bien « \\: » dans la feuille.       */
         .sombre .hover\\:bg-stone-50:hover{background:#263b50!important}
@@ -3801,7 +3959,7 @@ export default function MipPpaApp() {
            repasse en bleu nuit translucide.
            Les couleurs des grilles sont posées en attribut de présentation
            dans le JSX (stroke="#e7e5e4") : ces attributs ont la priorité la
-           plus faible, donc n'importe quelle règle CSS les emporte — inutile
+           plus faible, donc n'importe quelle règle CSS les emporte, inutile
            de toucher au balisage.                                          */
         .sombre .recharts-tooltip-cursor{fill:rgba(56,130,190,.22)!important;stroke:rgba(56,130,190,.45)!important}
         .sombre .recharts-cartesian-grid line{stroke:#2b3d50!important}
@@ -3815,8 +3973,8 @@ export default function MipPpaApp() {
         .sombre .recharts-polar-radius-axis-line{stroke:#3a4d61!important}
         /* Infobulle : Recharts la dimensionne sur une seule ligne
            (« white-space:nowrap » en style en ligne). Un libellé de secteur
-           complet — « Secteur secondaire · Cacao · Transformation semi-finie »
-           — produisait une bulle de 402 px dans un écran de 320 px, dont les
+           complet : « Secteur secondaire · Cacao · Transformation semi-finie »
+ : produisait une bulle de 402 px dans un écran de 320 px, dont les
            trois quarts hors de l'écran. On borne la largeur et on autorise le
            retour à la ligne ; le « !important » est indispensable, le style en
            ligne l'emporterait autrement.                                    */
@@ -3827,7 +3985,7 @@ export default function MipPpaApp() {
         .recharts-tooltip-label{ white-space:normal!important; overflow-wrap:anywhere; }
         .recharts-tooltip-item{ white-space:normal!important; }
         /* Infobulle : le cadre était déjà traité, mais Recharts fixe la
-           couleur de chaque série en style en ligne — d'où le !important. */
+           couleur de chaque série en style en ligne, d'où le !important. */
         .sombre .recharts-default-tooltip{background:#152230!important;border-color:#2b3d50!important;color:#e7e5e4!important}
         .sombre .recharts-tooltip-label,
         .sombre .recharts-tooltip-item,
@@ -3840,7 +3998,7 @@ export default function MipPpaApp() {
         .page-anim { animation: pageIn .32s ease-out both; }
         .toast-anim { animation: toastIn .25s ease-out both; }
         /* Pied de page institutionnel : bandeau de certification FDFP.
-           Fond blanc permanent — l'image est fournie sur fond blanc, une
+           Fond blanc permanent : l'image est fournie sur fond blanc, une
            plaque sombre y découperait un rectangle disgracieux. */
         /* Rendu à l'intérieur de la zone de contenu : largeur identique à
            celle des cartes, sans calcul de gouttière à refaire. */
@@ -3888,7 +4046,7 @@ export default function MipPpaApp() {
         /* Les pictogrammes des rubriques n'ont PAS de couleur propre : ils
            suivent « currentColor », donc le gris du libellé, son blanc au
            survol et son blanc sur la rubrique active. Un essai en orange FDFP
-           a été fait le 2 septembre puis retiré — l'orange était déjà pris par
+           a été fait le 2 septembre puis retiré : l'orange était déjà pris par
            les intitulés de section et par le rôle, et le répéter sur neuf
            pictogrammes noyait ces repères au lieu de les servir. */
         * { scrollbar-width: thin; }
@@ -3902,17 +4060,17 @@ export default function MipPpaApp() {
               second « cadre-logo » superposait deux plaques et deux marges. */}
           <LogoFDFP h={30} />
           <div className="min-w-0">
-            {/* Le sigle porte SEUL l'orange FDFP — la seconde couleur du logo,
+            {/* Le sigle porte SEUL l'orange FDFP : la seconde couleur du logo,
                 celle qui souligne « FDFP » sur la plaque juste à gauche. Son
                 développé passe en blanc : deux lignes du même orange faisaient
                 un pavé, et c'est le sigle qui doit accrocher l'œil.
                 ⚠ LA CLASSE « text-stone-400 » DU DÉVELOPPÉ A ÉTÉ RETIRÉE, pas
                 seulement doublée : le bloc du mode nuit porte
                 « .sombre .text-stone-400{…!important} », et un « !important »
-                l'emporte sur un style en ligne — la couleur aurait tenu en mode
+                l'emporte sur un style en ligne, la couleur aurait tenu en mode
                 clair et sauté en mode nuit. Rien ne vise « text-white », qui
                 peut donc rester une classe.
-                Le développé garde sa graisse d'origine — normale : le blanc
+                Le développé garde sa graisse d'origine, normale : le blanc
                 suffit à le rendre lisible, la mettre en demi-gras l'aurait fait
                 concurrencer le sigle.
                 Contraste du développé sur le fond #0d2233 : 6,4 pour 1 en gris
@@ -3926,7 +4084,7 @@ export default function MipPpaApp() {
           {NAV.map((g) => (
             <div key={g.section}>
               {/* « Pilotage », « Aide », « Administration ». Le gris n° 500 sur
-                  le bleu nuit de la barre ne donnait que 3,4 pour 1 — sous le
+                  le bleu nuit de la barre ne donnait que 3,4 pour 1 : sous le
                   seuil de 4,5 exigé d'un petit texte, et cela se voyait : les
                   intitulés de section s'effaçaient. En orange FDFP : 7,8.
                   Même remarque que ci-dessus sur la classe retirée. */}
@@ -3963,6 +4121,15 @@ export default function MipPpaApp() {
             <button onClick={() => setMenuMobile(true)} className="md:hidden text-stone-600 shrink-0" title="Ouvrir le menu">
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
             </button>
+            {/* La flèche n'apparaît QUE s'il y a un écran où revenir. Une
+                flèche toujours présente mais parfois inerte se retient comme
+                « ce bouton ne marche pas », et l'on cesse de s'en servir. */}
+            {profondeur > 0 && (
+              <button onClick={revenir} className="shrink-0 text-stone-600 hover:text-stone-900 -ml-1 p-1 rounded-lg hover:bg-stone-100"
+                title="Revenir à l'écran précédent." aria-label="Revenir à l'écran précédent">
+                <Icone n="flecheGauche" t={20} />
+              </button>
+            )}
             <div className="min-w-0">
               <h1 className="bandeau-titre">{titres[page][0]}</h1>
               <div className="bandeau-sous-titre">{titres[page][1]}</div>
@@ -3972,7 +4139,7 @@ export default function MipPpaApp() {
             <HorlogeUTC />
             <button onClick={() => setPage("guide")} className="hidden sm:flex text-sm text-stone-600 hover:text-stone-900 items-center gap-1.5" title="Ouvrir le guide d'utilisation."><Icone n="livre" t={16} /> Guide</button>
             {/* Masque de présentation, ouvert aux deux rôles d'administration.
-                L'état actif est ANNONCÉ en toutes lettres — un masque qu'on
+                L'état actif est ANNONCÉ en toutes lettres : un masque qu'on
                 oublie d'avoir posé fait lire de faux noms pendant une réunion
                 de travail. */}
             {P.masqueOrgs && (
@@ -4025,7 +4192,11 @@ export default function MipPpaApp() {
           </div>
         </header>
 
-        <main key={page + (evalId || "")} className="zone-contenu page-anim flex-1 p-4 md:p-6 space-y-5 max-w-5xl w-full mx-auto min-w-0">
+        {/* « tabIndex={-1} » : la zone de contenu n'est pas dans l'ordre de
+            tabulation, mais elle peut RECEVOIR le focus par programme. C'est le
+            point de repli quand une fenêtre modale se ferme et que le bouton
+            qui l'avait ouverte n'existe plus. */}
+        <main key={page + (evalId || "")} tabIndex={-1} className="zone-contenu page-anim flex-1 p-4 md:p-6 space-y-5 max-w-5xl w-full mx-auto min-w-0 outline-none">
           {P.lectureSeule && <div className="rounded-xl px-4 py-2.5 text-sm flex items-center gap-2" style={{ background: "#e0f0fb", color: "#0d3b57" }}><Icone n="oeil" t={16} /> Mode consultation</div>}
 
           {/* =========== TABLEAU DE BORD =========== */}
@@ -4057,7 +4228,7 @@ export default function MipPpaApp() {
             </section>
 
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
-              <h3 className="font-bold">Niveau de performance moyenne par dimension</h3>
+              <h2 className="font-bold">Niveau de performance moyenne par dimension</h2>
               <p className="text-sm text-stone-500 mb-2">Profil consolidé du portefeuille PPA en cours.</p>
               <ResponsiveContainer width="100%" height={300}>
                 {/* Le rayon est volontairement en retrait du cadre : c'est la
@@ -4069,9 +4240,9 @@ export default function MipPpaApp() {
                   {/* Graduations de l'échelle. Elles avaient été masquées parce
                       que Recharts les empile le long d'un rayon, par-dessus le
                       polygone : « 25 50 75 100 » devenait illisible sur la
-                      surface colorée. Le remède n'est pas de les retirer — sans
+                      surface colorée. Le remède n'est pas de les retirer (sans
                       elles, on voit une forme mais on ne sait pas à quelle
-                      hauteur elle se situe — mais de les détourer : chaque
+                      hauteur elle se situe) mais de les détourer : chaque
                       valeur est posée sur une pastille claire qui la sépare du
                       fond, quel qu'il soit. */}
                   <PolarRadiusAxis domain={[0, 100]} tickCount={5} axisLine={false}
@@ -4087,7 +4258,7 @@ export default function MipPpaApp() {
               {/* Équivalent textuel. Recharts produit un SVG que rien
                   n'annonce : sans cette liste, la page n'expose aucun des
                   chiffres du graphique à qui ne le voit pas. « sr-only » la
-                  réserve aux lecteurs d'écran — le graphique reste seul à
+                  réserve aux lecteurs d'écran : le graphique reste seul à
                   l'affichage. */}
               <ul className="sr-only">
                 {radarData.map((d) => (
@@ -4105,7 +4276,7 @@ export default function MipPpaApp() {
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h3 className="font-bold">Implantation des projets</h3>
+                  <h2 className="font-bold">Implantation des projets</h2>
                   <p className="text-sm text-stone-500 mb-2">
                     {lectureCarte === "score"
                       ? "Chaque zone prend la couleur du niveau moyen de ses projets. La taille des pastilles suit toujours le nombre de projets."
@@ -4133,7 +4304,7 @@ export default function MipPpaApp() {
                     lecture={lectureCarte} sombre={sombre}
                     surClic={(d) => setDetailLocalite(d.n)} />
                   {/* Légende. En lecture « implantation » : les huit zones et
-                      leur part du portefeuille — une couleur sans total ne se
+                      leur part du portefeuille, une couleur sans total ne se
                       lit pas. En lecture « score » : les quatre paliers du
                       modèle, plus le gris des zones non évaluées. */}
                   <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3">
@@ -4178,7 +4349,7 @@ export default function MipPpaApp() {
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h3 className="font-bold">Score moyen par secteur</h3>
+                  <h2 className="font-bold">Score moyen par secteur</h2>
                   {/* Le sous-titre reste court et constant : allongé, il pousse
                       le sélecteur à la ligne suivante et le décale à gauche.
                       L'avertissement sur les libellés abrégés est donc placé
@@ -4278,7 +4449,7 @@ export default function MipPpaApp() {
 
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div><h3 className="font-bold">Projets de formation de type apprentissage (emploi-qualification) récents</h3><p className="text-sm text-stone-500">Cliquez pour évaluer ou consulter.</p></div>
+                <div><h2 className="font-bold">Projets de formation de type apprentissage (emploi-qualification) récents</h2><p className="text-sm text-stone-500">Cliquez pour évaluer ou consulter.</p></div>
                 <button onClick={() => setPage("formations")} className="text-sm font-semibold hover:underline" style={{ color: C.vert }}>Tout voir →</button>
               </div>
               <div className="divide-y divide-stone-100 mt-2">
@@ -4299,7 +4470,7 @@ export default function MipPpaApp() {
             </section>
 
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
-              <h3 className="font-bold flex items-center gap-2"><Icone n="tendance" t={18} /> Niveaux de performance</h3>
+              <h2 className="font-bold flex items-center gap-2"><Icone n="tendance" t={18} /> Niveaux de performance</h2>
               <p className="text-sm text-stone-500 mb-3">Lecture du score global MIP-PPA (Modèle d'Indicateurs de Performance - Produit Projet Apprentissage).</p>
               <div className="flex flex-wrap gap-2">
                 {[["Insuffisant (0–40 %)", C.insuffisant], ["Moyen (40–60 %)", C.dev], ["Satisfaisant (60–80 %)", C.satisfaisant], ["Excellent (80–100 %)", C.excellent]].map(([t, c]) => (
@@ -4321,7 +4492,7 @@ export default function MipPpaApp() {
               {/* Filtres géographiques. La carte du tableau de bord montre où
                   sont les projets, mais la liste ne s'y rangeait pas : un
                   responsable d'antenne n'avait aucun moyen de n'afficher que
-                  les siens. Changer de zone remet la localité à zéro — elle
+                  les siens. Changer de zone remet la localité à zéro : elle
                   n'appartient plus forcément à la nouvelle zone. */}
               <select value={filtreZone} onChange={(e) => { setFiltreZone(e.target.value); setFiltreLocalite(""); }}
                 aria-label="Filtrer les projets par zone de couverture"
@@ -4357,7 +4528,7 @@ export default function MipPpaApp() {
               {/* ⚠ Ce bouton REMPLACE le portefeuille : il supprime en base
                   tous les projets qui ne sont pas dans le jeu de démonstration.
                   Il s'intitulait « Données démo » et son infobulle disait
-                  « Restaurer les 3 projets de démonstration » — rien n'annonçait
+                  « Restaurer les 3 projets de démonstration » : rien n'annonçait
                   une destruction, aucune confirmation n'était demandée, et il
                   était offert à tous les rôles, y compris à ceux qui n'ont pas
                   le droit de supprimer un seul projet. C'est ainsi que le
@@ -4501,7 +4672,7 @@ export default function MipPpaApp() {
                 {/* ---------- CALENDRIER DU PROJET ----------
                     Les deux dates sont FACULTATIVES : un projet s'enregistre
                     souvent avant que son calendrier ne soit arrêté. Ce qui ne
-                    l'est pas, c'est leur ordre — une fin antérieure au
+                    l'est pas, c'est leur ordre : une fin antérieure au
                     lancement fausserait la durée et les trois échéances. Le
                     « min » de l'input barre les jours impossibles dans le
                     calendrier du navigateur, et le contrôle est refait à
@@ -4556,7 +4727,7 @@ export default function MipPpaApp() {
             </div>
 
             <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden">
-              {/* Vue tableau — ordinateur / tablette large */}
+              {/* Vue tableau, ordinateur / tablette large */}
               <div className="hidden md:grid grid-cols-12 px-5 py-3 text-sm font-semibold text-stone-600 border-b border-stone-100">
                 <div className="col-span-6">Projet de formation de type apprentissage</div><div className="col-span-2">Secteur</div><div className="col-span-2">Score MIP &amp; statut</div><div className="col-span-2 text-right">Actions</div>
               </div>
@@ -4581,7 +4752,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                   </div>
                 </div>
               ))}
-              {/* Vue cartes — mobile : chaque projet entièrement visible, sans défilement horizontal */}
+              {/* Vue cartes, mobile : chaque projet entièrement visible, sans défilement horizontal */}
               <div className="md:hidden divide-y divide-stone-100">
                 {projetsFiltres.map((f) => (
                   <div key={f.id} className="p-4">
@@ -4628,15 +4799,19 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
             </div>
           ) : (<>
             <div className="flex items-center justify-between flex-wrap gap-3">
-              <button onClick={() => setEvalId(null)} className="text-sm text-stone-600 hover:text-stone-900">← Retour</button>
+              {/* Passe par l'historique, comme la flèche du bandeau : sans
+                  cela, ce bouton empilait une entrée de plus et le retour de
+                  l'appareil ramenait sur la fiche que l'on venait de quitter. */}
+              <button onClick={() => (profondeur > 0 ? revenir() : setEvalId(null))}
+                className="text-sm text-stone-600 hover:text-stone-900 flex items-center gap-1.5"><Icone n="flecheGauche" t={15} /> Retour</button>
               <div className="flex gap-3">
                 {P.fichePdf && <button onClick={() => fichePDF(fEval)} className="bg-white border border-stone-200 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-50" title="Générer la fiche d'évaluation officielle en PDF."><Icone n="telecharger" t={15} /> Fiche PDF</button>}
                 {!P.lectureSeule && <button onClick={() => notif("Évaluation enregistrée")} className="text-white px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: C.vertFonce }} title="Enregistrer l'évaluation"><Icone n="disquette" t={15} /> Enregistrer</button>}
               </div>
             </div>
 
-            {/* Bandeau centré. Il était en deux colonnes — identification à
-                gauche, score à droite — mais les deux lignes qui se sont
+            {/* Bandeau centré. Il était en deux colonnes (identification à
+                gauche, score à droite) mais les deux lignes qui se sont
                 ajoutées sous le score, couverture et marge au seuil, sont
                 trop longues pour une demi-largeur : elles débordaient sous le
                 bloc de gauche et rompaient l'alignement à droite. Tout est
@@ -4674,7 +4849,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                     de 59,6 affiché « Moyen » et un score de 60,1 affiché
                     « Satisfaisant » décrivent des projets presque identiques :
                     la frontière est conventionnelle. On l'affiche donc en crans
-                    — l'unité dans laquelle l'évaluateur agit réellement — et
+ (l'unité dans laquelle l'évaluateur agit réellement) et
                     accompagnée du maillon faible, pour que l'attention porte
                     sur la dimension à redresser et non sur le seuil à franchir.
                     Au-delà de 5 points, le palier n'est plus en jeu : rien. */}
@@ -4916,7 +5091,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
             const effectues = enrichis.filter((s) => s.statut === "effectué");
             const Pile = ({ titre, icone, liste, teinte }) => (
               <section className="bg-white rounded-2xl border border-stone-200 p-5">
-                <h3 className="font-bold flex items-center gap-2">{icone} {titre} <span className="text-xs bg-stone-100 px-2 py-0.5 rounded-full">{liste.length}</span></h3>
+                <h2 className="font-bold flex items-center gap-2">{icone} {titre} <span className="text-xs bg-stone-100 px-2 py-0.5 rounded-full">{liste.length}</span></h2>
                 {!liste.length ? <p className="text-sm text-stone-400 mt-2">Aucun élément.</p> : liste.map((s) => (
                   <div key={s.id} className="border-t border-stone-100 py-3.5 flex flex-col items-start gap-2.5 first:border-t-0 mt-1">
                     <div className="min-w-0 w-full">
@@ -4963,7 +5138,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
           {/* =========== RÉFÉRENTIEL DES INDICATEURS =========== */}
           {page === "indicateurs" && (<>
             <section className="bg-white rounded-2xl border border-stone-200 p-5">
-              <h3 className="font-bold">Lecture du score global</h3>
+              <h2 className="font-bold">Lecture du score global</h2>
               <p className="text-sm text-stone-500">Quatre niveaux d'interprétation. Pondération totale actuelle : <b style={{ color: poidsTotal === 100 ? C.excellent : C.insuffisant }}>{poidsTotal} %</b>{poidsTotal !== 100 && ". Ajustez les poids pour revenir à 100 %"}</p>
               {admin && (
                 <div className="flex flex-wrap gap-3 mt-3">
@@ -4987,7 +5162,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
 
             {P.secteurs && (
               <section className="bg-white rounded-2xl border border-stone-200 p-5">
-                <h3 className="font-bold">Secteurs, matières premières et domaines</h3>
+                <h2 className="font-bold">Secteurs, matières premières et domaines</h2>
                 <p className="text-sm text-stone-500 mb-3">Trois niveaux : le grand secteur, ses matières premières, et les domaines de chacune. Tout est modifiable, et cette hiérarchie alimente le formulaire de projet.</p>
                 {/* La hiérarchie est stockée en base : sans ce bouton, une mise
                     à jour de la nomenclature livrée avec l'application resterait
@@ -5086,7 +5261,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
               <section key={d.id} className="bg-white rounded-2xl border border-stone-200 p-5">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div>
-                    <h3 className="font-bold"><span className="text-xs font-mono text-stone-400 mr-2">{d.id}</span>{d.nom}</h3>
+                    <h2 className="font-bold"><span className="text-xs font-mono text-stone-400 mr-2">{d.id}</span>{d.nom}</h2>
                     <p className="text-sm text-stone-500">{d.desc}</p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -5161,7 +5336,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
               })}
               {/* Trou d'évaluation : l'échéance est passée et le score ne
                   repose pas encore sur tout le modèle. C'est l'alerte la plus
-                  utile au FDFP — un score partiel se lit comme un score
+                  utile au FDFP : un score partiel se lit comme un score
                   complet tant que personne ne le signale. */}
               {stats.trousEval.map((t) => (
                 <section key={"trou-" + t.formation.id} className="bg-white rounded-2xl border-l-4 border border-stone-200 p-5" style={{ borderLeftColor: C.gold }}>
@@ -5205,7 +5380,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
           {page === "exports" && (<>
             {(P.exportXlsx || P.exportCsv) && (
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
-              <h3 className="font-bold">Export consolidé</h3>
+              <h2 className="font-bold">Export consolidé</h2>
               <p className="text-sm text-stone-500 mb-4">Tous les projets de formation de type apprentissage et leurs indicateurs, en une feuille.</p>
               <div className="flex flex-wrap items-center gap-3">
                 {P.exportXlsx && (
@@ -5241,7 +5416,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                 consultation. */}
             {P.sauvegarde && (
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
-              <h3 className="font-bold">Sauvegarde et restauration</h3>
+              <h2 className="font-bold">Sauvegarde et restauration</h2>
               <p className="text-sm text-stone-500 mb-4">
                 Copie <b>complète et fidèle</b> : projets, notes de chaque indicateur, suivis,
                 jalons figés et référentiel. C'est ce fichier, et non le classeur Excel, qui permet de tout
@@ -5301,7 +5476,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                 document de pilotage réservé au FDFP. */}
             {P.fichePdf && (
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
-              <h3 className="font-bold">Fiches d'évaluation PDF</h3>
+              <h2 className="font-bold">Fiches d'évaluation PDF</h2>
               <p className="text-sm text-stone-500">Une fiche officielle par projet de formation de type apprentissage.</p>
               <div className="divide-y divide-stone-100 mt-2">
                 {formationsVisibles.map((f) => (
@@ -5327,11 +5502,21 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
             <section className="rounded-2xl p-7 text-white" style={{ background: "linear-gradient(120deg,#0e3c60,#1d6fa8)" }}>
               <span className="text-xs font-semibold px-3 py-1 rounded-full text-stone-900" style={{ background: C.gold }}>Documentation officielle</span>
               <h2 className="text-3xl font-bold mt-3">Bienvenue sur MIP-PPA</h2>
-              <p className="mt-2 text-sky-100">Ce guide est conçu pour <b>tout public</b> : agents du FDFP, référents en entreprise, formateurs. Aucune connaissance technique n'est requise (prise en main ≈ 10 minutes).</p>
+              {/* Le chapeau s'adresse au lecteur, pas à « tout public ». Il
+                  disait « agents du FDFP, référents en entreprise,
+                  formateurs » à un promoteur qui n'est aucun des trois.
+                  Il annonce désormais ce que le lecteur PEUT FAIRE, sans jamais
+                  évoquer ce qui ne lui est pas ouvert : un guide n'a pas à
+                  parler des portes fermées. */}
+              <p className="mt-2 text-sky-100">
+                Vous êtes connecté en tant {elider(roleActif)}<b>{roleActif}</b>{session?.org ? <> pour <b>{session.org}</b></> : null}.
+                {" "}Voici ce que votre accès vous permet de faire, écran par écran.
+                {" "}Aucune connaissance technique n'est requise (lecture ≈ {P.lectureSeule ? "5" : "10"} minutes).
+              </p>
             </section>
             {/* ---------- GUIDE CONSTRUIT À PARTIR DES DROITS ----------
-                Il existait deux textes figés — « lecture seule » et « le
-                reste » — et les deux mentaient. Le premier annonçait un export
+                Il existait deux textes figés (« lecture seule » et « le
+                reste ») et les deux mentaient. Le premier annonçait un export
                 Excel que ni le promoteur ni l'opérateur ne possèdent, et un
                 palier « En développement » qui n'existe plus depuis que
                 l'échelle dit « Moyen ». Le second, servi indistinctement à
@@ -5342,7 +5527,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                 absent : le lecteur croit avoir mal cherché. Chaque rubrique
                 est donc conditionnée par le droit qu'elle décrit, et la
                 numérotation se calcule à l'affichage plutôt que d'être écrite
-                dans les titres — sans quoi masquer une rubrique laisserait un
+                dans les titres, sans quoi masquer une rubrique laisserait un
                 trou dans la suite des numéros. */}
             {(() => {
               const g = [];
@@ -5350,7 +5535,12 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
 
               g.push(["Votre accès", `Votre profil est « ${roleActif} ». `
                 + (P.portee === "entreprise"
-                  ? "Vous voyez les projets dont votre organisation est promoteur ou opérateur, et eux seuls. "
+                  /* L'organisation est NOMMÉE : « votre organisation » oblige
+                     le lecteur à deviner laquelle la plateforme lui a
+                     attribuée, et c'est justement ce qu'il faut vérifier,
+                     c'est elle qui décide de ce qu'il voit. */
+                  ? `Vous voyez les projets dont ${session?.org ? `« ${session.org} »` : "votre organisation"} est promoteur ou opérateur, et eux seuls. `
+                    + "Si cette organisation n'est pas la bonne, signalez-le à l'administrateur de la plateforme : elle seule fixe votre périmètre. "
                   : "Vous voyez l'ensemble du portefeuille. ")
                 + (P.lectureSeule
                   ? "Votre accès est en consultation : la saisie et l'évaluation sont assurées par les équipes du FDFP. Cette règle est appliquée par la base de données elle-même, pas seulement par les boutons de l'écran."
@@ -5374,6 +5564,21 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                   + "Attention : ce réglage n'est qu'un affichage. Les vrais noms restent dans la base et dans les sauvegardes ; ce n'est pas une anonymisation des données. Il ne vaut que pour votre écran et ne change rien pour les autres comptes."]);
               }
 
+              /* La page Projets était la seule rubrique décrite UNIQUEMENT à
+                 qui peut écrire. L'agent FDFP, le promoteur et l'opérateur y
+                 ont pourtant accès : ils y cherchent, y filtrent et en
+                 exportent, et le guide ne leur en disait pas un mot. Deux
+                 rédactions, selon que l'on peut modifier ou seulement lire. */
+              if (P.creerFormation || P.editerFormation) {
+                g.push(["Gérer les projets", "Créez ou modifiez un projet depuis la page Projets : intitulé, promoteur, opérateur, bénéficiaire, secteur, zone, localité, apprenants, budget en FCFA, statut, et les dates de lancement et de fin. Les deux dates sont facultatives, mais la date de fin commande les échéances de suivi : renseignez-la dès qu'elle est connue."
+                  + (P.supprimerFormation ? " Un projet supprimé part à la corbeille et reste restaurable depuis la page Projets." : "")]);
+              } else if ((P.pages || []).includes("formations")) {
+                g.push(["Consulter les projets", "La page Projets liste "
+                  + (P.portee === "entreprise" ? "les projets qui concernent votre organisation" : "tout le portefeuille")
+                  + ". Le champ de recherche porte à la fois sur l'intitulé, l'entreprise et le secteur ; les deux listes déroulantes filtrent par zone puis par localité, et le compteur au-dessus de la liste rappelle combien de projets répondent aux critères. "
+                  + "Chaque ligne ouvre la fiche du projet, avec son score, ses indicateurs et ses jalons de suivi."]);
+              }
+
               if ((P.pages || []).includes("evaluation")) {
                 g.push([P.evalDims === "toutes" ? "Évaluer un projet" : "Lire une évaluation",
                 "Le modèle MIP-PPA mesure la valeur d'un projet par 5 dimensions et 23 indicateurs notés de 0 à 4. "
@@ -5382,11 +5587,6 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                   : "Ouvrez un projet depuis la page Projets pour consulter sa fiche. ")
                 + "Le score global va de 0 à 100 % et se lit sur quatre paliers : Insuffisant (0–40 %), Moyen (40–60 %), Satisfaisant (60–80 %), Excellent (80–100 %). "
                 + "La fiche affiche aussi la COUVERTURE du modèle : un score de 100 % obtenu sur 4 indicateurs sur 23 n'a pas la même portée qu'un score complet, et la mention le dit."]);
-              }
-
-              if (P.creerFormation || P.editerFormation) {
-                g.push(["Gérer les projets", "Créez ou modifiez un projet depuis la page Projets : intitulé, promoteur, opérateur, bénéficiaire, secteur, zone, localité, apprenants, budget en FCFA, statut, et les dates de lancement et de fin. Les deux dates sont facultatives, mais la date de fin commande les échéances de suivi : renseignez-la dès qu'elle est connue."
-                  + (P.supprimerFormation ? " Un projet supprimé part à la corbeille et reste restaurable depuis la page Projets." : "")]);
               }
 
               if ((P.pages || []).includes("suivi")) {
@@ -5425,7 +5625,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
 
               return g.map(([t, txt], i) => (
                 <section key={t} className="bg-white rounded-2xl border border-stone-200 p-6">
-                  <h3 className="font-bold mb-2">{i + 1}. {t}</h3>
+                  <h2 className="font-bold mb-2">{i + 1}. {t}</h2>
                   <p className="text-sm text-stone-600 leading-relaxed">{txt}</p>
                 </section>
               ));
@@ -5436,7 +5636,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
           {page === "users" && (P.users ? (<>
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-                <h3 className="font-bold">
+                <h2 className="font-bold">
                   Comptes ({comptes.length})
                   {/* Le compte des connectés n'est montré qu'à l'administrateur
                       lead : savoir qui est en ligne est une information de
@@ -5446,30 +5646,33 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                       · {Object.keys(connectes).length} connecté{Object.keys(connectes).length > 1 ? "s" : ""}
                     </span>
                   )}
-                </h3>
+                </h2>
                 <div className="flex items-center gap-2">
                   <button onClick={() => { chargerComptes(); chargerConnexions(); }} title="Recharger la liste des comptes et le journal des connexions depuis la base."
                     className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50 flex items-center gap-1.5"><Icone n="rotation" t={14} /> Actualiser</button>
-                  <select defaultValue="" onChange={(e) => { if (e.target.value === "deconnexion") { if (sb) sb.auth.signOut(); setSession(null); } e.target.value = ""; }}
-                    className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg bg-white cursor-pointer" title="Options du compte">
-                    <option value="" disabled>Options ▾</option>
-                    <option value="deconnexion">Déconnexion</option>
-                  </select>
+                  {/* C'était une liste déroulante « Options ▾ » qui ne
+                      sélectionnait rien : son seul choix déclenchait une
+                      déconnexion. Annoncée comme une liste, elle promettait un
+                      réglage et fermait la session. Une action se commande par
+                      un bouton, et il porte le nom de ce qu'il fait. */}
+                  <button onClick={() => { if (sb) sb.auth.signOut(); setSession(null); }}
+                    title="Fermer votre session sur cet appareil."
+                    className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-red-50 text-red-600 flex items-center gap-1.5"><Icone n="deconnexion" t={14} /> Déconnexion</button>
                 </div>
               </div>
               <p className="text-sm text-stone-500 mb-4">Sélectionnez un rôle pour chaque utilisateur. Les comptes « En attente » n'ont aucun accès tant qu'aucun rôle ne leur est attribué. Seul l'administrateur lead peut modifier les rôles.</p>
               {/* Une source de dates manque. On le dit UNE fois, ici, en une
-                  ligne — plutôt que de laisser la fonction manquer en silence,
+                  ligne : plutôt que de laisser la fonction manquer en silence,
                   ou d'ouvrir une carte pour ça. Le message NOMME le ou les
                   scripts qui manquent : « ça ne marche pas » n'aide personne.
                   Sans la phase 10, l'affichage fonctionne mais ne remonte pas
-                  avant la phase 9 — c'est ce cas-là qui remplit l'écran de
+                  avant la phase 9 : c'est ce cas-là qui remplit l'écran de
                   « Connexion non enregistrée ». */}
               {roleActif === "Administrateur lead" && scriptsConnexionManquants.length > 0 && (
                 <p className="text-sm mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-amber-900">
                   {/* Deux formulations, et l'ordre des tests compte : quand le
                       journal manque aussi, parler de dates « antérieures à son
-                      installation » n'aurait aucun sens — il n'est pas
+                      installation » n'aurait aucun sens, il n'est pas
                       installé du tout. */}
                   {connexions === null
                     ? "La date de dernière connexion ne peut pas encore s'afficher sous chaque compte."
@@ -5520,7 +5723,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                           )}
                         </div>
                         {/* Dernière connexion. Elle n'a de sens que pour un
-                            compte qui n'est pas là en ce moment — la pastille
+                            compte qui n'est pas là en ce moment : la pastille
                             « En ligne » dit mieux, et depuis quand.
                             ⚠ « Connexion non enregistrée » et non « jamais
                             connecté » : les deux sources ont chacune leur
@@ -5594,7 +5797,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
             </section>
 
             <section className="bg-white rounded-2xl border border-stone-200 p-6">
-              <h3 className="font-bold mb-1"><Icone n="plus" t={16} /> Inviter un nouvel utilisateur</h3>
+              <h2 className="font-bold mb-1"><Icone n="plus" t={16} /> Inviter un nouvel utilisateur</h2>
               <p className="text-sm text-stone-600 mb-4">Saisissez l'email d'un partenaire : un email d'invitation contenant le lien de la plateforme lui sera envoyé directement (comme l'email de confirmation d'inscription). Après inscription, il apparaîtra ci-dessus en statut « En attente », prêt à recevoir son rôle.</p>
               <div className="flex flex-wrap items-end gap-3">
                 <label className="text-sm font-semibold text-stone-800 flex-1 min-w-[220px]">Email du partenaire
@@ -5626,14 +5829,37 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
               cartes qui le précèdent. */}
           <PiedCertification />
         </main>
-        <footer className="text-center text-[11px] text-stone-400 pb-5">
-          Prototype MIP-PPA · PFE ESA / INP-HB × FDFP · EHOUNI Luc-Emmanuel Behira Levy · Données de démonstration
+        {/* Signature de bas de page.
+            Elle était une seule chaîne dans un bloc sans gouttières : sur un
+            téléphone, elle touchait les deux bords et se coupait n'importe où,
+            « EHOUNI Luc-Emmanuel Behira » restant sur une ligne et « Levy » sur
+            la suivante. Un nom propre coupé en deux se lit comme une faute.
+            Chaque mention est donc insécable et c'est la disposition qui passe
+            à la ligne ENTRE elles.
+            Le point médian est attaché à la mention QUI SUIT, à l'intérieur du
+            même bloc insécable : une ligne ne peut donc pas se terminer par un
+            séparateur orphelin, et la ligne suivante s'ouvre sur « · » comme
+            une continuation.
+            Les gouttières et la largeur maximale reprennent celles de la zone
+            de contenu, pour que la signature s'aligne sur les cartes. */}
+        <footer className="w-full max-w-5xl mx-auto px-4 md:px-6 pb-5">
+          <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-center text-[11px] text-stone-400">
+            {["Prototype MIP-PPA", "PFE ESA / INP-HB × FDFP",
+              "EHOUNI Luc-Emmanuel Behira Levy", "Données de démonstration"].map((mention, i) => (
+              <span key={mention} className="whitespace-nowrap">
+                {i > 0 && <span aria-hidden="true" className="mr-2 text-stone-300">·</span>}
+                {mention}
+              </span>
+            ))}
+          </p>
         </footer>
       </div>
 
       {/* ---------- VISIONNEUSE DE DOCUMENT ---------- */}
       {docVu && (
-        <div className="fixed inset-0 z-[60] flex flex-col" style={{ background: "rgba(8,20,30,.92)" }}
+        <div ref={refDocVu} role="dialog" aria-modal="true" tabIndex={-1}
+          aria-label={"Document joint : " + (docVu.nom || "sans nom")}
+          className="fixed inset-0 z-[60] flex flex-col outline-none" style={{ background: "rgba(8,20,30,.92)" }}
           onClick={(e) => e.target === e.currentTarget && setDocVu(null)}>
           <div className="flex items-center justify-between px-5 py-3 text-white shrink-0">
             <div className="min-w-0">
@@ -5683,10 +5909,11 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(10,25,38,.55)" }}
             onClick={(e) => e.target === e.currentTarget && setDetailStat(null)}>
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl p-5 md:p-7 page-anim max-h-[92vh] overflow-y-auto">
+            <div ref={refDetailStat} role="dialog" aria-modal="true" tabIndex={-1} aria-label={entetes[0]}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl p-5 md:p-7 page-anim max-h-[92vh] overflow-y-auto outline-none">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h3 className="text-xl font-bold break-words">{entetes[0]}</h3>
+                  <h2 className="text-xl font-bold break-words">{entetes[0]}</h2>
                   <p className="text-sm text-stone-500 break-words">{entetes[1]}</p>
                 </div>
                 <button onClick={() => setDetailStat(null)} className="text-stone-400 hover:text-stone-700 shrink-0" title="Fermer" aria-label="Fermer"><Icone n="fermer" t={18} /></button>
@@ -5732,10 +5959,11 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
       {corbeilleOuverte && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(15,23,32,.55)" }}
           onClick={(e) => e.target === e.currentTarget && setCorbeilleOuverte(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto p-5">
+          <div ref={refCorbeille} role="dialog" aria-modal="true" tabIndex={-1} aria-label="Corbeille des projets supprimés"
+            className="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto p-5 outline-none">
             <div className="flex items-start justify-between gap-3 mb-1">
               <div className="min-w-0">
-                <h3 className="font-bold">Corbeille</h3>
+                <h2 className="font-bold">Corbeille</h2>
                 <p className="text-sm text-stone-500">
                   {corbeille.length} projet{corbeille.length > 1 ? "s" : ""} retiré{corbeille.length > 1 ? "s" : ""} du portefeuille.
                   Rien n'est effacé : la restauration remet le projet et ses suivis en place.
@@ -5779,10 +6007,11 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(10,25,38,.55)" }}
             onClick={(e) => e.target === e.currentTarget && setDetailLocalite(null)}>
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl p-5 md:p-7 page-anim max-h-[92vh] overflow-y-auto">
+            <div ref={refDetailLocalite} role="dialog" aria-modal="true" tabIndex={-1} aria-label={"Projets à " + detailLocalite}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl p-5 md:p-7 page-anim max-h-[92vh] overflow-y-auto outline-none">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h3 className="text-xl font-bold break-words">{detailLocalite}</h3>
+                  <h2 className="text-xl font-bold break-words">{detailLocalite}</h2>
                   <p className="text-sm text-stone-500 break-words">
                     {dep ? `${dep.r} · rattachée à ${dep.z}.` : "Localité hors nomenclature."}
                   </p>
@@ -5830,9 +6059,10 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
       {changeMdp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(10,25,38,.55)" }}
           onClick={(e) => e.target === e.currentTarget && setChangeMdp(null)}>
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-5 md:p-7 page-anim">
+          <div ref={refChangeMdp} role="dialog" aria-modal="true" tabIndex={-1} aria-label="Changer mon mot de passe"
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-5 md:p-7 page-anim outline-none">
             <div className="flex items-start justify-between">
-              <h3 className="text-xl font-bold">Changer mon mot de passe</h3>
+              <h2 className="text-xl font-bold">Changer mon mot de passe</h2>
               <button onClick={() => setChangeMdp(null)} className="text-stone-400 hover:text-stone-700" title="Fermer" aria-label="Fermer"><Icone n="fermer" t={18} /></button>
             </div>
             <p className="text-sm text-stone-500 mt-1">Compte {session?.email}. Saisissez votre mot de passe actuel, puis deux fois le nouveau.</p>
@@ -5841,7 +6071,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                 déverrouillé quelques secondes suffisait à s'approprier le
                 compte : « updateUser » ne vérifie rien, il fait confiance à la
                 session ouverte. On revalide donc l'identité avec
-                « signInWithPassword » avant d'écrire — c'est le seul moyen,
+                « signInWithPassword » avant d'écrire : c'est le seul moyen,
                 côté client, de prouver que la personne devant l'écran est bien
                 celle qui a ouvert la session. */}
             <label className="block text-sm font-semibold text-stone-800 mt-4">Mot de passe actuel <span className="text-red-500">*</span>
@@ -5890,9 +6120,10 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
       {dimEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(10,25,38,.55)" }}
           onClick={(e) => e.target === e.currentTarget && setDimEdit(null)}>
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-5 md:p-7 page-anim max-h-[92vh] overflow-y-auto">
+          <div ref={refDimEdit} role="dialog" aria-modal="true" tabIndex={-1} aria-label="Modifier la dimension"
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-5 md:p-7 page-anim max-h-[92vh] overflow-y-auto outline-none">
             <div className="flex items-start justify-between">
-              <h3 className="text-xl font-bold">Modifier la dimension</h3>
+              <h2 className="text-xl font-bold">Modifier la dimension</h2>
               <button onClick={() => setDimEdit(null)} className="text-stone-400 hover:text-stone-700" title="Fermer" aria-label="Fermer"><Icone n="fermer" t={18} /></button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
@@ -5930,9 +6161,10 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
       {indEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(10,25,38,.55)" }}
           onClick={(e) => e.target === e.currentTarget && setIndEdit(null)}>
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-5 md:p-7 page-anim max-h-[92vh] overflow-y-auto">
+          <div ref={refIndEdit} role="dialog" aria-modal="true" tabIndex={-1} aria-label="Modifier l'indicateur"
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-5 md:p-7 page-anim max-h-[92vh] overflow-y-auto outline-none">
             <div className="flex items-start justify-between">
-              <h3 className="text-xl font-bold">Modifier l'indicateur</h3>
+              <h2 className="text-xl font-bold">Modifier l'indicateur</h2>
               <button onClick={() => setIndEdit(null)} className="text-stone-400 hover:text-stone-700" title="Fermer" aria-label="Fermer"><Icone n="fermer" t={18} /></button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
@@ -5970,10 +6202,11 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
       {suiviEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(10,25,38,.55)" }}
           onClick={(e) => e.target === e.currentTarget && setSuiviEdit(null)}>
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-5 md:p-7 page-anim max-h-[92vh] overflow-y-auto">
+          <div ref={refSuiviEdit} role="dialog" aria-modal="true" tabIndex={-1} aria-label={"Suivi " + suiviEdit.jalon}
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-5 md:p-7 page-anim max-h-[92vh] overflow-y-auto outline-none">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-xl font-bold">Suivi {suiviEdit.jalon}</h3>
+                <h2 className="text-xl font-bold">Suivi {suiviEdit.jalon}</h2>
                 <p className="text-sm text-stone-500 mt-0.5">{suiviEdit.titreF}</p>
               </div>
               <button onClick={() => setSuiviEdit(null)} className="text-stone-400 hover:text-stone-700" title="Fermer" aria-label="Fermer"><Icone n="fermer" t={18} /></button>

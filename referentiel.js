@@ -1,4 +1,4 @@
-/* referentiel.js — Le vocabulaire métier de la plateforme.
+/* referentiel.js : Le vocabulaire métier de la plateforme.
  *
  * Ce que le FDFP évalue (les 5 dimensions et leurs 23 indicateurs), avec quoi
  * il le range (secteurs, matières premières, domaines), où il opère (les huit
@@ -7,8 +7,8 @@
  *
  * Sorti d'« App.jsx » pour la même raison que « calculs.js » et
  * « geo-civ.js » : ce sont des données et des fonctions pures, sans état ni
- * rendu. Elles se lisent, se relisent et se discutent — un référentiel se
- * défend en soutenance — sans avoir à traverser trois mille lignes
+ * rendu. Elles se lisent, se relisent et se discutent (un référentiel se
+ * défend en soutenance) sans avoir à traverser trois mille lignes
  * d'interface. La contrainte du dépôt est « à plat », c'est-à-dire sans
  * sous-dossier ; elle n'a jamais voulu dire « un seul fichier ».
  *
@@ -155,10 +155,10 @@ export const IMPLANTATIONS = ["Siège Abidjan", ...ANTENNES_FDFP.map((a) => `Ant
    d'union ni l'apostrophe : le document de la DACD écrit « SAN PEDRO » et
    « M'BENGUE » là où l'application écrit « San-Pédro » et « M'Bengué ». Sans
    cette tolérance, les deux formes n'étaient pas reconnues comme une seule, et
-   un projet repris sous la forme du document restait hors nomenclature —
+   un projet repris sous la forme du document restait hors nomenclature :
    invisible aux filtres, absent de la carte. */
 /* Forme pivot d'un nom propre : sans espaces, traits d'union ni apostrophes,
-   en minuscules. Sortie de « memeNom » pour servir aussi de CLÉ — deux
+   en minuscules. Sortie de « memeNom » pour servir aussi de CLÉ : deux
    écritures d'une même organisation doivent tomber sur la même entrée. */
 export const clePivot = (x) => String(x == null ? "" : x)
   .replace(/[\s\-'’.]+/g, "")
@@ -179,10 +179,10 @@ export const memeNom = (a, b) => clePivot(a) === clePivot(b);
    protection qui n'existe pas.
 
    Deux propriétés le rendent utilisable :
-     - il est STABLE — une même organisation reçoit la même étiquette partout,
+     - il est STABLE, une même organisation reçoit la même étiquette partout,
        si bien que « Promoteur 2 » sur deux projets désigne bien la même
        entreprise, et que la lecture croisée reste possible ;
-     - il suit le RÔLE de première apparition — une entreprise qui est son
+     - il suit le RÔLE de première apparition, une entreprise qui est son
        propre bénéficiaire reste « Promoteur 2 » dans la ligne bénéficiaire,
        ce qui préserve l'information « c'est la même personne morale ».
    L'ordre de parcours est celui de la liste, puis promoteur, opérateur,
@@ -226,7 +226,7 @@ export const normaliserRegion = (r) => {
   if (!v || IMPLANTATIONS.includes(v)) return v;
   const nu = v.replace(/^(si[eè]ge|antenne)\s*(d[eu']\s*)?/i, "").trim();
   const memeMot = (a, b) => memeNom(a, b);
-  /* « SIEGE » tout seul — l'intitulé de la colonne dans le tableau B du
+  /* « SIEGE » tout seul : l'intitulé de la colonne dans le tableau B du
      document de la DACD. Il n'y a qu'un siège, et il est à Abidjan. */
   if (!nu && /^si[eè]ge/i.test(v)) return "Siège Abidjan";
   if (memeMot(nu, "Abidjan")) return "Siège Abidjan";
@@ -237,13 +237,13 @@ export const normaliserRegion = (r) => {
 // ----------------- LOCALITÉS (champ « Localité ») ----------------
 // Une zone n'est pas un point : c'est un ensemble de départements. Le champ
 // « Localité » désigne celui où le projet se déroule réellement, ce que la
-// zone seule ne dit pas — huit implantations pour 108 départements.
+// zone seule ne dit pas : huit implantations pour 108 départements.
 // La liste proposée est donc toujours celle de la zone choisie, jamais les
 // 108 : on ne peut pas se tromper d'antenne en choisissant sa localité.
 /* Deux notions à ne pas confondre, et c'est la distinction du FDFP lui-même :
-     — la ZONE d'occupation couvre tout le territoire. Chaque département
+     - la ZONE d'occupation couvre tout le territoire. Chaque département
        relève d'une antenne ou du Siège ; c'est ce que la carte colorie.
-     — les VILLES CIBLES (« t ») sont celles que le document de la DACD nomme,
+     - les VILLES CIBLES (« t ») sont celles que le document de la DACD nomme,
        là où le FDFP intervient effectivement. Ce sont elles, et elles seules,
        qui sont proposées à la saisie.
    Un département sans ville cible appartient donc bien à une antenne : il est
@@ -283,7 +283,7 @@ export const normaliserLocalite = (loc, zone) => {
 
 /* Formulaire de projet à l'état neuf. Une fonction, pas un objet partagé :
    quatre endroits le réinitialisent (ouverture, création, modification,
-   état initial) et ils écrivaient jusqu'ici quatre copies du même littéral —
+   état initial) et ils écrivaient jusqu'ici quatre copies du même littéral,
    de quoi oublier un champ dans l'une d'elles en en ajoutant un. */
 export const PROJET_VIERGE = () => ({
   titre: "", entreprise: "", operateur: "", beneficiaire: "",
@@ -324,12 +324,12 @@ export const PERMS = {
   "Administrateur FDFP":     { masqueOrgs: true,  pages: ["dashboard", "formations", "evaluation", "suivi", "indicateurs", "alertes", "exports", "guide"],          evalDims: "toutes", creerFormation: true,  editerFormation: true,  supprimerFormation: false, referentiel: true,  secteurs: false, users: false, fichePdf: true,  exportXlsx: true,  exportCsv: true,  sauvegarde: true,  suivisJalons: "tous", suiviValider: true,  portee: "tous" },
   "Agent FDFP":              { masqueOrgs: false, pages: ["dashboard", "formations", "evaluation", "suivi", "indicateurs", "alertes", "exports", "guide"],          evalDims: "toutes", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, fichePdf: true,  exportXlsx: true,  exportCsv: true,  sauvegarde: false,  suivisJalons: "tous", suiviValider: true,  portee: "tous" },
   "Promoteur":               { masqueOrgs: false, pages: ["dashboard", "formations", "evaluation", "suivi", "exports", "guide"],                          evalDims: "aucune", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, fichePdf: true,  exportXlsx: false, exportCsv: true, sauvegarde: false,  suivisJalons: "tous", suiviValider: false, portee: "entreprise", lectureSeule: true },
-  /* OPÉRATEUR — aligné sur le Promoteur, fiche PDF comprise.
+  /* OPÉRATEUR : aligné sur le Promoteur, fiche PDF comprise.
      Deux corrections successives, et la seconde explique la première.
      1. Il portait « exportCsv: true » sans avoir la page « exports » : le
         droit ne s'exerçait nulle part.
      2. Il gardait « fichePdf: false » alors que le CSV lui donnait DÉJÀ les
-        mêmes chiffres — score par dimension, score global, niveau. La
+        mêmes chiffres, score par dimension, score global, niveau. La
         restriction ne protégeait donc aucune information, elle retirait
         seulement la mise en forme. Or l'opérateur est JUGÉ par cette fiche :
         la dimension « Efficacité pédagogique » pèse 25 % du modèle et ses six
@@ -341,7 +341,7 @@ export const PERMS = {
      Conséquence assumée : Promoteur et Opérateur portent désormais des droits
      RIGOUREUSEMENT identiques. Le cloisonnement ne passe pas par le rôle mais
      par l'organisation ; le rôle documente qui est la personne. Les deux
-     entrées restent distinctes pour que la matrice puisse diverger plus tard —
+     entrées restent distinctes pour que la matrice puisse diverger plus tard :
      notamment si l'opérateur devait un jour saisir la seule dimension
      pédagogique, ce qui supposerait de rouvrir l'écriture côté RLS. */
   "Opérateur":               { masqueOrgs: false, pages: ["dashboard", "formations", "evaluation", "suivi", "exports", "guide"],                          evalDims: "aucune", creerFormation: false, editerFormation: false, supprimerFormation: false, referentiel: false, secteurs: false, users: false, fichePdf: true,  exportXlsx: false, exportCsv: true, sauvegarde: false, suivisJalons: "tous", suiviValider: false, portee: "entreprise", lectureSeule: true },

@@ -1,9 +1,9 @@
-/* geo-civ-traces.js — Les dessins de la carte, séparés de la nomenclature.
+/* geo-civ-traces.js : Les dessins de la carte, séparés de la nomenclature.
  *
  * POURQUOI DEUX FICHIERS
  *   « geo-civ.js » sert partout : il porte les noms de localité, leur zone de
  *   rattachement et leur position. Il est donc chargé avec l'application.
- *   Celui-ci ne sert qu'à DESSINER, sur deux écrans seulement — le tableau de
+ *   Celui-ci ne sert qu'à DESSINER, sur deux écrans seulement : le tableau de
  *   bord et la fiche d'évaluation. Il pèse l'essentiel des données
  *   géographiques : le laisser dans le paquet initial le faisait télécharger
  *   par tout le monde, écran de connexion compris, pour un dessin que la
@@ -15,16 +15,16 @@
  *
  * ROUTES     réseau interurbain, même repère.
  *            Source : OpenStreetMap via Geofabrik (« gis_osm_roads_free_1 »),
- *            sous licence ODbL — l'attribution figure sur la carte.
+ *            sous licence ODbL, l'attribution figure sur la carte.
  *            « axes » : autoroutes et voies express (motorway, trunk).
  *            « principales » : routes nationales (primary).
  *            Tout tient dans deux tracés au lieu de mille : un <path> par
  *            tronçon aurait mis un millier de nœuds dans le DOM pour un
  *            dessin qui ne change jamais. Les tronçons plus courts qu'un
- *            demi-pixel sont écartés — le découpage OSM les multiplie sans
+ *            demi-pixel sont écartés : le découpage OSM les multiplie sans
  *            qu'ils se voient.
  *
- * Fichier engendré — ne pas modifier à la main.
+ * Fichier engendré : ne pas modifier à la main.
  */
 
 export const CONTOURS = {

@@ -1,5 +1,5 @@
 // ============================================================================
-//  Tests du modèle MIP-PPA — « npm test »
+//  Tests du modèle MIP-PPA : « npm test »
 //  ---------------------------------------------------------------------------
 //  Ces tests portent sur les quatre fonctions qui produisent les notes du
 //  modèle. Ils répondent à une question que la soutenance posera : comment
@@ -70,7 +70,7 @@ describe("scoreGlobal", () => {
     expect(scoreGlobal(REF, {})).toBeNull();
   });
 
-  it("renormalise sur les seules dimensions évaluées — d'où la couverture", () => {
+  it("renormalise sur les seules dimensions évaluées, d'où la couverture", () => {
     // La Pertinence seule (20 % du modèle) suffit à afficher 100 %.
     // Ce test verrouille le comportement : il est voulu, mais il impose
     // d'afficher la couverture partout où ce score est montré.
@@ -109,7 +109,7 @@ describe("couvertureModele", () => {
 describe("margeSeuil", () => {
   /* Cas réel : projet AGROCI du portefeuille FDFP (export du 6 août 2026).
      Notes reconstituées à partir des scores de dimension 44 / 63 / 63 / 65 / 63.
-     Score global 59,375 — à 0,625 point du palier « Satisfaisant ». */
+     Score global 59,375 : à 0,625 point du palier « Satisfaisant ». */
   const AGROCI = {
     P1: 2, P2: 2, P3: 2, P4: 1,                       // 7/16  -> 43,75 %
     EP1: 3, EP2: 3, EP3: 3, EP4: 2, EP5: 2, EP6: 2,   // 15/24 -> 62,5 %
@@ -125,7 +125,7 @@ describe("margeSeuil", () => {
     expect(m.versLeHaut).toBeCloseTo(0.625, 6);
   });
 
-  it("traduit cette distance en nombre de crans — un seul suffit pour AGROCI", () => {
+  it("traduit cette distance en nombre de crans : un seul suffit pour AGROCI", () => {
     // Le meilleur cran vaut 1,25 pt (Pertinence, Insertion ou Impact) :
     // une note qui passe de 2 à 3 sur un seul des 23 indicateurs.
     expect(margeSeuil(REF, AGROCI).crans).toBe(1);
@@ -158,7 +158,7 @@ describe("margeSeuil", () => {
 
   it("renormalise sur les seules dimensions évaluées", () => {
     // Pertinence seule notée 2/4 : score 50 %, et un cran y vaut 6,25 pt
-    // (poids total évalué = 20, pas 100) — donc 2 crans pour atteindre 60.
+    // (poids total évalué = 20, pas 100), donc 2 crans pour atteindre 60.
     const m = margeSeuil(REF, { P1: 2, P2: 2, P3: 2, P4: 2 });
     expect(m.score).toBe(50);
     expect(m.crans).toBe(2);

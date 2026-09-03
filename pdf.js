@@ -1,4 +1,4 @@
-/* pdf.js — Préparation du texte pour les documents PDF.
+/* pdf.js : Préparation du texte pour les documents PDF.
  *
  * Sorti d'« App.jsx » parce que c'est le morceau le plus subtil de la
  * génération de fiches, et le seul qui soit une fonction pure : il se teste
@@ -7,7 +7,7 @@
  *
  * Ce qu'il faut savoir avant d'y toucher : un seul caractère non représentable
  * ne se contente pas de mal s'afficher, il dérègle l'espacement de la LIGNE
- * ENTIÈRE. D'où le parti pris — aucun caractère inconnu ne doit sortir d'ici.
+ * ENTIÈRE. D'où le parti pris : aucun caractère inconnu ne doit sortir d'ici.
  */
 
 /* Preparation du texte pour le PDF.
@@ -50,7 +50,7 @@ export const nettoyerPdf = (t) => {
     if (estRenduPdf(c)) return c;
     /* Avant d'abandonner un caractere : lui retirer ses signes diacritiques
        (a-macron -> a, r-caron -> r). Si la lettre de base est imprimable, on
-       la garde — mieux vaut une lettre approchee qu'un trou. */
+       la garde : mieux vaut une lettre approchee qu'un trou. */
     const base = c.normalize("NFD").replace(/[̀-ͯ]/g, "");
     if (base && [...base].every(estRenduPdf)) return base;
     /* Sinon on le retire purement et simplement : AUCUN caractere inconnu

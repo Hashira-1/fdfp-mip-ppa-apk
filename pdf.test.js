@@ -1,4 +1,4 @@
-/* Tests de « pdf.js » — préparation du texte des fiches PDF.
+/* Tests de « pdf.js » : préparation du texte des fiches PDF.
  *
  * Ce code a une histoire : il translittérait autrefois TOUS les accents
  * (« Efficacite pedagogique ») au motif que les polices standard du PDF
@@ -11,7 +11,7 @@
 import { describe, it, expect } from "vitest";
 import { nettoyerPdf, HORS_CP1252, estRenduPdf } from "./pdf.js";
 
-describe("nettoyerPdf — ce qui doit passer intact", () => {
+describe("nettoyerPdf : ce qui doit passer intact", () => {
   it("garde les accents français", () => {
     expect(nettoyerPdf("Efficacité pédagogique")).toBe("Efficacité pédagogique");
     expect(nettoyerPdf("Bénéficiaire · Opérateur")).toBe("Bénéficiaire · Opérateur");
@@ -31,7 +31,7 @@ describe("nettoyerPdf — ce qui doit passer intact", () => {
   });
 });
 
-describe("nettoyerPdf — ce qui doit être converti", () => {
+describe("nettoyerPdf : ce qui doit être converti", () => {
   it("remplace les comparateurs des cibles d'indicateurs", () => {
     // Présents dans le référentiel : « cible : ≥ 80 % »
     expect(nettoyerPdf("cible : ≥ 80 %")).toBe("cible : >= 80 %");
@@ -53,14 +53,14 @@ describe("nettoyerPdf — ce qui doit être converti", () => {
   it("traduit les lettres latines que la décomposition ne réduit pas", () => {
     /* Seules les lettres hors Windows-1252 sont touchées : « Ł » et « ź » ont
        leur équivalent explicite, « ó » est du Latin-1 et reste tel quel. Il
-       serait faux d'attendre « Lodz » — ce serait retomber dans la
+       serait faux d'attendre « Lodz » : ce serait retomber dans la
        translittération générale que ce fichier a précisément abandonnée. */
     expect(nettoyerPdf("Łódź")).toBe("Lódz");
     expect(nettoyerPdf("Đà Nẵng")).toBe("Dà Nang");
   });
 });
 
-describe("nettoyerPdf — ce qui doit disparaître", () => {
+describe("nettoyerPdf : ce qui doit disparaître", () => {
   it("ne laisse jamais de point d'interrogation de substitution", () => {
     // Un document officiel ne doit pas afficher « ? » à la place d'un signe.
     for (const t of ["中文", "日本語", "😀", "→ ✓ ✗"]) {
@@ -81,7 +81,7 @@ describe("nettoyerPdf — ce qui doit disparaître", () => {
   });
 });
 
-describe("nettoyerPdf — robustesse", () => {
+describe("nettoyerPdf : robustesse", () => {
   it("accepte null, undefined et les nombres", () => {
     expect(nettoyerPdf(null)).toBe("");
     expect(nettoyerPdf(undefined)).toBe("");

@@ -1,9 +1,9 @@
 // ============================================================================
-//  FDFP · MIP-PPA — Le modèle de calcul
+//  FDFP · MIP-PPA : Le modèle de calcul
 //  ---------------------------------------------------------------------------
 //  Ces quatre fonctions *sont* le modèle MIP-PPA : tout le reste de
-//  l'application les habille. Elles vivent dans un fichier séparé — à plat, sans
-//  sous-dossier, conformément à la contrainte du dépôt — pour une seule raison :
+//  l'application les habille. Elles vivent dans un fichier séparé : à plat, sans
+//  sous-dossier, conformément à la contrainte du dépôt, pour une seule raison :
 //  pouvoir les tester sans démarrer React, Recharts ni Supabase.
 //  Les tests correspondants sont dans « calculs.test.js ».
 // ============================================================================
@@ -17,7 +17,7 @@ export const COULEURS_NIVEAU = {
 };
 
 /* Score d'une dimension : moyenne SIMPLE des indicateurs notés, ramenée sur
-   100. Les indicateurs d'une même dimension sont donc équipondérés — seules
+   100. Les indicateurs d'une même dimension sont donc équipondérés : seules
    les dimensions portent un poids. Les indicateurs non notés sont ignorés,
    ils ne comptent pas comme des zéros.
    Renvoie null si aucun indicateur de la dimension n'est noté. */
@@ -30,7 +30,7 @@ export function scoreDimension(referentiel, dimId, notes) {
 }
 
 /* Score global : moyenne des scores de dimension, pondérée par le poids des
-   dimensions — mais renormalisée sur les seules dimensions évaluées. Un projet
+   dimensions : mais renormalisée sur les seules dimensions évaluées. Un projet
    noté sur une seule dimension obtient donc un score « sur 100 ».
    C'est voulu (on ne pénalise pas une évaluation en cours de route), mais cela
    rend le score incomparable d'un projet à l'autre tant qu'on ne publie pas la
@@ -45,8 +45,8 @@ export function scoreGlobal(referentiel, notes) {
 }
 
 /* Couverture : part du modèle sur laquelle le score global porte réellement.
-   « pct » suit exactement la logique de scoreGlobal — une dimension compte
-   pour tout son poids dès qu'un seul de ses indicateurs est noté — tandis que
+   « pct » suit exactement la logique de scoreGlobal (une dimension compte
+   pour tout son poids dès qu'un seul de ses indicateurs est noté) tandis que
    « notees / indicateurs » donne le décompte fin, plus parlant à la lecture. */
 export function couvertureModele(referentiel, notes) {
   let poidsEvalue = 0, poidsTotal = 0, notees = 0, indicateurs = 0;
@@ -74,7 +74,7 @@ export function niveau(score) {
    phase. Sert à distinguer deux situations que l'application confondait :
    un suivi « en retard » (le jalon M+3 / M+6 / M+12 n'a pas été fait) et un
    projet dont l'échéance est passée alors que des indicateurs ne sont
-   toujours pas renseignés — un trou d'évaluation, qui bloque le calcul du
+   toujours pas renseignés, un trou d'évaluation, qui bloque le calcul du
    score bien plus sûrement qu'un suivi administratif non coché. */
 export function indicateursNonNotes(referentiel, notes, phase = null) {
   const liste = [];
@@ -90,7 +90,7 @@ export function indicateursNonNotes(referentiel, notes, phase = null) {
 }
 
 /* ===========================================================================
-   TRAJECTOIRE — l'évolution du score d'un projet d'un jalon à l'autre
+   TRAJECTOIRE : l'évolution du score d'un projet d'un jalon à l'autre
    ---------------------------------------------------------------------------
    Le modèle MIP-PPA annonce un suivi à M+3 / M+6 / M+12, mais l'application ne
    conservait qu'un seul jeu de notes par projet : chaque nouvelle notation
@@ -98,7 +98,7 @@ export function indicateursNonNotes(referentiel, notes, phase = null) {
    conception ou de M+12, et aucune progression n'était lisible.
 
    Un « instantané » fige les notes à une date et à un jalon. L'historique est
-   un tableau d'instantanés stocké avec le projet — pas de nouvelle table, donc
+   un tableau d'instantanés stocké avec le projet : pas de nouvelle table, donc
    pas de nouvelle politique RLS à écrire (la colonne hérite de celles de
    « projets »).
    =========================================================================== */
@@ -123,7 +123,7 @@ export function instantane(referentiel, notes, jalon, date) {
 
 /* Ajoute un instantané. Un jalon déjà présent est REMPLACÉ : refiger M+6
    corrige la mesure au lieu d'en empiler deux. Le tri suit l'ordre des jalons
-   du modèle, et non la date de saisie — un évaluateur peut très bien renseigner
+   du modèle, et non la date de saisie : un évaluateur peut très bien renseigner
    M+12 avant d'avoir rattrapé M+6. */
 export function ajouterInstantane(historique, snap) {
   const sans = (historique || []).filter((h) => h.jalon !== snap.jalon);
@@ -132,7 +132,7 @@ export function ajouterInstantane(historique, snap) {
 }
 
 /* Trajectoire : chaque instantané enrichi de son écart au précédent.
-   « delta » vaut null pour le premier point — il n'y a rien avant lui. */
+   « delta » vaut null pour le premier point : il n'y a rien avant lui. */
 export function trajectoire(historique) {
   const h = [...(historique || [])].sort(
     (a, b) => JALONS.indexOf(a.jalon) - JALONS.indexOf(b.jalon));
@@ -145,7 +145,7 @@ export function trajectoire(historique) {
 }
 
 /* ===========================================================================
-   CALENDRIER DU PROJET — date de lancement et date de fin
+   CALENDRIER DU PROJET : date de lancement et date de fin
    ---------------------------------------------------------------------------
    Le modèle MIP-PPA annonce un suivi à M+3 / M+6 / M+12. Jusqu'ici, ces trois
    échéances étaient calculées à partir du jour où le projet était SAISI dans
@@ -156,7 +156,7 @@ export function trajectoire(historique) {
 
    Deux dates suffisent à rétablir cela, et elles n'existaient pas :
    « dateDebut » (lancement) et « dateFin » (fin de projet). Le point d'origine
-   du suivi post-formation devient la date de FIN — c'est bien à partir de la
+   du suivi post-formation devient la date de FIN : c'est bien à partir de la
    fin de la formation que se comptent trois, six et douze mois.
 
    Convention : « AAAA-MM-JJ », sans heure, comme le champ « echeance » des
@@ -194,7 +194,7 @@ export function fmtDateFr(v, siVide = "Non renseignée") {
 /* Ajoute n mois à une date ISO, en RESTANT dans le mois d'arrivée.
    « setUTCMonth » déborde : 31 janvier + 1 mois donne le 3 mars, parce que le
    31 février n'existe pas. On ramène donc au dernier jour du mois visé, ce que
-   fait n'importe quel calendrier — l'échéance à un mois du 31 janvier est le
+   fait n'importe quel calendrier : l'échéance à un mois du 31 janvier est le
    28 (ou 29) février. */
 export function ajouterMois(v, n) {
   if (!estDateISO(v)) return "";
@@ -208,7 +208,7 @@ export function ajouterMois(v, n) {
 
 /* Durée du projet en jours pleins, bornes comprises : un projet du 1er au
    1er dure un jour, pas zéro. null si l'une des dates manque ou si la fin
-   précède le début — dans ce cas il n'y a pas de durée, il y a une erreur de
+   précède le début : dans ce cas il n'y a pas de durée, il y a une erreur de
    saisie, et « -12 jours » ne l'expliquerait à personne. */
 export function dureeJours(debut, fin) {
   const d = jourUTC(debut), f = jourUTC(fin);
@@ -236,7 +236,7 @@ export function dureeLisible(debut, fin) {
    ---------------------------------------------------------------------------
    L'origine est la date de FIN du projet : M+3 signifie « trois mois après la
    fin de la formation ». Si elle n'est pas renseignée, on retombe sur le jour
-   de saisie, l'ancien comportement — mieux vaut une échéance approximative
+   de saisie, l'ancien comportement : mieux vaut une échéance approximative
    qu'aucune, et elle se corrigera quand la date de fin sera connue.
    « origine » est passée en paramètre plutôt que lue ici : la fonction reste
    pure, donc testable. */
@@ -248,7 +248,7 @@ export function echeancesSuivi(dateFin, origineParDefaut) {
   return Object.fromEntries(JALONS_SUIVI.map(([j, n]) => [j, ajouterMois(base, n)]));
 }
 
-/* Incohérences de calendrier — ce que les deux dates permettent enfin de voir.
+/* Incohérences de calendrier : ce que les deux dates permettent enfin de voir.
    ---------------------------------------------------------------------------
    Ce sont des ANOMALIES DE SAISIE, pas des jugements sur le projet : chacune
    se corrige en une modification de fiche. Elles alimentent la page Alertes,
@@ -289,12 +289,12 @@ export const SEUILS_NIVEAU = [40, 60, 80];
    Un score de 59,65 s'affiche « Moyen » et un score de 60,1 « Satisfaisant »
    alors que les deux projets sont pratiquement identiques : la frontière est
    conventionnelle, pas naturelle. Publier la distance au palier évite cette
-   lecture binaire, et surtout la rend actionnable — « il manque 0,35 point »
+   lecture binaire, et surtout la rend actionnable : « il manque 0,35 point »
    ne dit rien à un agent, « un cran sur un seul indicateur suffit » si.
 
    Un « cran » est une note qui progresse d'une unité sur l'échelle 0–4. Son
    effet sur le score global vaut (25 / nombre d'indicateurs notés de la
-   dimension) × poids de la dimension ÷ poids total évalué — ce dernier étant
+   dimension) × poids de la dimension ÷ poids total évalué : ce dernier étant
    le dénominateur renormalisé de scoreGlobal, pas 100.
 
    Seules les dimensions gardant une marge de progression sont retenues : un

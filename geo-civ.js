@@ -1,4 +1,4 @@
-/* geo-civ.js — Géographie des zones de couverture du FDFP.
+/* geo-civ.js : Géographie des zones de couverture du FDFP.
  *
  * Contours des 108 départements de Côte d'Ivoire, déjà projetés en
  * coordonnées SVG : la carte se dessine avec un <path> par département,
@@ -36,7 +36,7 @@
  *         x, y : position du chef-lieu · d : contour du département
  *         b : boîte englobante [x0, y0, x1, y1], pour recadrer sur une zone
  *             sans avoir à réinterpréter le tracé
- *         t : ville cible — présent (t:1) si le document de la DACD nomme
+ *         t : ville cible, présent (t:1) si le document de la DACD nomme
  *             cette localité. Le ZONAGE couvre tout le territoire : chaque
  *             département relève d'une antenne ou du Siège. Le document, lui,
  *             ne liste que les villes où le FDFP intervient effectivement.
@@ -45,10 +45,10 @@
  *
  * Les TRACÉS ne sont pas ici : ils vivent dans « geo-civ-traces.js », chargé
  * à la demande par les deux écrans qui dessinent la carte. Ce fichier-ci est
- * chargé avec l'application, car la nomenclature sert partout — listes,
+ * chargé avec l'application, car la nomenclature sert partout : listes,
  * formulaire, exports, fiche PDF.
  *
- * Fichier engendré — ne pas modifier à la main.
+ * Fichier engendré : ne pas modifier à la main.
  */
 
 export const CARTE_LARGEUR = 1000;

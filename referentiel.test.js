@@ -1,4 +1,4 @@
-/* Tests de « referentiel.js » — nomenclature et normalisation.
+/* Tests de « referentiel.js » : nomenclature et normalisation.
  *
  * Ces fonctions décident de ce que l'application fait des valeurs déjà
  * enregistrées. Une conversion ratée ne provoque pas d'erreur : elle affiche
@@ -58,7 +58,7 @@ describe("normaliserRegion", () => {
   });
 });
 
-describe("memeNom — accents et séparateurs", () => {
+describe("memeNom : accents et séparateurs", () => {
   it("reconnaît les formes du document de la DACD", () => {
     // Le Word écrit en capitales, sans accents ni traits d'union.
     expect(normaliserRegion("SAN PEDRO")).toBe("Antenne San-Pédro");
@@ -85,7 +85,7 @@ describe("localités et zones", () => {
     /* La distinction est celle du FDFP : la zone d'occupation d'une antenne
        couvre tous ses départements ; le document ne nomme que les villes où
        elle intervient. Un département sans ville cible appartient donc bien à
-       une antenne — il est colorié comme elle — mais rien ne s'y localise. */
+       une antenne (il est colorié comme elle) mais rien ne s'y localise. */
     // Aucun département orphelin, et aucune zone hors nomenclature.
     expect(DEPARTEMENTS.every((d) => d.z)).toBe(true);
     expect(DEPARTEMENTS.every((d) => IMPLANTATIONS.includes(d.z))).toBe(true);
@@ -151,7 +151,7 @@ describe("localités et zones", () => {
 /* Masque de présentation des organisations.
  *
  * Ce masque sert à projeter un écran devant une assemblée. Une étiquette
- * instable — la même entreprise numérotée différemment selon la page — rendrait
+ * instable : la même entreprise numérotée différemment selon la page : rendrait
  * la lecture croisée impossible et ferait croire à deux organisations là où il
  * n'y en a qu'une. D'où ces tests. */
 describe("masqueOrganisations", () => {
