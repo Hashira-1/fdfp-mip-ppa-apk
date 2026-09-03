@@ -342,7 +342,11 @@ const DESCR_NAV = {
 
 // ----------------- COULEURS -------------------------------------
 const C = {
-  sidebar: "#0d2233", sidebarActive: "#1d3d57", gold: "#f2a33c",
+  /* « menuTexte » est la couleur des rubriques de la barre latérale. Elle est
+     nommée ici plutôt qu'écrite deux fois, parce que le développé du sigle
+     doit la suivre : c'est la demande explicite de l'auteur, et deux
+     littéraux séparés auraient divergé au premier ajustement. */
+  sidebar: "#0d2233", sidebarActive: "#1d3d57", gold: "#f2a33c", menuTexte: "#cbd5d8",
   vert: "#1d6fa8", vertFonce: "#0e3c60", vertClair: "#2280bf",
   // Les quatre couleurs de palier viennent du modèle : une seule source.
   ...COULEURS_NIVEAU,
@@ -4039,7 +4043,7 @@ export default function MipPpaApp() {
         .carte-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(13,34,51,.10); }
         button { transition: background-color .15s ease, color .15s ease, border-color .15s ease, transform .12s ease, opacity .15s ease; }
         button:active { transform: scale(.97); }
-        .nav-item { color: #cbd5d8; transition: background-color .18s ease, color .18s ease, padding-left .18s ease; }
+        .nav-item { color: ${C.menuTexte}; transition: background-color .18s ease, color .18s ease, padding-left .18s ease; }
         .nav-item:hover { background: rgba(255,255,255,.08); color: #fff; padding-left: 1rem; }
         .nav-actif { background: #1c4a66; color: #fff; font-weight: 600; }
         .nav-actif:hover { background: #1c4a66; }
@@ -4061,23 +4065,22 @@ export default function MipPpaApp() {
           <LogoFDFP h={30} />
           <div className="min-w-0">
             {/* Le sigle porte SEUL l'orange FDFP : la seconde couleur du logo,
-                celle qui souligne « FDFP » sur la plaque juste à gauche. Son
-                développé passe en blanc : deux lignes du même orange faisaient
-                un pavé, et c'est le sigle qui doit accrocher l'œil.
+                celle qui souligne « FDFP » sur la plaque juste à gauche. Deux
+                lignes du même orange faisaient un pavé, et c'est le sigle qui
+                doit accrocher l'œil.
+                Son développé prend exactement la tenue des rubriques du menu,
+                « C.menuTexte » et graisse normale : il se lit alors comme un
+                sous-titre de la barre, et non comme une quatrième couleur.
                 ⚠ LA CLASSE « text-stone-400 » DU DÉVELOPPÉ A ÉTÉ RETIRÉE, pas
                 seulement doublée : le bloc du mode nuit porte
                 « .sombre .text-stone-400{…!important} », et un « !important »
                 l'emporte sur un style en ligne, la couleur aurait tenu en mode
-                clair et sauté en mode nuit. Rien ne vise « text-white », qui
-                peut donc rester une classe.
-                Le développé garde sa graisse d'origine, normale : le blanc
-                suffit à le rendre lisible, la mettre en demi-gras l'aurait fait
-                concurrencer le sigle.
-                Contraste du développé sur le fond #0d2233 : 6,4 pour 1 en gris
-                n° 400, 16,2 en blanc. La barre latérale est sombre dans les
-                deux thèmes : une seule couleur suffit. */}
+                clair et sauté en mode nuit.
+                Contraste sur le fond #0d2233 : 6,4 pour 1 avec l'ancien gris
+                n° 400, 11,5 avec celui du menu. La barre latérale est sombre
+                dans les deux thèmes : une seule couleur suffit. */}
             <div className="font-bold leading-tight" style={{ color: C.gold }}>MIP-PPA</div>
-            <div className="text-xs break-words text-white">Modèle d'Indicateurs de Performance - Produit Projet Apprentissage</div>
+            <div className="text-xs break-words" style={{ color: C.menuTexte }}>Modèle d'Indicateurs de Performance - Produit Projet Apprentissage</div>
           </div>
         </div>
         <nav className="flex-1 px-3 space-y-5 pb-4">
