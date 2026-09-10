@@ -10,6 +10,7 @@ import {
   STATUTS_PROJET, normaliserStatut, normaliserRegion, normaliserLocalite,
   localitesDe, localiteParDefaut, IMPLANTATIONS, LOCALITES_PAR_ZONE,
   masqueOrganisations, nomMasque, memeNom, clePivot,
+  ANTENNES_FDFP, DEP_PAR_LOCALITE,
 } from "./referentiel.js";
 import { DEPARTEMENTS } from "./geo-civ.js";
 
@@ -143,8 +144,67 @@ describe("localités et zones", () => {
     // C'est le point qui imposait de découper au département, pas à la région.
     expect(localitesDe("Antenne Abengourou")).toContain("Daoukro");   // Iffou
     expect(localitesDe("Antenne Bouaké")).toContain("M'Bahiakro");    // Iffou
-    expect(localitesDe("Antenne Yamoussoukro")).toContain("Oumé");    // Gôh
+    expect(localitesDe("Antenne San-Pédro")).toContain("Oumé");       // Gôh
     expect(localitesDe("Antenne San-Pédro")).toContain("Gagnoa");     // Gôh
+    // La Mé reste partagée entre Abengourou et le Siège.
+    expect(localitesDe("Antenne Abengourou")).toContain("Adzopé");
+    expect(localitesDe("Siège Abidjan")).toContain("Alépé");
+  });
+});
+
+/* Redimensionnement des zones du Département chargé du Développement Local.
+ *
+ * L'antenne de Yamoussoukro est supprimée et ses douze départements
+ * redistribués. Ces tests verrouillent la redistribution elle-même, et le
+ * traitement des projets déjà saisis sous l'ancienne nomenclature : ils ne
+ * doivent ni disparaître des filtres, ni atterrir dans la mauvaise antenne. */
+describe("suppression de l'antenne de Yamoussoukro", () => {
+  it("l'antenne ne figure plus dans la nomenclature", () => {
+    expect(ANTENNES_FDFP).not.toContain("Yamoussoukro");
+    expect(ANTENNES_FDFP).toHaveLength(6);
+    expect(IMPLANTATIONS).toHaveLength(7);
+    expect(IMPLANTATIONS).not.toContain("Antenne Yamoussoukro");
+  });
+
+  it("les douze départements sont repris par les trois antennes voisines", () => {
+    const zoneDe = (n) => DEP_PAR_LOCALITE[n].z;
+    // Neuf à Bouaké : le District autonome, le Bélier et le N'Zi.
+    for (const n of ["Yamoussoukro", "Attiégouakro", "Tiébissou", "Toumodi",
+                     "Didiévi", "Djékanou", "Dimbokro", "Bocanda",
+                     "Kouassi-Kouassikro"]) {
+      expect(zoneDe(n)).toBe("Antenne Bouaké");
+    }
+    // Deux à Daloa : la Marahoué lui revient alors tout entière.
+    expect(zoneDe("Bouaflé")).toBe("Antenne Daloa");
+    expect(zoneDe("Sinfra")).toBe("Antenne Daloa");
+    expect(zoneDe("Zuénoula")).toBe("Antenne Daloa");
+    // Un à San-Pédro.
+    expect(zoneDe("Oumé")).toBe("Antenne San-Pédro");
+  });
+
+  it("le zonage reste une partition : aucun département n'est orphelin", () => {
+    const zones = new Set(DEPARTEMENTS.map((d) => d.z));
+    expect([...zones].sort()).toEqual([...IMPLANTATIONS].sort());
+    expect(DEPARTEMENTS).toHaveLength(109);
+  });
+
+  it("un projet historique est repris par l'antenne qui couvre sa localité", () => {
+    // La localité tranche : Oumé va à San-Pédro, pas à Bouaké.
+    expect(normaliserRegion("Antenne Yamoussoukro", "Oumé")).toBe("Antenne San-Pédro");
+    expect(normaliserRegion("Antenne Yamoussoukro", "Bouaflé")).toBe("Antenne Daloa");
+    expect(normaliserRegion("Antenne Yamoussoukro", "Toumodi")).toBe("Antenne Bouaké");
+    // Et la localité, elle, est conservée : le projet ne se déplace pas.
+    expect(normaliserLocalite("Oumé", "Antenne Yamoussoukro")).toBe("Oumé");
+    expect(normaliserLocalite("Bouaflé", "Antenne Yamoussoukro")).toBe("Bouaflé");
+  });
+
+  it("sans localité exploitable, le repli est l'antenne qui reprend le chef-lieu", () => {
+    expect(normaliserRegion("Antenne Yamoussoukro")).toBe("Antenne Bouaké");
+    expect(normaliserRegion("Antenne Yamoussoukro", "")).toBe("Antenne Bouaké");
+    expect(normaliserRegion("Antenne Yamoussoukro", "Ouagadougou")).toBe("Antenne Bouaké");
+    // Formes nues et écritures du document, elles aussi périmées.
+    expect(normaliserRegion("YAMOUSSOUKRO")).toBe("Antenne Bouaké");
+    expect(normaliserRegion("antenne de Yamoussoukro", "Sinfra")).toBe("Antenne Daloa");
   });
 });
 

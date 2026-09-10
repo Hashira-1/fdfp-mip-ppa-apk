@@ -1,7 +1,7 @@
 /* referentiel.js : Le vocabulaire métier de la plateforme.
  *
  * Ce que le FDFP évalue (les 5 dimensions et leurs 23 indicateurs), avec quoi
- * il le range (secteurs, matières premières, domaines), où il opère (les huit
+ * il le range (secteurs, matières premières, domaines), où il opère (les sept
  * implantations et les 108 localités qu'elles couvrent), et qui a le droit de
  * quoi (les rôles et leur matrice de permissions).
  *
@@ -148,8 +148,20 @@ export const nomLibre = (base, existants) => {
 
 // ----------------- IMPLANTATIONS FDFP (champ « Zone ») -----------
 // Note : le champ reste stocké sous le nom « region » (colonne Supabase).
-export const ANTENNES_FDFP = ["Abengourou", "Bouaké", "Daloa", "Korhogo", "Man", "San-Pédro", "Yamoussoukro"];
+export const ANTENNES_FDFP = ["Abengourou", "Bouaké", "Daloa", "Korhogo", "Man", "San-Pédro"];
 export const IMPLANTATIONS = ["Siège Abidjan", ...ANTENNES_FDFP.map((a) => `Antenne ${a}`)];
+
+/* Implantations disparues du zonage, et celle qui les reprend par défaut.
+   Le redimensionnement des zones du Département chargé du Développement Local
+   SUPPRIME l'antenne de Yamoussoukro : ses douze départements passent à
+   Bouaké (neuf, dont Yamoussoukro elle-même), à Daloa (Bouaflé et Sinfra) et
+   à San-Pédro (Oumé).
+   Une valeur périmée n'est jamais laissée telle quelle : un projet saisi sous
+   l'ancienne nomenclature resterait hors des filtres et sans couleur sur la
+   carte, comme n'importe quelle valeur inconnue. Mais l'antenne de repli ne
+   vaut qu'à défaut de mieux : quand la localité du projet est connue, c'est
+   ELLE qui désigne la bonne antenne — Oumé va à San-Pédro, pas à Bouaké. */
+export const IMPLANTATIONS_SUPPRIMEES = { "Antenne Yamoussoukro": "Antenne Bouaké" };
 /* Comparaison de noms propres, indifférente aux accents ET aux séparateurs.
    « sensitivity: base » suffit pour les accents, mais pas pour le trait
    d'union ni l'apostrophe : le document de la DACD écrit « SAN PEDRO » et
@@ -221,9 +233,19 @@ export const nomMasque = (masque, nom) => {
 
 // Convertit les valeurs historiques (« Abidjan », « San-Pédro », « antenne de Bouaké »…)
 // vers la nomenclature officielle ; laisse la valeur intacte si elle est inconnue.
-export const normaliserRegion = (r) => {
+// « localite », facultative, sert au seul cas d'une implantation supprimée : elle
+// désigne alors l'antenne qui couvre effectivement le projet (voir ci-dessus).
+export const normaliserRegion = (r, localite) => {
   const v = String(r || "").trim();
-  if (!v || IMPLANTATIONS.includes(v)) return v;
+  const reprise = (z) => {
+    const l = String(localite || "").trim();
+    const dep = l && (DEP_PAR_LOCALITE[l]
+      || DEP_PAR_LOCALITE[Object.keys(DEP_PAR_LOCALITE).find((n) => memeNom(n, l)) ?? ""]);
+    return (dep && dep.z) || IMPLANTATIONS_SUPPRIMEES[z];
+  };
+  if (!v) return v;
+  if (IMPLANTATIONS_SUPPRIMEES[v]) return reprise(v);
+  if (IMPLANTATIONS.includes(v)) return v;
   const nu = v.replace(/^(si[eè]ge|antenne)\s*(d[eu']\s*)?/i, "").trim();
   const memeMot = (a, b) => memeNom(a, b);
   /* « SIEGE » tout seul : l'intitulé de la colonne dans le tableau B du
@@ -231,13 +253,18 @@ export const normaliserRegion = (r) => {
   if (!nu && /^si[eè]ge/i.test(v)) return "Siège Abidjan";
   if (memeMot(nu, "Abidjan")) return "Siège Abidjan";
   const antenne = ANTENNES_FDFP.find((a) => memeMot(a, nu));
-  return antenne ? `Antenne ${antenne}` : v;
+  if (antenne) return `Antenne ${antenne}`;
+  /* Forme nue d'une implantation supprimée : « Yamoussoukro », « ANTENNE DE
+     YAMOUSSOUKRO »… Le test porte sur le nom, pas sur la chaîne complète. */
+  const perimee = Object.keys(IMPLANTATIONS_SUPPRIMEES)
+    .find((z) => memeMot(z.replace(/^(Siège|Antenne)\s+/, ""), nu));
+  return perimee ? reprise(perimee) : v;
 };
 
 // ----------------- LOCALITÉS (champ « Localité ») ----------------
 // Une zone n'est pas un point : c'est un ensemble de départements. Le champ
 // « Localité » désigne celui où le projet se déroule réellement, ce que la
-// zone seule ne dit pas : huit implantations pour 108 départements.
+// zone seule ne dit pas : sept implantations pour 108 départements.
 // La liste proposée est donc toujours celle de la zone choisie, jamais les
 // 108 : on ne peut pas se tromper d'antenne en choisissant sa localité.
 /* Deux notions à ne pas confondre, et c'est la distinction du FDFP lui-même :
@@ -274,11 +301,15 @@ export const localiteParDefaut = (zone) => {
    appartenir à la zone : elle est alors remplacée par le chef-lieu, pour que
    carte et liste ne se contredisent jamais. */
 export const normaliserLocalite = (loc, zone) => {
-  const liste = localitesDe(zone);
+  /* La zone est résolue EN TENANT COMPTE de la localité : sans cela, un projet
+     à Oumé sous l'ancienne « Antenne Yamoussoukro » serait rapatrié sur Bouaké,
+     qui ne couvre pas Oumé, et sa localité tomberait au chef-lieu. */
+  const z = normaliserRegion(zone, loc);
+  const liste = localitesDe(z);
   const v = String(loc || "").trim();
-  if (!v) return localiteParDefaut(zone);
+  if (!v) return localiteParDefaut(z);
   const exact = liste.find((n) => memeNom(n, v));
-  return exact || localiteParDefaut(zone);
+  return exact || localiteParDefaut(z);
 };
 
 /* Formulaire de projet à l'état neuf. Une fonction, pas un objet partagé :

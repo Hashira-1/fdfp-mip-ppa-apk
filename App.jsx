@@ -854,15 +854,20 @@ function TickEchelleRadar({ x, y, payload }) {
    zones éloignées ne se comparent jamais du regard. Contrainte forte, car la
    carte les montre en aplat à 18 % d'opacité : des couleurs très distinctes
    en pastille pleine peuvent devenir indiscernables une fois délavées.
-   Mesure CIEDE2000 sur les aplats, sur les quinze couples de zones qui se
-   touchent : la première palette descendait à ΔE 3,3 (Siège / Abengourou) et
-   4,3 (Bouaké / Yamoussoukro), soit le seuil sous lequel deux surfaces se
-   confondent. Celle-ci ne descend pas sous 8,7. */
+   Mesure CIEDE2000 sur les aplats, sur les couples de zones qui se touchent :
+   la première palette descendait à ΔE 3,3 (Siège / Abengourou) et 4,3
+   (Bouaké / Yamoussoukro), soit le seuil sous lequel deux surfaces se
+   confondent. Celle-ci ne descend pas sous 8,7.
+
+   L'antenne de Yamoussoukro ayant disparu du zonage, sa teinte orange n'est
+   plus attribuée : les trois antennes qui se partagent son territoire gardent
+   la leur. Les voisinages changent, donc les couples à contrôler aussi — le
+   plus serré des nouveaux couples reste au-dessus du seuil (voir le script
+   « EDIT_EM/zonage_2026/ecarts_couleurs.py », qui refait la mesure). */
 const COULEURS_ZONE = {
   "Siège Abidjan": "#14487a",       // bleu marine
   "Antenne Abengourou": "#b8256f",  // fuchsia
   "Antenne Bouaké": "#3f8f3a",      // vert
-  "Antenne Yamoussoukro": "#e08214",// orange
   "Antenne Daloa": "#6b3fa0",       // violet
   "Antenne Korhogo": "#c9990c",     // or
   "Antenne Man": "#0f8f8f",         // turquoise
@@ -1725,7 +1730,7 @@ export default function MipPpaApp() {
      fuseau que l'application ne saurait pas quoi faire. La coupe est donc
      faite ici, une fois pour toutes. */
   const dateDeRow = (v) => (estDateISO(v) ? String(v).slice(0, 10) : "");
-  const rowVersProjet = (r) => ({ id: r.id, titre: r.titre, entreprise: r.promoteur, operateur: r.operateur, beneficiaire: r.beneficiaire, filiere: r.secteur, secteurGrand: r.secteur_grand || "", domaine: r.domaine || "", region: normaliserRegion(r.region), localite: normaliserLocalite(r.localite, r.region), apprenants: r.apprenants, budget: r.budget, statut: normaliserStatut(r.statut), dateDebut: dateDeRow(r.date_debut), dateFin: dateDeRow(r.date_fin), notes: r.notes || {}, historique: Array.isArray(r.historique) ? r.historique : [] });
+  const rowVersProjet = (r) => ({ id: r.id, titre: r.titre, entreprise: r.promoteur, operateur: r.operateur, beneficiaire: r.beneficiaire, filiere: r.secteur, secteurGrand: r.secteur_grand || "", domaine: r.domaine || "", region: normaliserRegion(r.region, r.localite), localite: normaliserLocalite(r.localite, r.region), apprenants: r.apprenants, budget: r.budget, statut: normaliserStatut(r.statut), dateDebut: dateDeRow(r.date_debut), dateFin: dateDeRow(r.date_fin), notes: r.notes || {}, historique: Array.isArray(r.historique) ? r.historique : [] });
   const suiviVersRow = (s) => ({ id: s.id, projet_id: s.formationId, jalon: s.jalon, echeance: s.echeance || null, statut: s.statut || "programmé", note: s.note || "", docs: s.docs || [], maj_le: new Date().toISOString() });
   /* Le statut d'un SUIVI est « programmé » / « effectué » : rien à voir avec
      celui d'un projet, il ne passe donc pas par « normaliserStatut ». */
@@ -2637,7 +2642,7 @@ export default function MipPpaApp() {
     const texte = (f.titre + f.entreprise + f.filiere + (f.secteurGrand || "") + (f.domaine || ""))
       .toLowerCase().includes(recherche.toLowerCase());
     if (!texte) return false;
-    if (filtreZone && normaliserRegion(f.region) !== filtreZone) return false;
+    if (filtreZone && normaliserRegion(f.region, f.localite) !== filtreZone) return false;
     if (filtreLocalite && normaliserLocalite(f.localite, f.region) !== filtreLocalite) return false;
     return true;
   }), [formationsVisibles, recherche, filtreZone, filtreLocalite]);
@@ -2650,7 +2655,7 @@ export default function MipPpaApp() {
     formationsVisibles.forEach((f) => {
       const s = scoreGlobal(referentiel, f.notes);
       if (s === null) return;
-      const z = normaliserRegion(f.region);
+      const z = normaliserRegion(f.region, f.localite);
       (acc[z] = acc[z] || []).push(s);
     });
     const out = {};
@@ -2824,7 +2829,7 @@ export default function MipPpaApp() {
       + (estDateISO(nouvelle.dateFin) ? " après la fin du projet)" : " à compter d'aujourd'hui, faute de date de fin)"));
   };
   const editerFormation = (f) => {
-    setNouvelle({ titre: f.titre, entreprise: f.entreprise, operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", secteurGrand: f.secteurGrand || grandSecteurDe(secteurs, f.filiere), filiere: f.filiere, domaine: f.domaine || "", region: normaliserRegion(f.region), localite: normaliserLocalite(f.localite, f.region), apprenants: f.apprenants, budget: f.budget, statut: f.statut, dateDebut: f.dateDebut || "", dateFin: f.dateFin || "" });
+    setNouvelle({ titre: f.titre, entreprise: f.entreprise, operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", secteurGrand: f.secteurGrand || grandSecteurDe(secteurs, f.filiere), filiere: f.filiere, domaine: f.domaine || "", region: normaliserRegion(f.region, f.localite), localite: normaliserLocalite(f.localite, f.region), apprenants: f.apprenants, budget: f.budget, statut: f.statut, dateDebut: f.dateDebut || "", dateFin: f.dateFin || "" });
     setEditionId(f.id); setFormOuvert(true); setPage("formations");
   };
 
@@ -2892,7 +2897,7 @@ export default function MipPpaApp() {
     // daterait d'avant la nomenclature actuelle.
     const propres = data.projets.filter((p) => p && p.id).map((p) => ({
       ...p,
-      region: normaliserRegion(p.region),
+      region: normaliserRegion(p.region, p.localite),
       localite: normaliserLocalite(p.localite, p.region),
       statut: normaliserStatut(p.statut),
       notes: p.notes || {},
@@ -2978,7 +2983,8 @@ export default function MipPpaApp() {
         }
         return "";
       };
-      const region = normaliserRegion(String(r[col("Zone")] ?? "").trim());
+      const localiteLue = String(r[col("Localité")] ?? "").trim();
+      const region = normaliserRegion(String(r[col("Zone")] ?? "").trim(), localiteLue);
       lignes.push({
         titre,
         entreprise: String(r[col("Promoteur")] ?? "").trim(),
@@ -2986,7 +2992,7 @@ export default function MipPpaApp() {
         filiere: String(r[col("Matière première")] ?? "").trim(),
         domaine: String(r[col("Domaine")] ?? "").trim(),
         region,
-        localite: normaliserLocalite(String(r[col("Localité")] ?? "").trim(), region),
+        localite: normaliserLocalite(localiteLue, region),
         apprenants: nombre(r[col("Apprenants")]),
         budget: nombre(r[col("Budget")]),
         statut: normaliserStatut(String(r[col("Statut")] ?? "").trim()),
@@ -4319,7 +4325,7 @@ export default function MipPpaApp() {
                         </span>
                       ))}
                     </>) : IMPLANTATIONS.map((z) => {
-                      const n = formationsVisibles.filter((f) => normaliserRegion(f.region) === z).length;
+                      const n = formationsVisibles.filter((f) => normaliserRegion(f.region, f.localite) === z).length;
                       return (
                         <span key={z} className={"inline-flex items-center gap-1.5 text-xs " + (n ? "" : "opacity-40")}>
                           <span className="inline-block w-3 h-3 rounded-sm shrink-0" style={{ background: couleurZone(z) }} />
@@ -4911,7 +4917,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                 l'en-tête laisse ouverte : quelle localité, parmi toutes
                 celles que l'implantation couvre. */}
             {(() => {
-              const zone = normaliserRegion(fEval.region);
+              const zone = normaliserRegion(fEval.region, fEval.localite);
               const loc = normaliserLocalite(fEval.localite, fEval.region);
               const dep = DEP_PAR_LOCALITE[loc];
               const voisines = localitesDe(zone);
