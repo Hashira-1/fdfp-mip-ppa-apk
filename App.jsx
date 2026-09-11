@@ -2827,6 +2827,180 @@ export default function MipPpaApp() {
     return touches;
   };
 
+  /* Les champs du formulaire de projet, montés soit dans le bloc de
+     création en haut de la page, soit dans la fenêtre d'édition. Un
+     seul des deux à la fois : les champs ne sont jamais dupliqués, et
+     l'état de saisie reste celui de « nouvelle », partagé par les deux.
+     Une variable et non un composant : un composant défini dans le
+     corps de « App » serait recréé à chaque rendu, ce qui démonterait
+     les champs et ferait perdre le focus à chaque frappe. */
+  const champsProjet = (<>
+                <label className="text-sm md:col-span-2">Intitulé du projet
+                  <input value={nouvelle.titre} onChange={(e) => setNouvelle({ ...nouvelle, titre: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" placeholder="Ex. Bonnes pratiques de décorticage du cajou" />
+                </label>
+                <label className="text-sm">Promoteur <span className="text-stone-400">(donne l'accès)</span>
+                  <input value={nouvelle.entreprise} onChange={(e) => setNouvelle({ ...nouvelle, entreprise: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" placeholder="Ex. CocoaPro Côte d'Ivoire" />
+                </label>
+                <label className="text-sm">Opérateur <span className="text-stone-400">(donne l'accès)</span>
+                  <input value={nouvelle.operateur} onChange={(e) => setNouvelle({ ...nouvelle, operateur: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" placeholder="Ex. Cabinet de formation" />
+                </label>
+                <label className="text-sm md:col-span-2">Entreprise bénéficiaire <span className="text-stone-400">(informatif)</span>
+                  <input value={nouvelle.beneficiaire} onChange={(e) => setNouvelle({ ...nouvelle, beneficiaire: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" placeholder="Ex. Coopérative bénéficiaire de la formation" />
+                </label>
+                <label className="text-sm">Secteur
+                  <select value={nouvelle.secteurGrand || ""} onChange={(e) => { const g = e.target.value; const branches = Object.keys(normaliserSecteurs(secteurs)[g] || {}); const b0 = branches[0] || ""; const doms = (normaliserSecteurs(secteurs)[g] || {})[b0] || []; setNouvelle({ ...nouvelle, secteurGrand: g, filiere: b0, domaine: doms[0] || "" }); }}
+                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
+                    {Object.keys(normaliserSecteurs(secteurs)).map((g) => <option key={g}>{g}</option>)}
+                  </select>
+                </label>
+                <label className="text-sm">Matière première
+                  <select value={nouvelle.filiere} onChange={(e) => { const b = e.target.value; const doms = (normaliserSecteurs(secteurs)[nouvelle.secteurGrand] || {})[b] || []; setNouvelle({ ...nouvelle, filiere: b, domaine: doms[0] || "" }); }}
+                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
+                    {Object.keys(normaliserSecteurs(secteurs)[nouvelle.secteurGrand] || {}).map((f) => <option key={f}>{f}</option>)}
+                  </select>
+                </label>
+                <label className="text-sm">Domaine
+                  <select value={nouvelle.domaine || ""} onChange={(e) => setNouvelle({ ...nouvelle, domaine: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
+                    {((normaliserSecteurs(secteurs)[nouvelle.secteurGrand] || {})[nouvelle.filiere] || []).map((d) => <option key={d}>{d}</option>)}
+                  </select>
+                </label>
+                <label className="text-sm">Zone <span className="text-stone-400">(couverture FDFP)</span>
+                  {/* Changer de zone change le jeu de localités : celle qui
+                      était choisie n'appartient plus forcément à la nouvelle
+                      zone. On la ramène donc au chef-lieu, plutôt que de
+                      laisser un couple zone/localité incohérent. */}
+                  <select value={normaliserRegion(nouvelle.region)}
+                    onChange={(e) => setNouvelle({ ...nouvelle, region: e.target.value, localite: localiteParDefaut(e.target.value) })}
+                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
+                    {IMPLANTATIONS.map((r) => <option key={r}>{r}</option>)}
+                    {/* Valeur historique hors nomenclature : conservée tant qu'elle n'est pas remplacée */}
+                    {nouvelle.region && !IMPLANTATIONS.includes(normaliserRegion(nouvelle.region)) && <option>{normaliserRegion(nouvelle.region)}</option>}
+                  </select>
+                </label>
+                <label className="text-sm">Localité <span className="text-stone-400">(lieu du projet)</span>
+                  <select value={normaliserLocalite(nouvelle.localite, nouvelle.region)}
+                    onChange={(e) => setNouvelle({ ...nouvelle, localite: e.target.value })}
+                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white"
+                    disabled={!localitesDe(nouvelle.region).length}>
+                    {localitesDe(nouvelle.region).map((l) => <option key={l}>{l}</option>)}
+                  </select>
+                  <div className="text-xs text-stone-500 mt-1">
+                    {localitesDe(nouvelle.region).length
+                      ? `${localitesDe(nouvelle.region).length} localités couvertes par ${normaliserRegion(nouvelle.region)}.`
+                      : "Zone hors nomenclature : aucune localité rattachée."}
+                  </div>
+                </label>
+                {/* L'effectif minimal est porté par le champ lui-même (« min »),
+                    rappelé sous la saisie, et revérifié à l'enregistrement : un
+                    champ numérique reste modifiable au clavier, et « min » ne
+                    bloque pas la frappe. */}
+                <label className="text-sm">Nombre d'apprenants
+                  <input type="number" min={APPRENANTS_MINIMUM} value={nouvelle.apprenants} onChange={(e) => setNouvelle({ ...nouvelle, apprenants: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" />
+                  <div className="text-xs mt-1">
+                    {effectifSuffisant(nouvelle.apprenants)
+                      ? <span className="text-stone-400">Minimum {APPRENANTS_MINIMUM} apprenants pour un projet d'apprentissage.</span>
+                      : <span className="text-red-600 font-semibold">Un projet d'apprentissage compte au moins {APPRENANTS_MINIMUM} apprenants.</span>}
+                  </div>
+                </label>
+
+                {/* ---------- RÉPARTITION PAR SEXE ----------
+                    FACULTATIVE, comme les dates : elle n'est pas toujours
+                    connue à l'instruction du dossier. Les deux champs restent
+                    donc vides par défaut, et vides ils le restent — un zéro
+                    saisi d'office ferait croire à une absence de femmes là où
+                    l'information manque seulement.
+                    Les deux effectifs sont indépendants : connaître le nombre
+                    de femmes sans celui des hommes est un cas courant, et
+                    suffit déjà à situer le projet. */}
+                <label className="text-sm">Dont hommes <span className="text-stone-400">(facultatif)</span>
+                  <input type="number" min="0" value={nouvelle.hommes ?? ""}
+                    onChange={(e) => setNouvelle({ ...nouvelle, hommes: e.target.value })}
+                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" />
+                </label>
+                <label className="text-sm">Dont femmes <span className="text-stone-400">(facultatif)</span>
+                  <input type="number" min="0" value={nouvelle.femmes ?? ""}
+                    onChange={(e) => setNouvelle({ ...nouvelle, femmes: e.target.value })}
+                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" />
+                </label>
+                {/* Ce que la répartition dit, et ce qu'elle ne dit pas encore :
+                    une somme supérieure à l'effectif est une erreur de saisie,
+                    une somme inférieure est une répartition partielle, qui
+                    reste acceptable. */}
+                <div className="md:col-span-2 -mt-1 text-xs">
+                  {(() => {
+                    const r = repartitionSexe(nouvelle);
+                    const total = Number(nouvelle.apprenants) || 0;
+                    if (!r.renseignee) {
+                      return <span className="text-stone-400">Répartition par sexe non renseignée. Elle n'est pas obligatoire, mais c'est elle qui permet de suivre la place des femmes dans les projets d'apprentissage.</span>;
+                    }
+                    if (!r.coherente) {
+                      return <span className="text-red-600 font-semibold">La répartition ({r.total}) dépasse le nombre d'apprenants ({total}) : corrigez avant d'enregistrer.</span>;
+                    }
+                    return (
+                      <span className="text-stone-500">
+                        {r.total} apprenant{r.total > 1 ? "s" : ""} réparti{r.total > 1 ? "s" : ""} sur {total || "?"}
+                        {r.partFemmes !== null ? ` · ${r.partFemmes} % de femmes` : ""}
+                        {total && r.total < total ? ` · ${total - r.total} non réparti${total - r.total > 1 ? "s" : ""}` : ""}.
+                      </span>
+                    );
+                  })()}
+                  {!sexeDispo && <span className="block mt-1 text-amber-700 font-medium">La répartition par sexe ne pourra pas être enregistrée tant que « supabase-phase12.sql » n'a pas été exécuté dans Supabase.</span>}
+                </div>
+                <label className="text-sm">Budget (FCFA)
+                  <input type="number" min="0" step="1000" value={nouvelle.budget} onChange={(e) => setNouvelle({ ...nouvelle, budget: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" />
+                  {/* Un champ numérique ne peut pas afficher de séparateurs :
+                      on rappelle le montant groupé sous la saisie, pour repérer
+                      un zéro de trop avant d'enregistrer. */}
+                  <div className="text-xs mt-1 font-medium" style={{ color: C.vert }}>
+                    {String(nouvelle.budget).trim() === "" ? "Non renseigné" : fmtFCFA(nouvelle.budget)}
+                  </div>
+                </label>
+                <label className="text-sm">Statut
+                  <select value={nouvelle.statut} onChange={(e) => setNouvelle({ ...nouvelle, statut: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
+                    {STATUTS_PROJET.map((s) => <option key={s}>{s}</option>)}
+                  </select>
+                </label>
+
+                {/* ---------- CALENDRIER DU PROJET ----------
+                    Les deux dates sont FACULTATIVES : un projet s'enregistre
+                    souvent avant que son calendrier ne soit arrêté. Ce qui ne
+                    l'est pas, c'est leur ordre : une fin antérieure au
+                    lancement fausserait la durée et les trois échéances. Le
+                    « min » de l'input barre les jours impossibles dans le
+                    calendrier du navigateur, et le contrôle est refait à
+                    l'enregistrement : un champ date reste saisissable au
+                    clavier. */}
+                <label className="text-sm">Date de lancement <span className="text-stone-400">(facultative)</span>
+                  <input type="date" value={nouvelle.dateDebut || ""} max={nouvelle.dateFin || undefined}
+                    onChange={(e) => setNouvelle({ ...nouvelle, dateDebut: e.target.value })}
+                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white" />
+                </label>
+                <label className="text-sm">Date de fin de projet <span className="text-stone-400">(facultative)</span>
+                  <input type="date" value={nouvelle.dateFin || ""} min={nouvelle.dateDebut || undefined}
+                    onChange={(e) => setNouvelle({ ...nouvelle, dateFin: e.target.value })}
+                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white" />
+                </label>
+                {/* Ce que les deux dates produisent, dit tout de suite : la
+                    durée, et surtout le déplacement des trois échéances de
+                    suivi. Un agent qui change la date de fin doit savoir
+                    avant de valider que M+3, M+6 et M+12 vont bouger. */}
+                <div className="md:col-span-2 -mt-1 text-xs">
+                  {estDateISO(nouvelle.dateDebut) && estDateISO(nouvelle.dateFin) && nouvelle.dateFin < nouvelle.dateDebut ? (
+                    <span className="text-red-600 font-semibold">La date de fin précède la date de lancement : corrigez l'une des deux avant d'enregistrer.</span>
+                  ) : estDateISO(nouvelle.dateFin) ? (
+                    <span className="text-stone-500">
+                      {dureeLisible(nouvelle.dateDebut, nouvelle.dateFin)
+                        ? `Durée : ${dureeLisible(nouvelle.dateDebut, nouvelle.dateFin)}. ` : ""}
+                      Suivis post-formation calés sur la fin du projet :{" "}
+                      {JALONS_SUIVI.map(([j]) => `${j} le ${fmtDateFr(echeancesSuivi(nouvelle.dateFin, "")[j])}`).join(" · ")}.
+                    </span>
+                  ) : (
+                    <span className="text-stone-400">Sans date de fin, les suivis M+3 / M+6 / M+12 sont calés sur le jour de la saisie. Renseigner la date de fin les recale sur la fin réelle de la formation.</span>
+                  )}
+                  {!datesDispo && <span className="block mt-1 text-amber-700 font-medium">Les dates ne pourront pas être enregistrées tant que « supabase-phase7.sql » n'a pas été exécuté dans Supabase.</span>}
+                </div>
+  </>);
+
   const ajouterFormation = () => {
     if (!nouvelle.titre.trim() || !nouvelle.entreprise.trim()) { notif("Renseignez au minimum l'intitulé et le promoteur"); return; }
     /* Effectif minimal du produit. Refusé à l'enregistrement, et pas seulement
@@ -2874,7 +3048,10 @@ export default function MipPpaApp() {
   };
   const editerFormation = (f) => {
     setNouvelle({ titre: f.titre, entreprise: f.entreprise, operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", secteurGrand: f.secteurGrand || grandSecteurDe(secteurs, f.filiere), filiere: f.filiere, domaine: f.domaine || "", region: normaliserRegion(f.region, f.localite), localite: normaliserLocalite(f.localite, f.region), apprenants: f.apprenants, hommes: f.hommes ?? "", femmes: f.femmes ?? "", budget: f.budget, statut: f.statut, dateDebut: f.dateDebut || "", dateFin: f.dateFin || "" });
-    setEditionId(f.id); setFormOuvert(true); setPage("formations");
+    /* La fenêtre se superpose à l'écran courant : ni bloc du haut à
+       ouvrir, ni page à changer. C'est tout l'objet du changement —
+       l'utilisateur ne quitte plus sa place dans la liste. */
+    setEditionId(f.id);
   };
 
   /* ---------- DONNEES COMMUNES AUX DEUX EXPORTS ---------- */
@@ -3797,6 +3974,11 @@ export default function MipPpaApp() {
      une référence à poser sur le panneau de sa fenêtre. */
   const refDocVu = useFenetreModale(!!docVu, () => setDocVu(null));
   const refDetailStat = useFenetreModale(!!detailStat, () => setDetailStat(null));
+  /* Fenêtre d'édition d'un projet. « fermerEdition » remet l'édition à
+     zéro : sans cela, rouvrir « + Nouveau projet » après avoir annulé
+     une modification présenterait les valeurs du projet abandonné. */
+  const fermerEdition = () => { setEditionId(null); setFormOuvert(false); setNouvelle(PROJET_VIERGE()); };
+  const refEditionProjet = useFenetreModale(!!editionId, fermerEdition);
   const refCorbeille = useFenetreModale(!!corbeilleOuverte, () => setCorbeilleOuverte(false));
   const refDetailLocalite = useFenetreModale(!!detailLocalite, () => setDetailLocalite(null));
   const refChangeMdp = useFenetreModale(!!changeMdp, () => setChangeMdp(null));
@@ -4672,176 +4854,15 @@ export default function MipPpaApp() {
               + Nouveau projet
             </button>}
 
-            {formOuvert && (
+            {/* CRÉATION. L'édition, elle, se fait dans une fenêtre
+                modale (plus bas) : le formulaire du haut ne sert donc
+                plus qu'aux projets neufs, d'où le « !editionId ». */}
+            {formOuvert && !editionId && (
               <div className="bg-white rounded-2xl border border-stone-200 p-5 grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                <div className="md:col-span-2 font-bold text-stone-800">{editionId ? "Modifier le projet" : "Nouveau projet"}</div>
-                <label className="text-sm md:col-span-2">Intitulé du projet
-                  <input value={nouvelle.titre} onChange={(e) => setNouvelle({ ...nouvelle, titre: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" placeholder="Ex. Bonnes pratiques de décorticage du cajou" />
-                </label>
-                <label className="text-sm">Promoteur <span className="text-stone-400">(donne l'accès)</span>
-                  <input value={nouvelle.entreprise} onChange={(e) => setNouvelle({ ...nouvelle, entreprise: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" placeholder="Ex. CocoaPro Côte d'Ivoire" />
-                </label>
-                <label className="text-sm">Opérateur <span className="text-stone-400">(donne l'accès)</span>
-                  <input value={nouvelle.operateur} onChange={(e) => setNouvelle({ ...nouvelle, operateur: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" placeholder="Ex. Cabinet de formation" />
-                </label>
-                <label className="text-sm md:col-span-2">Entreprise bénéficiaire <span className="text-stone-400">(informatif)</span>
-                  <input value={nouvelle.beneficiaire} onChange={(e) => setNouvelle({ ...nouvelle, beneficiaire: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" placeholder="Ex. Coopérative bénéficiaire de la formation" />
-                </label>
-                <label className="text-sm">Secteur
-                  <select value={nouvelle.secteurGrand || ""} onChange={(e) => { const g = e.target.value; const branches = Object.keys(normaliserSecteurs(secteurs)[g] || {}); const b0 = branches[0] || ""; const doms = (normaliserSecteurs(secteurs)[g] || {})[b0] || []; setNouvelle({ ...nouvelle, secteurGrand: g, filiere: b0, domaine: doms[0] || "" }); }}
-                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
-                    {Object.keys(normaliserSecteurs(secteurs)).map((g) => <option key={g}>{g}</option>)}
-                  </select>
-                </label>
-                <label className="text-sm">Matière première
-                  <select value={nouvelle.filiere} onChange={(e) => { const b = e.target.value; const doms = (normaliserSecteurs(secteurs)[nouvelle.secteurGrand] || {})[b] || []; setNouvelle({ ...nouvelle, filiere: b, domaine: doms[0] || "" }); }}
-                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
-                    {Object.keys(normaliserSecteurs(secteurs)[nouvelle.secteurGrand] || {}).map((f) => <option key={f}>{f}</option>)}
-                  </select>
-                </label>
-                <label className="text-sm">Domaine
-                  <select value={nouvelle.domaine || ""} onChange={(e) => setNouvelle({ ...nouvelle, domaine: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
-                    {((normaliserSecteurs(secteurs)[nouvelle.secteurGrand] || {})[nouvelle.filiere] || []).map((d) => <option key={d}>{d}</option>)}
-                  </select>
-                </label>
-                <label className="text-sm">Zone <span className="text-stone-400">(couverture FDFP)</span>
-                  {/* Changer de zone change le jeu de localités : celle qui
-                      était choisie n'appartient plus forcément à la nouvelle
-                      zone. On la ramène donc au chef-lieu, plutôt que de
-                      laisser un couple zone/localité incohérent. */}
-                  <select value={normaliserRegion(nouvelle.region)}
-                    onChange={(e) => setNouvelle({ ...nouvelle, region: e.target.value, localite: localiteParDefaut(e.target.value) })}
-                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
-                    {IMPLANTATIONS.map((r) => <option key={r}>{r}</option>)}
-                    {/* Valeur historique hors nomenclature : conservée tant qu'elle n'est pas remplacée */}
-                    {nouvelle.region && !IMPLANTATIONS.includes(normaliserRegion(nouvelle.region)) && <option>{normaliserRegion(nouvelle.region)}</option>}
-                  </select>
-                </label>
-                <label className="text-sm">Localité <span className="text-stone-400">(lieu du projet)</span>
-                  <select value={normaliserLocalite(nouvelle.localite, nouvelle.region)}
-                    onChange={(e) => setNouvelle({ ...nouvelle, localite: e.target.value })}
-                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white"
-                    disabled={!localitesDe(nouvelle.region).length}>
-                    {localitesDe(nouvelle.region).map((l) => <option key={l}>{l}</option>)}
-                  </select>
-                  <div className="text-xs text-stone-500 mt-1">
-                    {localitesDe(nouvelle.region).length
-                      ? `${localitesDe(nouvelle.region).length} localités couvertes par ${normaliserRegion(nouvelle.region)}.`
-                      : "Zone hors nomenclature : aucune localité rattachée."}
-                  </div>
-                </label>
-                {/* L'effectif minimal est porté par le champ lui-même (« min »),
-                    rappelé sous la saisie, et revérifié à l'enregistrement : un
-                    champ numérique reste modifiable au clavier, et « min » ne
-                    bloque pas la frappe. */}
-                <label className="text-sm">Nombre d'apprenants
-                  <input type="number" min={APPRENANTS_MINIMUM} value={nouvelle.apprenants} onChange={(e) => setNouvelle({ ...nouvelle, apprenants: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" />
-                  <div className="text-xs mt-1">
-                    {effectifSuffisant(nouvelle.apprenants)
-                      ? <span className="text-stone-400">Minimum {APPRENANTS_MINIMUM} apprenants pour un projet d'apprentissage.</span>
-                      : <span className="text-red-600 font-semibold">Un projet d'apprentissage compte au moins {APPRENANTS_MINIMUM} apprenants.</span>}
-                  </div>
-                </label>
-
-                {/* ---------- RÉPARTITION PAR SEXE ----------
-                    FACULTATIVE, comme les dates : elle n'est pas toujours
-                    connue à l'instruction du dossier. Les deux champs restent
-                    donc vides par défaut, et vides ils le restent — un zéro
-                    saisi d'office ferait croire à une absence de femmes là où
-                    l'information manque seulement.
-                    Les deux effectifs sont indépendants : connaître le nombre
-                    de femmes sans celui des hommes est un cas courant, et
-                    suffit déjà à situer le projet. */}
-                <label className="text-sm">Dont hommes <span className="text-stone-400">(facultatif)</span>
-                  <input type="number" min="0" value={nouvelle.hommes ?? ""}
-                    onChange={(e) => setNouvelle({ ...nouvelle, hommes: e.target.value })}
-                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" />
-                </label>
-                <label className="text-sm">Dont femmes <span className="text-stone-400">(facultatif)</span>
-                  <input type="number" min="0" value={nouvelle.femmes ?? ""}
-                    onChange={(e) => setNouvelle({ ...nouvelle, femmes: e.target.value })}
-                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" />
-                </label>
-                {/* Ce que la répartition dit, et ce qu'elle ne dit pas encore :
-                    une somme supérieure à l'effectif est une erreur de saisie,
-                    une somme inférieure est une répartition partielle, qui
-                    reste acceptable. */}
-                <div className="md:col-span-2 -mt-1 text-xs">
-                  {(() => {
-                    const r = repartitionSexe(nouvelle);
-                    const total = Number(nouvelle.apprenants) || 0;
-                    if (!r.renseignee) {
-                      return <span className="text-stone-400">Répartition par sexe non renseignée. Elle n'est pas obligatoire, mais c'est elle qui permet de suivre la place des femmes dans les projets d'apprentissage.</span>;
-                    }
-                    if (!r.coherente) {
-                      return <span className="text-red-600 font-semibold">La répartition ({r.total}) dépasse le nombre d'apprenants ({total}) : corrigez avant d'enregistrer.</span>;
-                    }
-                    return (
-                      <span className="text-stone-500">
-                        {r.total} apprenant{r.total > 1 ? "s" : ""} réparti{r.total > 1 ? "s" : ""} sur {total || "?"}
-                        {r.partFemmes !== null ? ` · ${r.partFemmes} % de femmes` : ""}
-                        {total && r.total < total ? ` · ${total - r.total} non réparti${total - r.total > 1 ? "s" : ""}` : ""}.
-                      </span>
-                    );
-                  })()}
-                  {!sexeDispo && <span className="block mt-1 text-amber-700 font-medium">La répartition par sexe ne pourra pas être enregistrée tant que « supabase-phase12.sql » n'a pas été exécuté dans Supabase.</span>}
-                </div>
-                <label className="text-sm">Budget (FCFA)
-                  <input type="number" min="0" step="1000" value={nouvelle.budget} onChange={(e) => setNouvelle({ ...nouvelle, budget: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" />
-                  {/* Un champ numérique ne peut pas afficher de séparateurs :
-                      on rappelle le montant groupé sous la saisie, pour repérer
-                      un zéro de trop avant d'enregistrer. */}
-                  <div className="text-xs mt-1 font-medium" style={{ color: C.vert }}>
-                    {String(nouvelle.budget).trim() === "" ? "Non renseigné" : fmtFCFA(nouvelle.budget)}
-                  </div>
-                </label>
-                <label className="text-sm">Statut
-                  <select value={nouvelle.statut} onChange={(e) => setNouvelle({ ...nouvelle, statut: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
-                    {STATUTS_PROJET.map((s) => <option key={s}>{s}</option>)}
-                  </select>
-                </label>
-
-                {/* ---------- CALENDRIER DU PROJET ----------
-                    Les deux dates sont FACULTATIVES : un projet s'enregistre
-                    souvent avant que son calendrier ne soit arrêté. Ce qui ne
-                    l'est pas, c'est leur ordre : une fin antérieure au
-                    lancement fausserait la durée et les trois échéances. Le
-                    « min » de l'input barre les jours impossibles dans le
-                    calendrier du navigateur, et le contrôle est refait à
-                    l'enregistrement : un champ date reste saisissable au
-                    clavier. */}
-                <label className="text-sm">Date de lancement <span className="text-stone-400">(facultative)</span>
-                  <input type="date" value={nouvelle.dateDebut || ""} max={nouvelle.dateFin || undefined}
-                    onChange={(e) => setNouvelle({ ...nouvelle, dateDebut: e.target.value })}
-                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white" />
-                </label>
-                <label className="text-sm">Date de fin de projet <span className="text-stone-400">(facultative)</span>
-                  <input type="date" value={nouvelle.dateFin || ""} min={nouvelle.dateDebut || undefined}
-                    onChange={(e) => setNouvelle({ ...nouvelle, dateFin: e.target.value })}
-                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white" />
-                </label>
-                {/* Ce que les deux dates produisent, dit tout de suite : la
-                    durée, et surtout le déplacement des trois échéances de
-                    suivi. Un agent qui change la date de fin doit savoir
-                    avant de valider que M+3, M+6 et M+12 vont bouger. */}
-                <div className="md:col-span-2 -mt-1 text-xs">
-                  {estDateISO(nouvelle.dateDebut) && estDateISO(nouvelle.dateFin) && nouvelle.dateFin < nouvelle.dateDebut ? (
-                    <span className="text-red-600 font-semibold">La date de fin précède la date de lancement : corrigez l'une des deux avant d'enregistrer.</span>
-                  ) : estDateISO(nouvelle.dateFin) ? (
-                    <span className="text-stone-500">
-                      {dureeLisible(nouvelle.dateDebut, nouvelle.dateFin)
-                        ? `Durée : ${dureeLisible(nouvelle.dateDebut, nouvelle.dateFin)}. ` : ""}
-                      Suivis post-formation calés sur la fin du projet :{" "}
-                      {JALONS_SUIVI.map(([j]) => `${j} le ${fmtDateFr(echeancesSuivi(nouvelle.dateFin, "")[j])}`).join(" · ")}.
-                    </span>
-                  ) : (
-                    <span className="text-stone-400">Sans date de fin, les suivis M+3 / M+6 / M+12 sont calés sur le jour de la saisie. Renseigner la date de fin les recale sur la fin réelle de la formation.</span>
-                  )}
-                  {!datesDispo && <span className="block mt-1 text-amber-700 font-medium">Les dates ne pourront pas être enregistrées tant que « supabase-phase7.sql » n'a pas été exécuté dans Supabase.</span>}
-                </div>
-
+                <div className="md:col-span-2 font-bold text-stone-800">Nouveau projet</div>
+                {champsProjet}
                 <div className="md:col-span-2 flex gap-3">
-                  <button onClick={ajouterFormation} className="text-white font-semibold px-5 py-2 rounded-xl text-sm" style={{ background: C.vertFonce }}>{editionId ? "Enregistrer les modifications" : "Créer le projet"}</button>
+                  <button onClick={ajouterFormation} className="text-white font-semibold px-5 py-2 rounded-xl text-sm" style={{ background: C.vertFonce }}>Créer le projet</button>
                   <button onClick={() => setFormOuvert(false)} className="text-sm text-stone-500">Annuler</button>
                 </div>
               </div>
@@ -6028,6 +6049,36 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
           Ouverte depuis les cartes « Projets suivis », « Apprenants concernés »
           et « Score moyen MIP-PPA ». Chaque ligne renvoie vers la fiche
           d'évaluation du projet concerné. */}
+      {/* ======= FENÊTRE D'ÉDITION D'UN PROJET =======
+          Même patron que les fenêtres « Projets suivis » et « Apprenants
+          concernés » : voile sombre, carte blanche arrondie, en-tête avec
+          bouton de fermeture, défilement interne au-delà de 92 % de la
+          hauteur. Rendue ici, au même niveau que les autres fenêtres, et
+          non dans la page Projets : elle s'ouvre donc d'où qu'on la
+          demande, et passe au-dessus de tout le reste. */}
+      {editionId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(10,25,38,.55)" }}
+          onClick={(e) => e.target === e.currentTarget && fermerEdition()}>
+          <div ref={refEditionProjet} role="dialog" aria-modal="true" tabIndex={-1} aria-label="Modifier le projet"
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl p-5 md:p-7 page-anim max-h-[92vh] overflow-y-auto outline-none">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="text-xl font-bold break-words">Modifier le projet</h2>
+                <p className="text-sm text-stone-500 break-words">{nouvelle.titre || "Projet sans intitulé"}</p>
+              </div>
+              <button onClick={fermerEdition} className="text-stone-400 hover:text-stone-700 shrink-0" title="Fermer" aria-label="Fermer"><Icone n="fermer" t={18} /></button>
+            </div>
+            <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+              {champsProjet}
+              <div className="md:col-span-2 flex gap-3 pt-1">
+                <button onClick={ajouterFormation} className="text-white font-semibold px-5 py-2 rounded-xl text-sm" style={{ background: C.vertFonce }}>Enregistrer les modifications</button>
+                <button onClick={fermerEdition} className="text-sm text-stone-500">Annuler</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {detailStat && (() => {
         const entetes = {
           projets:    ["Projets suivis", "Intitulé de chaque projet du portefeuille."],
