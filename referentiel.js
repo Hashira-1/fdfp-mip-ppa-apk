@@ -323,6 +323,12 @@ export const PROJET_VIERGE = () => ({
   domaine: "Fèves et masse de cacao",
   region: "Siège Abidjan", localite: localiteParDefaut("Siège Abidjan"),
   apprenants: 10, budget: 5000000, statut: "Planifié",
+  /* Répartition par sexe. Facultative, au même titre que les dates : elle
+     n'est pas toujours connue à l'instruction du dossier, et un projet doit
+     pouvoir s'enregistrer sans elle. Vide, et non zéro : « 0 femme » est une
+     information, « je ne sais pas » en est une autre, et les confondre
+     produirait des taux de féminisation faux. */
+  hommes: "", femmes: "",
   /* Calendrier du projet. Vides par défaut, et volontairement facultatifs :
      un projet s'enregistre souvent avant que ses dates ne soient arrêtées.
      Format « AAAA-MM-JJ », celui du champ « echeance » des suivis et celui
@@ -330,6 +336,62 @@ export const PROJET_VIERGE = () => ({
      aux échéances M+3 / M+6 / M+12 : voir « echeancesSuivi » dans calculs.js. */
   dateDebut: "", dateFin: "",
 });
+
+/* Effectif minimal d'un projet collectif d'apprentissage. En deçà, le dossier
+   ne relève pas du Produit Projet Apprentissage : c'est une règle du produit,
+   pas une préférence d'affichage, d'où le refus à l'enregistrement plutôt
+   qu'un simple avertissement. La valeur est isolée ici pour être lue d'un
+   endroit unique — le formulaire, le contrôle de saisie et la reprise de
+   classeur s'y réfèrent tous les trois. */
+export const APPRENANTS_MINIMUM = 10;
+
+/* Dit si l'effectif saisi permet d'enregistrer le projet. Un champ vide est
+   refusé comme un effectif trop faible : un projet sans effectif entrerait
+   dans les moyennes du portefeuille pour zéro apprenant. */
+export const effectifSuffisant = (apprenants) => {
+  const n = Number(String(apprenants == null ? "" : apprenants).trim());
+  return Number.isFinite(n) && n >= APPRENANTS_MINIMUM;
+};
+
+/* ----------------- RÉPARTITION PAR SEXE -----------------
+   Lit les deux champs facultatifs d'un projet et dit ce qu'on peut en faire.
+
+   POURQUOI UNE FONCTION, ET PAS UN CALCUL EN LIGNE. Trois écrans et trois
+   exports ont besoin de la même réponse, et la question n'est pas seulement
+   « combien » : elle est « la répartition est-elle exploitable ». Une
+   répartition partielle — seul l'effectif féminin connu — reste affichable,
+   une répartition qui dépasse l'effectif total ne l'est pas.
+
+   Renvoie :
+     hommes, femmes  effectifs lus, ou null si le champ est vide
+     total           leur somme, ou null si aucun des deux n'est renseigné
+     complete        les DEUX effectifs sont connus
+     coherente       la somme ne dépasse pas l'effectif d'apprenants
+     partFemmes      part des femmes dans le total renseigné, ou null
+
+   « partFemmes » se calcule sur la somme des deux effectifs, jamais sur le
+   nombre d'apprenants : si la répartition est partielle, rapporter les femmes
+   à un total qu'on n'a pas fini de décrire donnerait un taux trop bas. */
+const entierOuNull = (v) => {
+  const s = String(v == null ? "" : v).trim();
+  if (s === "") return null;
+  const n = Number(s);
+  return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : null;
+};
+
+export const repartitionSexe = (projet) => {
+  const hommes = entierOuNull(projet && projet.hommes);
+  const femmes = entierOuNull(projet && projet.femmes);
+  const apprenants = entierOuNull(projet && projet.apprenants);
+  const renseignee = hommes !== null || femmes !== null;
+  const total = renseignee ? (hommes || 0) + (femmes || 0) : null;
+  return {
+    hommes, femmes, total, renseignee,
+    complete: hommes !== null && femmes !== null,
+    coherente: total === null || apprenants === null || total <= apprenants,
+    partFemmes: total ? Math.round(((femmes || 0) / total) * 100) : null,
+  };
+};
 
 // ----------------- MATRICE DES PERMISSIONS PAR RÔLE -------------
 /* « exports » recouvrait trois choses très différentes, et c'est ce qui a

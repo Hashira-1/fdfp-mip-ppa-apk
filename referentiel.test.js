@@ -10,7 +10,8 @@ import {
   STATUTS_PROJET, normaliserStatut, normaliserRegion, normaliserLocalite,
   localitesDe, localiteParDefaut, IMPLANTATIONS, LOCALITES_PAR_ZONE,
   masqueOrganisations, nomMasque, memeNom, clePivot,
-  ANTENNES_FDFP, DEP_PAR_LOCALITE,
+  ANTENNES_FDFP, DEP_PAR_LOCALITE, repartitionSexe, PROJET_VIERGE,
+  APPRENANTS_MINIMUM, effectifSuffisant,
 } from "./referentiel.js";
 import { DEPARTEMENTS } from "./geo-civ.js";
 
@@ -118,7 +119,7 @@ describe("localités et zones", () => {
     expect(localitesDe("Siège Abidjan")).toContain("Grand-Bassam");
   });
 
-  it("les huit implantations ont toutes des localités", () => {
+  it("les sept implantations ont toutes des localités", () => {
     expect(Object.keys(LOCALITES_PAR_ZONE).sort()).toEqual([...IMPLANTATIONS].sort());
     IMPLANTATIONS.forEach((z) => expect(localitesDe(z).length).toBeGreaterThan(0));
   });
@@ -282,5 +283,104 @@ describe("clePivot / memeNom", () => {
   });
   it("ne confond pas deux noms distincts", () => {
     expect(memeNom("Bouaké", "Abidjan")).toBe(false);
+  });
+});
+
+/* Répartition par sexe des apprenants (phase 12).
+ *
+ * Le champ est facultatif, et c'est tout l'enjeu : un effectif vide ne doit
+ * jamais devenir un zéro. Confondre « aucune femme » et « je ne sais pas »
+ * produirait un taux de féminisation d'autant plus bas que la donnée manque,
+ * c'est-à-dire faux, et faux au détriment des projets les moins documentés. */
+describe("repartitionSexe", () => {
+  it("ne renvoie rien tant que rien n'est saisi", () => {
+    const r = repartitionSexe({ apprenants: 30 });
+    expect(r.renseignee).toBe(false);
+    expect(r.total).toBe(null);
+    expect(r.partFemmes).toBe(null);
+    expect(r.hommes).toBe(null);
+    expect(r.femmes).toBe(null);
+  });
+
+  it("distingue un effectif nul d'un effectif inconnu", () => {
+    const aucune = repartitionSexe({ apprenants: 30, hommes: 30, femmes: 0 });
+    expect(aucune.renseignee).toBe(true);
+    expect(aucune.femmes).toBe(0);
+    expect(aucune.partFemmes).toBe(0);
+    const inconnue = repartitionSexe({ apprenants: 30, hommes: 30 });
+    expect(inconnue.femmes).toBe(null);
+    expect(inconnue.complete).toBe(false);
+  });
+
+  it("accepte une répartition partielle et la rapporte au seul total connu", () => {
+    // 12 femmes connues, hommes non ventilés : la part se calcule sur 12,
+    // pas sur les 30 apprenants, sinon elle dirait 40 % au lieu de 100 %.
+    const r = repartitionSexe({ apprenants: 30, femmes: 12 });
+    expect(r.renseignee).toBe(true);
+    expect(r.complete).toBe(false);
+    expect(r.total).toBe(12);
+    expect(r.partFemmes).toBe(100);
+    expect(r.coherente).toBe(true);
+  });
+
+  it("calcule la part des femmes sur le total réparti", () => {
+    expect(repartitionSexe({ apprenants: 30, hommes: 18, femmes: 12 }).partFemmes).toBe(40);
+    expect(repartitionSexe({ apprenants: 25, hommes: 9, femmes: 16 }).partFemmes).toBe(64);
+  });
+
+  it("refuse une répartition supérieure à l'effectif, tolère l'inférieure", () => {
+    expect(repartitionSexe({ apprenants: 30, hommes: 20, femmes: 15 }).coherente).toBe(false);
+    expect(repartitionSexe({ apprenants: 30, hommes: 20, femmes: 10 }).coherente).toBe(true);
+    expect(repartitionSexe({ apprenants: 30, hommes: 5, femmes: 5 }).coherente).toBe(true);
+    // Sans effectif de référence, rien ne permet de déclarer l'incohérence.
+    expect(repartitionSexe({ hommes: 20, femmes: 15 }).coherente).toBe(true);
+  });
+
+  it("ignore une saisie qui n'est pas un effectif", () => {
+    expect(repartitionSexe({ apprenants: 30, hommes: "abc" }).hommes).toBe(null);
+    expect(repartitionSexe({ apprenants: 30, femmes: -4 }).femmes).toBe(null);
+    expect(repartitionSexe({ apprenants: 30, femmes: "12" }).femmes).toBe(12);
+    expect(repartitionSexe({ apprenants: 30, femmes: " 12 " }).femmes).toBe(12);
+  });
+
+  it("le formulaire neuf laisse la répartition vide", () => {
+    const vierge = PROJET_VIERGE();
+    expect(vierge.hommes).toBe("");
+    expect(vierge.femmes).toBe("");
+    expect(repartitionSexe(vierge).renseignee).toBe(false);
+  });
+});
+
+/* Effectif minimal d'un projet collectif d'apprentissage.
+ *
+ * Le seuil n'est pas une préférence d'affichage : sous dix apprenants, le
+ * dossier ne relève pas du produit. Un projet qui passerait quand même
+ * entrerait dans toutes les moyennes du portefeuille. */
+describe("effectifSuffisant", () => {
+  it("refuse en deçà du seuil, accepte au seuil", () => {
+    expect(APPRENANTS_MINIMUM).toBe(10);
+    expect(effectifSuffisant(9)).toBe(false);
+    expect(effectifSuffisant(10)).toBe(true);
+    expect(effectifSuffisant(11)).toBe(true);
+    expect(effectifSuffisant(0)).toBe(false);
+  });
+
+  it("refuse un effectif absent ou illisible", () => {
+    // Un champ vide n'est pas « zéro apprenant » : c'est un dossier
+    // incomplet, et il est refusé de la même façon.
+    expect(effectifSuffisant("")).toBe(false);
+    expect(effectifSuffisant(null)).toBe(false);
+    expect(effectifSuffisant(undefined)).toBe(false);
+    expect(effectifSuffisant("abc")).toBe(false);
+    expect(effectifSuffisant(-5)).toBe(false);
+  });
+
+  it("accepte un effectif saisi comme texte, espaces compris", () => {
+    expect(effectifSuffisant("30")).toBe(true);
+    expect(effectifSuffisant(" 30 ")).toBe(true);
+  });
+
+  it("le formulaire neuf part d'un effectif recevable", () => {
+    expect(effectifSuffisant(PROJET_VIERGE().apprenants)).toBe(true);
   });
 });

@@ -31,7 +31,8 @@ import {
   libelleSecteur, listeSecteursPlate, nomLibre, ANTENNES_FDFP, IMPLANTATIONS,
   normaliserRegion, LOCALITES_PAR_ZONE, DEP_PAR_LOCALITE, localitesDe,
   localiteParDefaut, normaliserLocalite, PROJET_VIERGE, PERMS, STATUTS_PROJET,
-  normaliserStatut, memeNom, masqueOrganisations, nomMasque,
+  normaliserStatut, memeNom, masqueOrganisations, nomMasque, repartitionSexe,
+  APPRENANTS_MINIMUM, effectifSuffisant,
 } from "./referentiel.js";
 /* « nettoyerPdf » est la seule partie purement calculatoire de la génération
    de fiches, et la plus délicate. Isolée pour être testée (pdf.test.js). */
@@ -56,7 +57,7 @@ const FORMATIONS_DEMO = [
        sur la fiche, un écart entre eux se verrait. */
     id: "f1", titre: "Formation de 30 jeunes au métier de superviseur HACCP en ligne de conditionnement cacao",
     entreprise: "SACO", operateur: "A.C.A", beneficiaire: "SCINPA", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "Siège Abidjan", localite: "Abidjan",
-    apprenants: 30, budget: 12500000, statut: "Terminé",
+    apprenants: 30, hommes: 18, femmes: 12, budget: 12500000, statut: "Terminé",
     /* Dates cohérentes avec SUIVIS_DEMO : la date de fin est l'origine des
        trois jalons, M+3 tombe donc bien trois mois après elle. */
     dateDebut: "2025-11-03", dateFin: "2026-02-20",
@@ -70,14 +71,14 @@ const FORMATIONS_DEMO = [
        observable, ce qui est précisément ce que le modèle prétend mesurer. */
     id: "f2", titre: "Formation de 50 jeunes au métier d'agent contrôleur de processus de décorticage de l'anacarde",
     entreprise: "DIAOUNE AGRO-ALIMENTAIRE", operateur: "Emergence", beneficiaire: "DIAOUNE AGRO-ALIMENTAIRE", secteurGrand: "Secteur secondaire", filiere: "Transformation de l'anacarde", domaine: "Décorticage", region: "Antenne Bouaké", localite: "Bouaké",
-    apprenants: 50, budget: 5000000, statut: "Terminé",
+    apprenants: 50, hommes: 29, femmes: 21, budget: 5000000, statut: "Terminé",
     dateDebut: "2026-01-12", dateFin: "2026-04-17",
     notes: { P1: 3, P2: 2, P3: 3, P4: 2, EP1: 2, EP2: 2, EP3: 3, EP4: 4, EP5: 2, EP6: 2, IE1: 2, IE2: 3, IE3: 2, IE4: 2, IO1: 2, IO2: 2, IO3: 3, IO4: 2, IO5: 2, DC1: 3, DC2: 2, DC3: 2, DC4: 2 },
   },
   {
     id: "f3", titre: "Formation de 25 jeunes au métier de superviseur de la sécurité alimentaire et de la traçabilité ISO 22000",
     entreprise: "FrieslandCampina", operateur: "Domny", beneficiaire: "FrieslandCampina", secteurGrand: "Secteur secondaire", filiere: "Industrie laitière", domaine: "Lait et yaourts", region: "Antenne San-Pédro", localite: "San-Pédro",
-    apprenants: 25, budget: 15200000, statut: "Terminé",
+    apprenants: 25, hommes: 9, femmes: 16, budget: 15200000, statut: "Terminé",
     dateDebut: "2026-02-09", dateFin: "2026-06-02",
     notes: { P1: 4, P2: 4, P3: 4, P4: 4, EP1: 4, EP2: 3, EP3: 4, EP4: 4, EP5: 4, EP6: 4, IE1: 3, IE2: 3, IE3: 4, IE4: 3, IO1: 4, IO2: 3, IO3: 4, IO4: 4, IO5: 3, DC1: 3, DC2: 3, DC3: 4, DC4: 3 },
   },
@@ -1055,7 +1056,7 @@ function CarteNationale({ comptes, scores, lecture, surClic, sombre }) {
         style={{ display: "block", maxHeight: "min(70vh, 620px)" }}
         role="img"
         aria-label={`Carte de Côte d'Ivoire : ${total} projet${total > 1 ? "s" : ""} répartis sur ${points.length} localité${points.length > 1 ? "s" : ""}.`}>
-        {/* Les huit zones, en aplat très clair : elles donnent le contexte
+        {/* Les sept zones, en aplat très clair : elles donnent le contexte
             « quelle antenne » sans concurrencer les pastilles. */}
         {DEPARTEMENTS.map((d) => (
           <path key={d.c} d={traces.CONTOURS[d.c]} fill={teinteDe(d)}
@@ -1064,7 +1065,7 @@ function CarteNationale({ comptes, scores, lecture, surClic, sombre }) {
         ))}
         <Routes ROUTES={traces.ROUTES} sombre={sombre} opacite={0.75} />
         {/* Liseré autour de chaque zone : le trait blanc inter-départemental
-            ne suffit pas à faire voir les huit ensembles. */}
+            ne suffit pas à faire voir les sept ensembles. */}
         {Object.keys(LOCALITES_PAR_ZONE).map((z) => (
           <g key={z}>
             {DEPARTEMENTS.filter((d) => d.z === z).map((d) => (
@@ -1700,6 +1701,11 @@ export default function MipPpaApp() {
      alors un message qui dit quel script exécuter. */
   const datesDispoRef = useRef(false);
   const [datesDispo, setDatesDispo] = useState(true);
+  /* Répartition par sexe (phase 12) : même règle que le calendrier, et pour la
+     même raison — une base non migrée doit continuer d'accepter les
+     enregistrements plutôt que de tout refuser pour deux colonnes absentes. */
+  const sexeDispoRef = useRef(false);
+  const [sexeDispo, setSexeDispo] = useState(true);
 
   const projetVersRow = (f) => {
     const row = { id: f.id, titre: f.titre || "", promoteur: f.entreprise || f.promoteur || "", operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", secteur: f.filiere || f.secteur || "", secteur_grand: f.secteurGrand || "", domaine: f.domaine || "", region: f.region || "", apprenants: Number(f.apprenants) || 0, budget: Number(f.budget) || 0, statut: normaliserStatut(f.statut), notes: f.notes || {}, maj_le: new Date().toISOString() };
@@ -1720,6 +1726,16 @@ export default function MipPpaApp() {
       row.date_debut = estDateISO(f.dateDebut) ? f.dateDebut : null;
       row.date_fin = estDateISO(f.dateFin) ? f.dateFin : null;
     }
+    /* « hommes » / « femmes » (phase 12). Même traitement que les dates : les
+       deux colonnes partent ENSEMBLE et acceptent null, pour qu'effacer un
+       effectif s'enregistre au lieu de réapparaître au rechargement. Un champ
+       vide devient null et non zéro : la base doit pouvoir distinguer « aucune
+       femme » de « répartition inconnue ». */
+    const sexe = repartitionSexe(f);
+    if (sexeDispoRef.current || sexe.renseignee) {
+      row.hommes = sexe.hommes;
+      row.femmes = sexe.femmes;
+    }
     return row;
   };
   /* La localité est ramenée au périmètre de sa zone à la lecture : une base
@@ -1730,7 +1746,7 @@ export default function MipPpaApp() {
      fuseau que l'application ne saurait pas quoi faire. La coupe est donc
      faite ici, une fois pour toutes. */
   const dateDeRow = (v) => (estDateISO(v) ? String(v).slice(0, 10) : "");
-  const rowVersProjet = (r) => ({ id: r.id, titre: r.titre, entreprise: r.promoteur, operateur: r.operateur, beneficiaire: r.beneficiaire, filiere: r.secteur, secteurGrand: r.secteur_grand || "", domaine: r.domaine || "", region: normaliserRegion(r.region, r.localite), localite: normaliserLocalite(r.localite, r.region), apprenants: r.apprenants, budget: r.budget, statut: normaliserStatut(r.statut), dateDebut: dateDeRow(r.date_debut), dateFin: dateDeRow(r.date_fin), notes: r.notes || {}, historique: Array.isArray(r.historique) ? r.historique : [] });
+  const rowVersProjet = (r) => ({ id: r.id, titre: r.titre, entreprise: r.promoteur, operateur: r.operateur, beneficiaire: r.beneficiaire, filiere: r.secteur, secteurGrand: r.secteur_grand || "", domaine: r.domaine || "", region: normaliserRegion(r.region, r.localite), localite: normaliserLocalite(r.localite, r.region), apprenants: r.apprenants, hommes: r.hommes ?? "", femmes: r.femmes ?? "", budget: r.budget, statut: normaliserStatut(r.statut), dateDebut: dateDeRow(r.date_debut), dateFin: dateDeRow(r.date_fin), notes: r.notes || {}, historique: Array.isArray(r.historique) ? r.historique : [] });
   const suiviVersRow = (s) => ({ id: s.id, projet_id: s.formationId, jalon: s.jalon, echeance: s.echeance || null, statut: s.statut || "programmé", note: s.note || "", docs: s.docs || [], maj_le: new Date().toISOString() });
   /* Le statut d'un SUIVI est « programmé » / « effectué » : rien à voir avec
      celui d'un projet, il ne passe donc pas par « normaliserStatut ». */
@@ -2363,6 +2379,10 @@ export default function MipPpaApp() {
       const avecDates = lignes.length === 0 || "date_debut" in lignes[0];
       datesDispoRef.current = avecDates;
       setDatesDispo(avecDates);
+      // Et pour la répartition par sexe (phase 12).
+      const avecSexe = lignes.length === 0 || "hommes" in lignes[0];
+      sexeDispoRef.current = avecSexe;
+      setSexeDispo(avecSexe);
       const actives = lignes.filter((r) => !r.supprime_le);
       const jetees = lignes.filter((r) => r.supprime_le);
       setCorbeille(jetees.map((r) => ({ ...rowVersProjet(r), supprimeLe: r.supprime_le, supprimePar: r.supprime_par })));
@@ -2605,6 +2625,17 @@ export default function MipPpaApp() {
     return {
       nb: formationsVisibles.length,
       apprenants: formationsVisibles.reduce((a, f) => a + Number(f.apprenants || 0), 0),
+      /* Répartition par sexe du portefeuille. Elle ne s'agrège que sur les
+         projets qui la renseignent : additionner les autres reviendrait à les
+         compter comme « zéro femme », et le taux de féminisation affiché
+         serait alors d'autant plus bas que la donnée manque. « couverts »
+         dit donc sur quelle part du portefeuille le taux repose. */
+      sexe: formationsVisibles.reduce((acc, f) => {
+        const r = repartitionSexe(f);
+        if (!r.renseignee) return acc;
+        return { hommes: acc.hommes + (r.hommes || 0), femmes: acc.femmes + (r.femmes || 0),
+                 couverts: acc.couverts + 1 };
+      }, { hommes: 0, femmes: 0, couverts: 0 }),
       budget: formationsVisibles.reduce((a, f) => a + Number(f.budget || 0), 0),
       moy, alertes: alertesScore.length + enRetard.length + trousEval.length + calendrier.length,
       alertesScore, enRetard, trousEval, calendrier,
@@ -2798,12 +2829,25 @@ export default function MipPpaApp() {
 
   const ajouterFormation = () => {
     if (!nouvelle.titre.trim() || !nouvelle.entreprise.trim()) { notif("Renseignez au minimum l'intitulé et le promoteur"); return; }
+    /* Effectif minimal du produit. Refusé à l'enregistrement, et pas seulement
+       signalé : un projet sous le seuil ne relève pas du Projet Apprentissage,
+       et il entrerait pourtant dans toutes les moyennes du portefeuille. */
+    if (!effectifSuffisant(nouvelle.apprenants)) {
+      notif(`Un projet d'apprentissage compte au moins ${APPRENANTS_MINIMUM} apprenants.`); return;
+    }
     /* Une fin antérieure au lancement est refusée à la saisie, et pas
        seulement signalée après coup : toute la suite en dépend, la durée
        affichée, les trois échéances, la lecture de la fiche. */
     if (estDateISO(nouvelle.dateDebut) && estDateISO(nouvelle.dateFin)
       && nouvelle.dateFin < nouvelle.dateDebut) {
       notif("La date de fin ne peut pas précéder la date de lancement."); return;
+    }
+    /* Une répartition supérieure à l'effectif est refusée à la saisie : elle
+       fausserait le taux de féminisation du portefeuille, qui s'agrège sur
+       tous les projets. Une répartition PARTIELLE, elle, passe : ne connaître
+       que l'effectif féminin est un cas courant. */
+    if (!repartitionSexe(nouvelle).coherente) {
+      notif("Le total hommes + femmes dépasse le nombre d'apprenants."); return;
     }
     if (editionId) {
       setFormations((fs) => fs.map((f) => f.id === editionId ? { ...f, ...nouvelle } : f));
@@ -2829,7 +2873,7 @@ export default function MipPpaApp() {
       + (estDateISO(nouvelle.dateFin) ? " après la fin du projet)" : " à compter d'aujourd'hui, faute de date de fin)"));
   };
   const editerFormation = (f) => {
-    setNouvelle({ titre: f.titre, entreprise: f.entreprise, operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", secteurGrand: f.secteurGrand || grandSecteurDe(secteurs, f.filiere), filiere: f.filiere, domaine: f.domaine || "", region: normaliserRegion(f.region, f.localite), localite: normaliserLocalite(f.localite, f.region), apprenants: f.apprenants, budget: f.budget, statut: f.statut, dateDebut: f.dateDebut || "", dateFin: f.dateFin || "" });
+    setNouvelle({ titre: f.titre, entreprise: f.entreprise, operateur: f.operateur || "", beneficiaire: f.beneficiaire || "", secteurGrand: f.secteurGrand || grandSecteurDe(secteurs, f.filiere), filiere: f.filiere, domaine: f.domaine || "", region: normaliserRegion(f.region, f.localite), localite: normaliserLocalite(f.localite, f.region), apprenants: f.apprenants, hommes: f.hommes ?? "", femmes: f.femmes ?? "", budget: f.budget, statut: f.statut, dateDebut: f.dateDebut || "", dateFin: f.dateFin || "" });
     setEditionId(f.id); setFormOuvert(true); setPage("formations");
   };
 
@@ -2994,6 +3038,12 @@ export default function MipPpaApp() {
         region,
         localite: normaliserLocalite(localiteLue, region),
         apprenants: nombre(r[col("Apprenants")]),
+        /* Une cellule vide reste vide : « nombre() » rendrait 0, ce qui
+           inventerait une répartition que le classeur ne portait pas. */
+        hommes: col(COL_HOMMES) >= 0 && String(r[col(COL_HOMMES)] ?? "").trim() !== ""
+          ? nombre(r[col(COL_HOMMES)]) : "",
+        femmes: col(COL_FEMMES) >= 0 && String(r[col(COL_FEMMES)] ?? "").trim() !== ""
+          ? nombre(r[col(COL_FEMMES)]) : "",
         budget: nombre(r[col("Budget")]),
         statut: normaliserStatut(String(r[col("Statut")] ?? "").trim()),
         dateDebut: col(COL_DATE_DEBUT) >= 0 ? dateCellule(r[col(COL_DATE_DEBUT)]) : "",
@@ -3003,7 +3053,8 @@ export default function MipPpaApp() {
         dimensions: dims,
       });
     }
-    const manquantes = ["Localité", "Domaine", "Secteur", COL_DATE_DEBUT, COL_DATE_FIN].filter((c) => col(c) < 0);
+    const manquantes = ["Localité", "Domaine", "Secteur", COL_DATE_DEBUT, COL_DATE_FIN,
+      COL_HOMMES, COL_FEMMES].filter((c) => col(c) < 0);
     return { lignes, manquantes, dimensionsLues: iDim.filter((d) => d.i >= 0).length };
   };
 
@@ -3132,19 +3183,27 @@ export default function MipPpaApp() {
      descriptive, et non d'un index écrit en dur. C'est la leçon de la colonne
      « Localité », qui avait décalé les formats de nombre d'un cran. */
   const COL_DATE_DEBUT = "Date de lancement", COL_DATE_FIN = "Date de fin";
+  /* « Hommes » et « Femmes » se placent juste après « Apprenants », dont elles
+     sont la ventilation : une colonne se lit à côté de son total, pas trois
+     rangs plus loin. Elles restent VIDES quand la répartition n'est pas
+     renseignée — un zéro ferait compter le projet comme sans femmes dans le
+     moindre tableau croisé. */
+  const COL_HOMMES = "Hommes", COL_FEMMES = "Femmes";
   const colonnesExport = () => ["Projet", "Promoteur", "Secteur", "Matière première", "Domaine", "Zone", "Localité",
-    "Apprenants", "Budget (FCFA)", "Statut", COL_DATE_DEBUT, COL_DATE_FIN,
+    "Apprenants", COL_HOMMES, COL_FEMMES, "Budget (FCFA)", "Statut", COL_DATE_DEBUT, COL_DATE_FIN,
     ...referentiel.map((d) => `${d.nom} (%)`), "Score global (%)", "Niveau"];
 
   // Valeurs typées : les nombres restent des nombres, pour que le tableur
   // puisse trier, filtrer et sommer sans réinterprétation.
   const lignesExport = () => formationsVisibles.map((f) => {
     const g = scoreGlobal(referentiel, f.notes);
+    const rs = repartitionSexe(f);
     return [
       f.titre, orgAff(f.entreprise),
       f.secteurGrand || grandSecteurDe(secteurs, f.filiere), f.filiere, f.domaine || "", f.region,
       normaliserLocalite(f.localite, f.region),
-      Number(f.apprenants) || 0, Number(f.budget) || 0, f.statut,
+      Number(f.apprenants) || 0, rs.hommes, rs.femmes,
+      Number(f.budget) || 0, f.statut,
       /* Dates au format ISO « AAAA-MM-JJ » dans la donnée partagée : c'est la
          seule écriture qui se trie correctement en texte et que la reprise
          relit sans ambiguïté. Le classeur les convertit ensuite en vraies
@@ -3222,6 +3281,7 @@ export default function MipPpaApp() {
          silencieusement les formats de nombre d'une colonne vers la gauche.
          Un budget se serait affiché en pourcentage. */
       const iApprenants = entetes.indexOf("Apprenants");
+      const iSexe = [entetes.indexOf(COL_HOMMES), entetes.indexOf(COL_FEMMES)];
       const iBudget = entetes.indexOf("Budget (FCFA)");
       const iDateDebut = entetes.indexOf(COL_DATE_DEBUT);
       const iDateFin = entetes.indexOf(COL_DATE_FIN);
@@ -3231,7 +3291,7 @@ export default function MipPpaApp() {
         r.eachCell({ includeEmpty: true }, (c, numCol) => {
           const i = numCol - 1;
           c.alignment = { vertical: "middle", wrapText: i === 0 };
-          if (i === iApprenants) c.numFmt = "#,##0";
+          if (i === iApprenants || iSexe.includes(i)) c.numFmt = "#,##0";
           else if (i === iBudget) c.numFmt = '#,##0 "FCFA"';
           else if (i === iDateDebut || i === iDateFin) {
             /* Vraie date Excel, pas du texte : le classeur doit pouvoir trier
@@ -3350,7 +3410,14 @@ export default function MipPpaApp() {
     const locPdf = normaliserLocalite(f.localite, f.region);
     ligne(`Promoteur : ${orgAff(f.entreprise)}  -  ${f.filiere}  -  ${f.region}${locPdf ? ` (${locPdf})` : ""}`);
     if (f.operateur || f.beneficiaire) ligne(`${f.operateur ? "Opérateur : " + orgAff(f.operateur) : ""}${f.operateur && f.beneficiaire ? "  -  " : ""}${f.beneficiaire ? "Bénéficiaire : " + orgAff(f.beneficiaire) : ""}`);
-    ligne(`${f.apprenants} apprenants  -  Budget : ${fmtFCFA(f.budget)}  -  Statut : ${f.statut}`);
+    /* La repartition par sexe suit l'effectif dont elle est la ventilation.
+       Omise quand elle n'est pas renseignee : une fiche qui circule ne doit
+       pas laisser croire a une absence de femmes la ou l'information manque. */
+    const rs = repartitionSexe(f);
+    const detailSexe = rs.renseignee
+      ? ` (dont ${[rs.hommes !== null ? `${rs.hommes} hommes` : "", rs.femmes !== null ? `${rs.femmes} femmes` : ""].filter(Boolean).join(", ")})`
+      : "";
+    ligne(`${f.apprenants} apprenants${detailSexe}  -  Budget : ${fmtFCFA(f.budget)}  -  Statut : ${f.statut}`);
     /* Calendrier du projet. La fiche circule seule, souvent imprimée : sans
        cette ligne, un lecteur ne sait pas si le « M+12 » qu'il a sous les yeux
        est attendu le mois prochain ou l'an dernier. Posée par « ligne() »
@@ -4227,6 +4294,9 @@ export default function MipPpaApp() {
               <StatCard icone={<Icone n="cap" t={20} />} titre="Projets suivis" valeur={stats.nb}
                 surClic={() => setDetailStat("projets")} indice="Voir l'intitulé de chaque projet" />
               <StatCard icone={<Icone n="groupe" t={20} />} titre="Apprenants concernés" valeur={stats.apprenants} teinte="#fdf0da" fg="#b07515"
+                sous={stats.sexe.couverts
+                  ? `${Math.round((stats.sexe.femmes / Math.max(1, stats.sexe.hommes + stats.sexe.femmes)) * 100)} % de femmes sur ${stats.sexe.couverts} projet${stats.sexe.couverts > 1 ? "s" : ""} renseigné${stats.sexe.couverts > 1 ? "s" : ""}`
+                  : undefined}
                 surClic={() => setDetailStat("apprenants")} indice="Voir le nombre d'apprenants par projet" />
               <StatCard icone={<Icone n="cible" t={20} />} titre="Score moyen MIP-PPA" valeur={fmtPct(stats.moy)} sous="Moyenne pondérée du portefeuille" teinte="#dcebf7" fg={C.vert}
                 surClic={() => setDetailStat("scores")} indice="Voir le score de chaque projet" />
@@ -4312,7 +4382,7 @@ export default function MipPpaApp() {
                   <CarteNationale comptes={projetsParLocalite} scores={scoreParZone}
                     lecture={lectureCarte} sombre={sombre}
                     surClic={(d) => setDetailLocalite(d.n)} />
-                  {/* Légende. En lecture « implantation » : les huit zones et
+                  {/* Légende. En lecture « implantation » : les sept zones et
                       leur part du portefeuille, une couleur sans total ne se
                       lit pas. En lecture « score » : les quatre paliers du
                       modèle, plus le gris des zones non évaluées. */}
@@ -4470,7 +4540,7 @@ export default function MipPpaApp() {
                         chasse la pastille hors du bouton sur petit écran. */}
                     <div className="min-w-0">
                       <div className="font-semibold break-words">{f.titre}</div>
-                      <div className="text-sm text-stone-500 break-words">{orgAff(f.entreprise)} · {libelleSecteur(f, secteurs)} · {f.apprenants} apprenants</div>
+                      <div className="text-sm text-stone-500 break-words">{orgAff(f.entreprise)} · {libelleSecteur(f, secteurs)} · {f.apprenants} apprenants{repartitionSexe(f).partFemmes !== null ? ` · ${repartitionSexe(f).partFemmes} % de femmes` : ""}</div>
                     </div>
                     <Badge score={scoreGlobal(referentiel, f.notes)} />
                   </button>
@@ -4660,9 +4730,62 @@ export default function MipPpaApp() {
                       : "Zone hors nomenclature : aucune localité rattachée."}
                   </div>
                 </label>
+                {/* L'effectif minimal est porté par le champ lui-même (« min »),
+                    rappelé sous la saisie, et revérifié à l'enregistrement : un
+                    champ numérique reste modifiable au clavier, et « min » ne
+                    bloque pas la frappe. */}
                 <label className="text-sm">Nombre d'apprenants
-                  <input type="number" value={nouvelle.apprenants} onChange={(e) => setNouvelle({ ...nouvelle, apprenants: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" />
+                  <input type="number" min={APPRENANTS_MINIMUM} value={nouvelle.apprenants} onChange={(e) => setNouvelle({ ...nouvelle, apprenants: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" />
+                  <div className="text-xs mt-1">
+                    {effectifSuffisant(nouvelle.apprenants)
+                      ? <span className="text-stone-400">Minimum {APPRENANTS_MINIMUM} apprenants pour un projet d'apprentissage.</span>
+                      : <span className="text-red-600 font-semibold">Un projet d'apprentissage compte au moins {APPRENANTS_MINIMUM} apprenants.</span>}
+                  </div>
                 </label>
+
+                {/* ---------- RÉPARTITION PAR SEXE ----------
+                    FACULTATIVE, comme les dates : elle n'est pas toujours
+                    connue à l'instruction du dossier. Les deux champs restent
+                    donc vides par défaut, et vides ils le restent — un zéro
+                    saisi d'office ferait croire à une absence de femmes là où
+                    l'information manque seulement.
+                    Les deux effectifs sont indépendants : connaître le nombre
+                    de femmes sans celui des hommes est un cas courant, et
+                    suffit déjà à situer le projet. */}
+                <label className="text-sm">Dont hommes <span className="text-stone-400">(facultatif)</span>
+                  <input type="number" min="0" value={nouvelle.hommes ?? ""}
+                    onChange={(e) => setNouvelle({ ...nouvelle, hommes: e.target.value })}
+                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" />
+                </label>
+                <label className="text-sm">Dont femmes <span className="text-stone-400">(facultatif)</span>
+                  <input type="number" min="0" value={nouvelle.femmes ?? ""}
+                    onChange={(e) => setNouvelle({ ...nouvelle, femmes: e.target.value })}
+                    className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" />
+                </label>
+                {/* Ce que la répartition dit, et ce qu'elle ne dit pas encore :
+                    une somme supérieure à l'effectif est une erreur de saisie,
+                    une somme inférieure est une répartition partielle, qui
+                    reste acceptable. */}
+                <div className="md:col-span-2 -mt-1 text-xs">
+                  {(() => {
+                    const r = repartitionSexe(nouvelle);
+                    const total = Number(nouvelle.apprenants) || 0;
+                    if (!r.renseignee) {
+                      return <span className="text-stone-400">Répartition par sexe non renseignée. Elle n'est pas obligatoire, mais c'est elle qui permet de suivre la place des femmes dans les projets d'apprentissage.</span>;
+                    }
+                    if (!r.coherente) {
+                      return <span className="text-red-600 font-semibold">La répartition ({r.total}) dépasse le nombre d'apprenants ({total}) : corrigez avant d'enregistrer.</span>;
+                    }
+                    return (
+                      <span className="text-stone-500">
+                        {r.total} apprenant{r.total > 1 ? "s" : ""} réparti{r.total > 1 ? "s" : ""} sur {total || "?"}
+                        {r.partFemmes !== null ? ` · ${r.partFemmes} % de femmes` : ""}
+                        {total && r.total < total ? ` · ${total - r.total} non réparti${total - r.total > 1 ? "s" : ""}` : ""}.
+                      </span>
+                    );
+                  })()}
+                  {!sexeDispo && <span className="block mt-1 text-amber-700 font-medium">La répartition par sexe ne pourra pas être enregistrée tant que « supabase-phase12.sql » n'a pas été exécuté dans Supabase.</span>}
+                </div>
                 <label className="text-sm">Budget (FCFA)
                   <input type="number" min="0" step="1000" value={nouvelle.budget} onChange={(e) => setNouvelle({ ...nouvelle, budget: e.target.value })} className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2" />
                   {/* Un champ numérique ne peut pas afficher de séparateurs :
@@ -4830,7 +4953,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
               <div className="max-w-3xl">
                 <div className="text-xs uppercase tracking-wider text-sky-200">Promoteur : {orgAff(fEval.entreprise)}</div>
                 <h2 className="text-2xl font-bold mt-1 break-words">{fEval.titre}</h2>
-                <div className="text-sm text-sky-100 mt-1 break-words">{libelleSecteur(fEval, secteurs)} · {fEval.region}{normaliserLocalite(fEval.localite, fEval.region) ? ` (${normaliserLocalite(fEval.localite, fEval.region)})` : ""} · {fEval.apprenants} apprenants · {fmtFCFA(fEval.budget)}</div>
+                <div className="text-sm text-sky-100 mt-1 break-words">{libelleSecteur(fEval, secteurs)} · {fEval.region}{normaliserLocalite(fEval.localite, fEval.region) ? ` (${normaliserLocalite(fEval.localite, fEval.region)})` : ""} · {fEval.apprenants} apprenants{repartitionSexe(fEval).partFemmes !== null ? ` (${repartitionSexe(fEval).partFemmes} % de femmes)` : ""} · {fmtFCFA(fEval.budget)}</div>
                 {(fEval.operateur || fEval.beneficiaire) && <div className="text-xs text-sky-200 mt-1 break-words">{[fEval.operateur ? `Opérateur : ${orgAff(fEval.operateur)}` : "", fEval.beneficiaire ? `Bénéficiaire : ${orgAff(fEval.beneficiaire)}` : ""].filter(Boolean).join(" · ")}</div>}
                 <PeriodeProjet projet={fEval} className="text-xs text-sky-200 mt-1 break-words" />
               </div>
@@ -5579,7 +5702,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                  exportent, et le guide ne leur en disait pas un mot. Deux
                  rédactions, selon que l'on peut modifier ou seulement lire. */
               if (P.creerFormation || P.editerFormation) {
-                g.push(["Gérer les projets", "Créez ou modifiez un projet depuis la page Projets : intitulé, promoteur, opérateur, bénéficiaire, secteur, zone, localité, apprenants, budget en FCFA, statut, et les dates de lancement et de fin. Les deux dates sont facultatives, mais la date de fin commande les échéances de suivi : renseignez-la dès qu'elle est connue."
+                g.push(["Gérer les projets", "Créez ou modifiez un projet depuis la page Projets : intitulé, promoteur, opérateur, bénéficiaire, secteur, zone, localité, apprenants, budget en FCFA, statut, et les dates de lancement et de fin. Les deux dates sont facultatives, mais la date de fin commande les échéances de suivi : renseignez-la dès qu'elle est connue. La répartition hommes / femmes est facultative elle aussi : laissée vide, elle n'est pas comptée comme une absence de femmes, et le projet sort simplement du taux de féminisation affiché au tableau de bord."
                   + (P.supprimerFormation ? " Un projet supprimé part à la corbeille et reste restaurable depuis la page Projets." : "")]);
               } else if ((P.pages || []).includes("formations")) {
                 g.push(["Consulter les projets", "La page Projets liste "
@@ -5944,7 +6067,20 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                       </div>
                       <div className="shrink-0 flex items-center gap-2">
                         {detailStat === "projets" && <span className="text-xs text-stone-400 font-mono">{i + 1}</span>}
-                        {detailStat === "apprenants" && <span className="text-lg font-bold">{Number(f.apprenants) || 0}</span>}
+                        {detailStat === "apprenants" && (() => {
+                          const rs = repartitionSexe(f);
+                          return (
+                            <span className="text-right">
+                              <span className="text-lg font-bold">{Number(f.apprenants) || 0}</span>
+                              {rs.renseignee && (
+                                <span className="block text-xs text-stone-500">
+                                  {[rs.hommes !== null ? `${rs.hommes} H` : "",
+                                    rs.femmes !== null ? `${rs.femmes} F` : ""].filter(Boolean).join(" · ")}
+                                </span>
+                              )}
+                            </span>
+                          );
+                        })()}
                         {detailStat === "scores" && <Badge score={scoreGlobal(referentiel, f.notes)} />}
                       </div>
                     </button>
@@ -5952,7 +6088,12 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                 </div>
                 <div className="mt-4 pt-3 border-t border-stone-200 flex flex-wrap items-center justify-between gap-2 text-sm">
                   <span className="text-stone-500">{liste.length} projet{liste.length > 1 ? "s" : ""}</span>
-                  {detailStat === "apprenants" && <span className="font-semibold">Total : {stats.apprenants} apprentis</span>}
+                  {detailStat === "apprenants" && (
+                    <span className="font-semibold">
+                      Total : {stats.apprenants} apprentis
+                      {stats.sexe.couverts ? ` · ${stats.sexe.hommes} hommes et ${stats.sexe.femmes} femmes sur ${stats.sexe.couverts} projet${stats.sexe.couverts > 1 ? "s" : ""} renseigné${stats.sexe.couverts > 1 ? "s" : ""}` : ""}
+                    </span>
+                  )}
                   {detailStat === "scores" && <span className="font-semibold">Moyenne pondérée : {fmtPct(stats.moy)}</span>}
                 </div>
               </>)}
