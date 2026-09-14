@@ -21,8 +21,8 @@ import { DEPARTEMENTS } from "./geo-civ.js";
 
 export const REFERENTIEL_DEFAUT = [
   {
-    id: "P", nom: "Pertinence", poids: 20,
-    desc: "Alignement de la formation aux besoins métiers et aux normes de l'industrie agroalimentaire.",
+    id: "P", nom: "Pertinence", poids: 25,
+    desc: "Alignement de la formation aux besoins métiers et aux normes de l'industrie agro-alimentaire.",
     indicateurs: [
       { id: "P1", phase: "À la conception", label: "Part des objectifs pédagogiques rattachés à un besoin en compétences identifié par diagnostic formalisé avec l'entreprise, validée avant le démarrage (cible : 100 %)" },
       { id: "P2", phase: "À la conception", label: "Part des modules du programme alignés sur les référentiels métiers du secteur, vérifiée à l'instruction du dossier (cible : 100 %)" },
@@ -31,7 +31,7 @@ export const REFERENTIEL_DEFAUT = [
     ],
   },
   {
-    id: "EP", nom: "Efficacité pédagogique", poids: 25,
+    id: "EP", nom: "Efficacité pédagogique", poids: 20,
     desc: "Acquisition réelle des connaissances et gestes techniques.",
     indicateurs: [
       { id: "EP1", phase: "En fin de formation", label: "Progression moyenne des connaissances théoriques entre le test initial et le test final (cible : ≥ 30 points de pourcentage)" },

@@ -41,7 +41,7 @@ import { nettoyerPdf } from "./pdf.js";
    ils ne servent qu'à dessiner, sur deux écrans. Voir « useTraces ». */
 
 /* ================================================================
-   FDFP · MIP-PPA : Suivi des projets de formation de type apprentissage dans l'industrie agroalimentaire
+   FDFP · MIP-PPA : Suivi des projets de formation de type apprentissage dans l'industrie agro-alimentaire
    Reconstruction fidèle de l'application (modèle : 5 dimensions,
    23 indicateurs, notes 0–4, suivi post-formation à 3/6/12 mois)
    ================================================================ */
@@ -1261,7 +1261,7 @@ function CadreAccueil({ enfants }) {
         <LogoFDFP h={34} />
         <div className="min-w-0">
           <div className="text-white font-bold text-lg leading-tight">FDFP · MIP-PPA</div>
-          <div className="text-sky-200 text-sm">Suivi des projets de formation de type apprentissage (emploi-qualification) dans les industries agroalimentaires.</div>
+          <div className="text-sky-200 text-sm">Suivi des projets de formation de type apprentissage (emploi-qualification) dans les industries agro-alimentaires.</div>
         </div>
       </div>
       {enfants}
@@ -3561,7 +3561,7 @@ export default function MipPpaApp() {
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(14);
     doc.text(nettoyerPdf("FICHE D'EVALUATION MIP-PPA"), W - M, 13, { align: "right" });
     doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-    doc.text(nettoyerPdf("Projet Apprentissage - Industrie agroalimentaire"), W - M, 19, { align: "right" });
+    doc.text(nettoyerPdf("Projet Apprentissage - Industrie agro-alimentaire"), W - M, 19, { align: "right" });
     doc.setDrawColor(...orange); doc.setLineWidth(1.6); doc.line(0, 30, W, 30);
     y = 40;
 
@@ -3957,7 +3957,7 @@ export default function MipPpaApp() {
     ...(P.users ? [{ section: "Administration", items: [["users", "utilisateurs", "Utilisateurs & rôles"]] }] : []),
   ];
   const titres = {
-    dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des projets de formation de type Apprentissage (emploi-qualification) dans les industries agroalimentaires."],
+    dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des projets de formation de type Apprentissage (emploi-qualification) dans les industries agro-alimentaires."],
     formations: ["Projets de formation de type apprentissage", "Portefeuille des projets de formation financés par le FDFP."],
     evaluation: ["Évaluation", fEval ? fEval.titre : "Sélectionnez un projet à évaluer."],
     suivi: ["Suivi du niveau de performance", "Évaluations à 3, 6 et 12 mois."],
@@ -4464,7 +4464,7 @@ export default function MipPpaApp() {
               <h2 className="text-2xl md:text-4xl font-bold mt-4 leading-tight">Mesurer la vraie valeur<br />des projets de formation de type apprentissage</h2>
               <p className="mt-3 text-sky-100 max-w-2xl">
                 Le modèle MIP-PPA évalue chaque projet de formation de type apprentissage sur {referentiel.length} dimensions et {referentiel.reduce((a, d) => a + d.indicateurs.length, 0)} indicateurs,
-                de la conception jusqu'à 12 mois après pour des décisions éclairées au service de l'industrie agroalimentaire ivoirienne.
+                de la conception jusqu'à 12 mois après pour des décisions éclairées au service de l'industrie agro-alimentaire ivoirienne.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <button onClick={() => setPage("formations")} className="bg-white text-stone-900 font-semibold px-5 py-2.5 rounded-xl hover:bg-stone-100">Évaluer un projet →</button>
@@ -5054,6 +5054,77 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                 );
               })}
             </section>
+
+            {/* ---------- PROFIL PAR DIMENSION DU PROJET ----------
+                Les cinq cartes donnent les chiffres, le radar donne la forme :
+                un projet globalement excellent dont une dimension décroche se
+                voit d'un coup d'œil. Le tableau de bord n'en montrait que la
+                moyenne du portefeuille, qui lisse précisément ces écarts.
+                Une dimension non notée est posée au centre, mais son libellé
+                le dit : elle n'est pas comptée comme un zéro dans le score, et
+                le graphique ne doit pas laisser croire le contraire. */}
+            {(() => {
+              const profil = referentiel.map((d) => {
+                const s = scoreDimension(referentiel, d.id, fEval.notes);
+                return { dim: s === null ? `${d.nom} (non notée)` : d.nom, nom: d.nom, score: s ?? 0, note: s !== null };
+              });
+              const notees = profil.filter((p) => p.note);
+              if (!notees.length) return null;
+              const tri = [...notees].sort((a, b) => a.score - b.score);
+              const faible = tri[0];
+              const fort = tri[tri.length - 1];
+              const ecart = fort.score - faible.score;
+              return (
+                <section className="bg-white rounded-2xl border border-stone-200 p-5">
+                  <h3 className="font-bold">Profil par dimension</h3>
+                  <p className="text-sm text-stone-500 mb-2">
+                    Forme du niveau de performance de ce projet : un creux désigne la dimension sur laquelle porter l'effort.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                    <div className="md:col-span-2">
+                      <ResponsiveContainer width="100%" height={estMobile ? 260 : 300}>
+                        <RadarChart data={profil} outerRadius={estMobile ? "54%" : "72%"}>
+                          <PolarGrid stroke="#e7e5e4" />
+                          <PolarAngleAxis dataKey="dim" tick={<TickRadar mobile={estMobile} />} />
+                          <PolarRadiusAxis domain={[0, 100]} tickCount={5} axisLine={false}
+                            tick={<TickEchelleRadar />} />
+                          <Radar dataKey="score" stroke={C.vert} fill={C.vert} fillOpacity={0.35}
+                            isAnimationActive={false} />
+                          <Tooltip formatter={(v, _n, item) => (item?.payload?.note ? `${Math.round(v)} %` : "non notée")} />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="space-y-3 text-sm">
+                      <div>
+                        <div className="text-xs uppercase tracking-wide text-stone-500 font-semibold">Maillon faible</div>
+                        <div className="font-bold" style={{ color: C.insuffisant }}>{faible.nom} · {fmtPct(faible.score)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs uppercase tracking-wide text-stone-500 font-semibold">Point fort</div>
+                        <div className="font-bold" style={{ color: C.vert }}>{fort.nom} · {fmtPct(fort.score)}</div>
+                      </div>
+                      {notees.length > 1 && (
+                        <div>
+                          <div className="text-xs uppercase tracking-wide text-stone-500 font-semibold">Écart entre les deux</div>
+                          <div className="font-bold">{Math.round(ecart)} points</div>
+                        </div>
+                      )}
+                      {notees.length < profil.length && (
+                        <p className="text-xs text-stone-500">
+                          Dimension non notée : placée au centre du graphique, elle est exclue du score et ne compte pas comme un zéro.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {/* Équivalent textuel du radar, pour les lecteurs d'écran. */}
+                  <ul className="sr-only">
+                    {profil.map((p) => (
+                      <li key={p.dim}>{p.nom} : {p.note ? `${Math.round(p.score)} %` : "non notée"}</li>
+                    ))}
+                  </ul>
+                </section>
+              );
+            })()}
 
             {/* ---------- SITUATION DU PROJET DANS SA ZONE ----------
                 La fiche annonçait « Antenne Korhogo » sans dire où, dans une
