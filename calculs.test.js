@@ -13,8 +13,13 @@ import {
   echeancesSuivi, anomaliesCalendrier,
 } from "./calculs.js";
 
-/* Référentiel réduit, aux poids et volumes du modèle réel : cinq dimensions
-   pesant 20/25/20/25/10, 23 indicateurs au total. */
+/* Référentiel réduit : cinq dimensions et 23 indicateurs, comme le modèle réel.
+   Les poids 20/25/20/25/10 sont ceux d'un double de test, FIGÉS À DESSEIN. Ils
+   étaient ceux du modèle jusqu'au 12 septembre 2026 ; le référentiel applique
+   désormais 25/20/20/25/10. On ne les suit pas ici : ce que ces tests
+   éprouvent, c'est l'arithmétique de l'agrégation, pas la valeur des poids.
+   Les faire varier obligerait à recalculer chaque attendu sans rien prouver de
+   plus. Le total reste 100, seule propriété dont le calcul dépende. */
 const ind = (prefixe, n) => Array.from({ length: n }, (_, i) => ({ id: prefixe + (i + 1) }));
 const REF = [
   { id: "P",  nom: "Pertinence",                 poids: 20, indicateurs: ind("P", 4) },
