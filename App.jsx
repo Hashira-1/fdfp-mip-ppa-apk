@@ -4442,23 +4442,14 @@ export default function MipPpaApp() {
           <div className="bandeau-droite">
             <HorlogeUTC />
             <button onClick={() => setPage("guide")} className="hidden sm:flex text-sm text-stone-600 hover:text-stone-900 items-center gap-1.5" title="Ouvrir le guide d'utilisation."><Icone n="livre" t={16} /> Guide</button>
-            {/* Masque de présentation : le réglage lui-même est descendu dans
-                le menu du compte (22/09/2026), avec les autres réglages
-                personnels. Il ne reste ici qu'un TÉMOIN, affiché seulement
-                quand le masque est posé. La raison est celle qui avait fait
-                écrire le libellé en toutes lettres : un masque qu'on oublie
-                d'avoir posé fait lire de faux noms pendant une réunion de
-                travail. Le réglage se range, l'avertissement reste visible. */}
-            {P.masqueOrgs && masquerOrgs && (
-              <button onClick={() => setMasquerOrgs(false)}
-                className="hidden sm:flex items-center gap-1.5 text-sm shrink-0 rounded-lg px-2 py-1 border border-amber-300 bg-amber-50 text-amber-800"
-                title="Les organisations sont masquées à l'écran et dans les exports. Cliquer pour réafficher les vrais noms."
-                aria-pressed={true}
-                aria-label="Réafficher les noms des organisations">
-                <Icone n="oeilBarre" t={17} />
-                <span className="hidden lg:inline">Noms masqués</span>
-              </button>
-            )}
+            {/* Masque de présentation : le réglage est dans le menu du compte,
+                et le bandeau ne porte plus rien (22/09/2026, demande de
+                l'auteur). Un témoin « Noms masqués » y avait d'abord été posé,
+                pour la raison qui avait fait écrire le libellé en toutes
+                lettres : un masque qu'on oublie d'avoir posé fait lire de faux
+                noms pendant une réunion de travail. Il faisait doublon avec
+                l'entrée du menu, qui s'allume en ambre quand le masque est
+                actif. C'est donc là, et là seulement, qu'on voit son état. */}
             <button onClick={basculerTheme} className="hidden sm:block text-stone-500 hover:text-stone-800 shrink-0" title={sombre ? "Passer en mode éclairé" : "Passer en mode sombre"} aria-label={sombre ? "Passer en mode éclairé" : "Passer en mode sombre"}>
               <Icone n={sombre ? "soleil" : "lune"} t={19} />
             </button>
@@ -5867,7 +5858,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                  projection. */
               if (P.masqueOrgs) {
                 g.push(["Masquer les noms des entreprises",
-                  "Ouvrez le menu de votre compte, en haut à droite, puis « Masquer les noms » : les promoteurs, opérateurs et bénéficiaires sont remplacés par des désignations génériques, « Promoteur 1 », « Opérateur 1 », « Bénéficiaire 1 ». Tant que le masque est posé, un témoin « Noms masqués » reste affiché dans le bandeau. "
+                  "Ouvrez le menu de votre compte, en haut à droite, puis « Masquer les noms » : les promoteurs, opérateurs et bénéficiaires sont remplacés par des désignations génériques, « Promoteur 1 », « Opérateur 1 », « Bénéficiaire 1 ». Tant que le masque est posé, l'entrée du menu s'affiche en ambre et devient « Noms masqués · réafficher » : c'est là que se lit son état. "
                   + "Il sert à projeter l'application devant une assemblée, un comité ou une classe sans exposer quelle entreprise obtient quel score. "
                   + "Une même organisation garde partout la même désignation, et une entreprise qui est son propre bénéficiaire reste « Promoteur N » : la lecture croisée reste possible. "
                   + "Le masque s'applique aussi à la fiche PDF et aux exports tableur produits pendant qu'il est actif. "
