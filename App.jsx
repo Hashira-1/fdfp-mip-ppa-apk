@@ -48,44 +48,90 @@ import { nettoyerPdf } from "./pdf.js";
 
 // ----------------- RÉFÉRENTIEL PAR DÉFAUT -----------------------
 
-// ----------------- DONNÉES DÉMO ---------------------------------
+/* ----------------- DONNÉES DÉMO ---------------------------------
+   ⚠ CE JEU EST CELUI DE LA BASE EN LIGNE, ET NON UN JEU D'ESSAI LIBRE.
+
+   Il a été réaligné le 22/09/2026 sur le relevé du 12/09/2026, lui-même pris
+   dans l'application en ligne via la copie de secours du navigateur :
+   « EDIT_EM/apercu_2026/donnees_capture.json ». Le code portait encore trois
+   projets d'août, avec d'autres zones, d'autres effectifs et d'autres notes.
+   Le bouton « Remplacer par la démo » réécrit la base avec exactement ces
+   lignes : tant qu'elles divergent de la base en ligne, un seul clic détruit
+   l'évaluation réelle. C'est la raison de ce réalignement.
+
+   Chiffres obtenus, qui sont ceux cités dans le mémoire et la soutenance :
+     projet 1   84 %    Excellent      P 94 · EP 88 · IE 81 · IO 80 · DC 69
+     projet 2   61 %    Satisfaisant   P 63 · EP 67 · IE 56 · IO 60 · DC 56
+     projet 3   39,9 %  Insuffisant    P 81 · EP 29 · IE 25 · IO 25 · DC 25
+     projet 4   45 %    Moyen          P 44 · EP 58 · IO 35 · DC 50, sur 80 %
+     portefeuille : 350 apprenants, 58 % en moyenne simple, 5 alertes.
+
+   ⚠ LES RAISONS SOCIALES NE SONT PAS CELLES DE LA BASE. Le relevé a été
+   anonymisé à la source : promoteurs, opérateurs et bénéficiaires y portent
+   les désignations génériques que l'application affiche en mode « Noms
+   masqués ». C'est le seul champ sur lequel une restauration ne rendrait pas
+   la base à l'identique, et c'est volontaire : aucun fichier de ce dépôt ne
+   doit porter le nom d'une entreprise évaluée. La répartition par sexe est
+   vide parce qu'elle l'est aussi en ligne.
+   ---------------------------------------------------------------- */
 const FORMATIONS_DEMO = [
   {
-    /* Les intitulés suivent la forme employée par le FDFP dans ses dossiers :
-       « Formation de N jeunes au métier de … ». Le nombre annoncé dans le
-       titre est celui du champ « apprenants » : les deux se lisent côte à côte
-       sur la fiche, un écart entre eux se verrait. */
-    id: "f1", titre: "Formation de 30 jeunes au métier de superviseur HACCP en ligne de conditionnement cacao",
-    entreprise: "SACO", operateur: "A.C.A", beneficiaire: "SCINPA", secteurGrand: "Secteur secondaire", filiere: "Transformation du cacao et du café", domaine: "Fèves et masse de cacao", region: "Siège Abidjan", localite: "Abidjan",
-    apprenants: 30, hommes: 18, femmes: 12, budget: 12500000, statut: "Terminé",
-    /* Dates cohérentes avec SUIVIS_DEMO : la date de fin est l'origine des
-       trois jalons, M+3 tombe donc bien trois mois après elle. */
+    /* Projet 1, le cas « Excellent » du jeu. Son intérêt pour la
+       démonstration tient au radar : 94 % en pertinence, 69 % en durabilité.
+       Le score seul dirait « excellent » et l'analyse s'arrêterait là. */
+    id: "f1", titre: "FORMATION DE 100 JEUNES AUX METIERS, D’OPERATEUR DE PRODUCTION, DE TECHNICIEN ELECTRICIEN ET DE TECHNICIEN MECANICIEN",
+    entreprise: "Promoteur 1", operateur: "Opérateur 1", beneficiaire: "Promoteur 1", secteurGrand: "Secteur secondaire", filiere: "Cacao", domaine: "Transformation semi-finie", region: "Antenne San-Pédro", localite: "San-Pédro",
+    apprenants: 100, hommes: "", femmes: "", budget: 12500000, statut: "Terminé",
     dateDebut: "2025-11-03", dateFin: "2026-02-20",
+    // P 15/16 → 94 · EP 21/24 → 88 · IE 13/16 → 81 · IO 16/20 → 80 · DC 11/16 → 69 · global 84,1 % sur 100 % du modèle
     notes: { P1: 4, P2: 3, P3: 4, P4: 4, EP1: 3, EP2: 3, EP3: 4, EP4: 4, EP5: 3, EP6: 4, IE1: 3, IE2: 3, IE3: 4, IE4: 3, IO1: 3, IO2: 3, IO3: 4, IO4: 3, IO5: 3, DC1: 3, DC2: 2, DC3: 3, DC4: 3 },
   },
   {
-    /* Projet d'ancrage : c'est la filière et le terrain de l'étude, l'anacarde
-       dans la zone de l'antenne de Bouaké. Le décorticage et le calibrage sont
-       les postes où le geste commande directement le taux d'amandes entières,
-       donc la valeur produite : le lien compétence / performance y est
-       observable, ce qui est précisément ce que le modèle prétend mesurer. */
-    id: "f2", titre: "Formation de 50 jeunes au métier d'agent contrôleur de processus de décorticage de l'anacarde",
-    entreprise: "DIAOUNE AGRO-ALIMENTAIRE", operateur: "Emergence", beneficiaire: "DIAOUNE AGRO-ALIMENTAIRE", secteurGrand: "Secteur secondaire", filiere: "Transformation de l'anacarde", domaine: "Décorticage", region: "Antenne Bouaké", localite: "Bouaké",
-    apprenants: 50, hommes: 29, femmes: 21, budget: 5000000, statut: "Terminé",
+    /* Projet 2 : le terrain de l'étude, l'anacarde dans la zone de
+       l'antenne de Bouaké. Le décorticage et le calibrage sont les postes où
+       le geste commande le taux d'amandes entières, donc la valeur produite :
+       le lien compétence / performance y est observable, ce qui est
+       précisément ce que le modèle prétend mesurer. */
+    id: "f2", titre: "FORMATION DE 50 APPRENANTS AUX METIERS DE CARISTE, DE MACHINISTE ET D’AGENT CONTROLEUR DE PROCESSUS",
+    entreprise: "Promoteur 2", operateur: "Opérateur 2", beneficiaire: "Promoteur 2", secteurGrand: "Secteur secondaire", filiere: "Anacarde", domaine: "Transformation semi-finie", region: "Antenne Bouaké", localite: "Bouaké",
+    apprenants: 50, hommes: "", femmes: "", budget: 5000000, statut: "Terminé",
     dateDebut: "2026-01-12", dateFin: "2026-04-17",
-    notes: { P1: 3, P2: 2, P3: 3, P4: 2, EP1: 2, EP2: 2, EP3: 3, EP4: 4, EP5: 2, EP6: 2, IE1: 2, IE2: 3, IE3: 2, IE4: 2, IO1: 2, IO2: 2, IO3: 3, IO4: 2, IO5: 2, DC1: 3, DC2: 2, DC3: 2, DC4: 2 },
+    // P 10/16 → 63 · EP 16/24 → 67 · IE 9/16 → 56 · IO 12/20 → 60 · DC 9/16 → 56 · global 60,8 % sur 100 % du modèle
+    notes: { P1: 3, P2: 2, P3: 3, P4: 2, EP1: 3, EP2: 2, EP3: 3, EP4: 4, EP5: 2, EP6: 2, IE1: 2, IE2: 3, IE3: 2, IE4: 2, IO1: 3, IO2: 2, IO3: 3, IO4: 2, IO5: 2, DC1: 3, DC2: 2, DC3: 2, DC4: 2 },
   },
   {
-    id: "f3", titre: "Formation de 25 jeunes au métier de superviseur de la sécurité alimentaire et de la traçabilité ISO 22000",
-    entreprise: "FrieslandCampina", operateur: "Domny", beneficiaire: "FrieslandCampina", secteurGrand: "Secteur secondaire", filiere: "Industrie laitière", domaine: "Lait et yaourts", region: "Antenne San-Pédro", localite: "San-Pédro",
-    apprenants: 25, hommes: 9, femmes: 16, budget: 15200000, statut: "Terminé",
+    /* Projet 3, le contre-exemple. Une conception solide, 81 % en
+       pertinence, et tout le reste entre 25 et 29 %. C'est ce déséquilibre,
+       et non une faiblesse uniforme, qui le fait passer sous le seuil. */
+    id: "f3", titre: "FORMATION DE 100 JEUNES AUX METIERS DU TRANSPORT, DE LA LOGISTIQUE ET DE LA MAINTENANCE INDUSTRIELLE",
+    entreprise: "Promoteur 3", operateur: "Opérateur 3", beneficiaire: "Promoteur 3", secteurGrand: "Secteur secondaire", filiere: "Autre agro-industrie", domaine: "Général", region: "Siège Abidjan", localite: "Abidjan",
+    apprenants: 100, hommes: "", femmes: "", budget: 15200000, statut: "Terminé",
     dateDebut: "2026-02-09", dateFin: "2026-06-02",
-    notes: { P1: 4, P2: 4, P3: 4, P4: 4, EP1: 4, EP2: 3, EP3: 4, EP4: 4, EP5: 4, EP6: 4, IE1: 3, IE2: 3, IE3: 4, IE4: 3, IO1: 4, IO2: 3, IO3: 4, IO4: 4, IO5: 3, DC1: 3, DC2: 3, DC3: 4, DC4: 3 },
+    // P 13/16 → 81 · EP 7/24 → 29 · IE 4/16 → 25 · IO 5/20 → 25 · DC 4/16 → 25 · global 39,9 % sur 100 % du modèle
+    notes: { P1: 3, P2: 4, P3: 3, P4: 3, EP1: 1, EP2: 1, EP3: 1, EP4: 1, EP5: 1, EP6: 2, IE1: 1, IE2: 1, IE3: 1, IE4: 1, IO1: 1, IO2: 1, IO3: 1, IO4: 1, IO5: 1, DC1: 1, DC2: 1, DC3: 1, DC4: 1 },
+  },
+  {
+    /* Projet 4, planifié. Il n'est PAS noté en insertion : la dimension
+       n'a pas de mesure, et le modèle ne la compte pas comme un zéro. Son
+       score porte donc sur 80 % du modèle, ce que la couverture annonce juste
+       à côté. Sans elle, deux scores de 45 % ne diraient pas la même chose.
+       Son identifiant est celui que la base lui a donné à la création : il est
+       conservé tel quel, pour que le remplacement retombe sur la même ligne. */
+    id: "f1789092634804", titre: "FORMATION DE 100 JEUNES AUX METIERS D’OPERATEUR DE PRODUCTION, DE MAINTENANCIER INDUSTRIEL ET MECANIQUE, DE CARISTE ET DE RELAIS QUALITE",
+    entreprise: "Promoteur 4", operateur: "Opérateur 4", beneficiaire: "Opérateur 4", secteurGrand: "Secteur secondaire", filiere: "Anacarde", domaine: "Transformation semi-finie", region: "Antenne Daloa", localite: "Zuénoula",
+    apprenants: 100, hommes: "", femmes: "", budget: 5000000, statut: "Planifié",
+    dateDebut: "", dateFin: "",
+    // P 7/16 → 44 · EP 14/24 → 58 · IO 7/20 → 35 · DC 8/16 → 50 · global 45,4 % sur 80 % du modèle
+    notes: { P1: 2, P2: 1, P3: 2, P4: 2, EP1: 2, EP2: 2, EP3: 2, EP4: 1, EP5: 3, EP6: 4, IO1: 1, IO2: 1, IO3: 1, IO4: 2, IO5: 2, DC1: 2, DC2: 2, DC3: 2, DC4: 2 },
   },
 ];
 
+/* Les neuf jalons du relevé. Quatre d'entre eux étaient déjà échus au
+   12/09/2026 : avec le projet 3 sous le seuil de 40 %, ils font les cinq
+   alertes que le tableau de bord affiche. Le projet 4 n'en a aucun : il n'a
+   pas de date de fin, donc pas d'origine pour compter M+3, M+6 et M+12. */
 const SUIVIS_DEMO = [
-  { id: "s1", formationId: "f1", jalon: "M+3", echeance: "2026-05-20", statut: "effectué", note: "Transfert observé sur la ligne 2." },
+  { id: "s1", formationId: "f1", jalon: "M+3", echeance: "2026-05-20", statut: "programmé", note: "Transfert observé sur la ligne 2." },
   { id: "s2", formationId: "f1", jalon: "M+6", echeance: "2026-08-20", statut: "programmé", note: "" },
   { id: "s3", formationId: "f1", jalon: "M+12", echeance: "2027-02-20", statut: "programmé", note: "" },
   { id: "s4", formationId: "f2", jalon: "M+3", echeance: "2026-07-17", statut: "programmé", note: "" },
@@ -4396,20 +4442,21 @@ export default function MipPpaApp() {
           <div className="bandeau-droite">
             <HorlogeUTC />
             <button onClick={() => setPage("guide")} className="hidden sm:flex text-sm text-stone-600 hover:text-stone-900 items-center gap-1.5" title="Ouvrir le guide d'utilisation."><Icone n="livre" t={16} /> Guide</button>
-            {/* Masque de présentation, ouvert aux deux rôles d'administration.
-                L'état actif est ANNONCÉ en toutes lettres : un masque qu'on
-                oublie d'avoir posé fait lire de faux noms pendant une réunion
-                de travail. */}
-            {P.masqueOrgs && (
-              <button onClick={() => setMasquerOrgs(!masquerOrgs)}
-                className={`hidden sm:flex items-center gap-1.5 text-sm shrink-0 rounded-lg px-2 py-1 border ${masquerOrgs ? "border-amber-300 bg-amber-50 text-amber-800" : "border-transparent text-stone-500 hover:text-stone-800"}`}
-                title={masquerOrgs
-                  ? "Les organisations sont masquées à l'écran et dans les exports. Cliquer pour réafficher les vrais noms."
-                  : "Masquer les promoteurs, opérateurs et bénéficiaires, à l'écran et dans les exports, pour projeter sans exposer les entreprises."}
-                aria-pressed={masquerOrgs}
-                aria-label={masquerOrgs ? "Réafficher les noms des organisations" : "Masquer les noms des organisations"}>
-                <Icone n={masquerOrgs ? "oeilBarre" : "oeil"} t={17} />
-                <span className="hidden lg:inline">{masquerOrgs ? "Noms masqués" : "Masquer les noms"}</span>
+            {/* Masque de présentation : le réglage lui-même est descendu dans
+                le menu du compte (22/09/2026), avec les autres réglages
+                personnels. Il ne reste ici qu'un TÉMOIN, affiché seulement
+                quand le masque est posé. La raison est celle qui avait fait
+                écrire le libellé en toutes lettres : un masque qu'on oublie
+                d'avoir posé fait lire de faux noms pendant une réunion de
+                travail. Le réglage se range, l'avertissement reste visible. */}
+            {P.masqueOrgs && masquerOrgs && (
+              <button onClick={() => setMasquerOrgs(false)}
+                className="hidden sm:flex items-center gap-1.5 text-sm shrink-0 rounded-lg px-2 py-1 border border-amber-300 bg-amber-50 text-amber-800"
+                title="Les organisations sont masquées à l'écran et dans les exports. Cliquer pour réafficher les vrais noms."
+                aria-pressed={true}
+                aria-label="Réafficher les noms des organisations">
+                <Icone n="oeilBarre" t={17} />
+                <span className="hidden lg:inline">Noms masqués</span>
               </button>
             )}
             <button onClick={basculerTheme} className="hidden sm:block text-stone-500 hover:text-stone-800 shrink-0" title={sombre ? "Passer en mode éclairé" : "Passer en mode sombre"} aria-label={sombre ? "Passer en mode éclairé" : "Passer en mode sombre"}>
@@ -4432,6 +4479,27 @@ export default function MipPpaApp() {
                   </div>
                   {P.users && <button onClick={() => { setPage("users"); setMenuCompte(false); }}
                     className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-stone-50 flex items-center gap-2"><Icone n="utilisateurs" t={15} /> Utilisateurs & rôles</button>}
+                  {/* Masque de présentation. Il a sa place ici, et non dans le
+                      bandeau : c'est un réglage de la personne connectée, au
+                      même titre que le mot de passe ou le mode sombre, et le
+                      bandeau se voulait une barre d'actions, pas de réglages.
+                      Le droit « masqueOrgs » est porté par les deux rôles
+                      d'administration : administrateur lead ET administrateur
+                      FDFP. L'entrée apparaît donc pour les deux.
+                      Le menu ne se referme PAS au clic : on pose le masque,
+                      on vérifie d'un coup d'œil que les noms ont bien changé
+                      derrière, et on le retire si l'on s'est trompé. */}
+                  {P.masqueOrgs && (
+                    <button onClick={() => setMasquerOrgs(!masquerOrgs)}
+                      aria-pressed={masquerOrgs}
+                      title={masquerOrgs
+                        ? "Les organisations sont masquées à l'écran et dans les exports. Cliquer pour réafficher les vrais noms."
+                        : "Masquer les promoteurs, opérateurs et bénéficiaires, à l'écran et dans les exports, pour projeter sans exposer les entreprises."}
+                      className={"w-full text-left text-sm px-3 py-2 rounded-lg flex items-center gap-2 " + (masquerOrgs ? "bg-amber-50 text-amber-800 hover:bg-amber-100" : "hover:bg-stone-50")}>
+                      <Icone n={masquerOrgs ? "oeilBarre" : "oeil"} t={15} />
+                      {masquerOrgs ? "Noms masqués · réafficher" : "Masquer les noms"}
+                    </button>
+                  )}
                   {/* Changer son mot de passe sans passer par l'oubli. Sinon
                       le seul chemin pour en changer serait de prétendre
                       l'avoir perdu, et de dépendre de sa boîte mail. */}
@@ -4795,15 +4863,33 @@ export default function MipPpaApp() {
                   le droit de supprimer un seul projet. C'est ainsi que le
                   portefeuille a été perdu.
                   Désormais : réservé à qui peut supprimer, intitulé explicite,
-                  confirmation chiffrée, et copie de secours préalable. */}
+                  confirmation chiffrée, et copie de secours préalable.
+
+                  Deux défauts restaient, corrigés le 22/09/2026.
+                  1. Le nombre de projets du jeu était écrit en dur, « 3 », dans
+                     l'intitulé et dans la confirmation. Le jeu en compte
+                     quatre : le message annonçait donc une action fausse.
+                  2. La confirmation ne s'ouvrait QUE si des projets devaient
+                     être supprimés. Or un projet dont l'identifiant figure
+                     dans le jeu de démonstration n'est pas supprimé : il est
+                     RÉÉCRIT, notes comprises. Une évaluation réelle portée par
+                     « f1 » disparaissait donc sans qu'aucune question ne soit
+                     posée. La confirmation est désormais systématique, et elle
+                     distingue ce qui est supprimé de ce qui est réécrit. */}
               {P.supprimerFormation && (
                 <button
                   onClick={() => {
                     const n = formations.length;
-                    const perdus = formations.filter((f) => !FORMATIONS_DEMO.some((d) => d.id === f.id)).length;
-                    if (perdus > 0 && !window.confirm(
-                      `Cette action REMPLACE le portefeuille par les 3 projets de démonstration.\n\n` +
-                      `${perdus} projet${perdus > 1 ? "s" : ""} sur ${n} ${perdus > 1 ? "seront supprimés" : "sera supprimé"} de la base, ainsi que leurs suivis et leurs notes.\n\n` +
+                    const idsDemo = new Set(FORMATIONS_DEMO.map((d) => d.id));
+                    const perdus = formations.filter((f) => !idsDemo.has(f.id)).length;
+                    const reecrits = formations.filter((f) => idsDemo.has(f.id)).length;
+                    const lignes = [];
+                    if (perdus) lignes.push(`· ${perdus} projet${perdus > 1 ? "s" : ""} sur ${n} ${perdus > 1 ? "seront supprimés" : "sera supprimé"} de la base, avec leurs suivis et leurs notes ;`);
+                    if (reecrits) lignes.push(`· ${reecrits} projet${reecrits > 1 ? "s" : ""} ${reecrits > 1 ? "seront réécrits" : "sera réécrit"} par la fiche de démonstration correspondante : les notes saisies seront perdues.`);
+                    if (!window.confirm(
+                      `Cette action REMPLACE le portefeuille par les ${FORMATIONS_DEMO.length} projets de démonstration.\n\n` +
+                      (lignes.length ? lignes.join("\n") + "\n\n" : "") +
+                      `⚠ Si cette base est la base de travail, les évaluations réelles seront perdues.\n\n` +
                       `Une copie de secours sera gardée dans ce navigateur, mais elle ne vaut pas une sauvegarde.\n\n` +
                       `Confirmer le remplacement ?`)) return;
                     sauvegardeSecours(formations, suivis);
@@ -4812,7 +4898,7 @@ export default function MipPpaApp() {
                     notif("Portefeuille remplacé par les données de démonstration");
                   }}
                   className="text-sm text-stone-600 hover:text-red-700"
-                  title="Remplace le portefeuille par les 3 projets de démonstration. Les autres projets sont supprimés.">
+                  title={`Remplace le portefeuille par les ${FORMATIONS_DEMO.length} projets de démonstration. Les autres projets sont supprimés, ceux qui portent le même identifiant sont réécrits.`}>
                   <Icone n="rotation" t={14} /> Remplacer par la démo
                 </button>
               )}
@@ -5781,7 +5867,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                  projection. */
               if (P.masqueOrgs) {
                 g.push(["Masquer les noms des entreprises",
-                  "Le bouton « Masquer les noms », en haut à droite, remplace les promoteurs, opérateurs et bénéficiaires par des désignations génériques : « Promoteur 1 », « Opérateur 1 », « Bénéficiaire 1 ». "
+                  "Ouvrez le menu de votre compte, en haut à droite, puis « Masquer les noms » : les promoteurs, opérateurs et bénéficiaires sont remplacés par des désignations génériques, « Promoteur 1 », « Opérateur 1 », « Bénéficiaire 1 ». Tant que le masque est posé, un témoin « Noms masqués » reste affiché dans le bandeau. "
                   + "Il sert à projeter l'application devant une assemblée, un comité ou une classe sans exposer quelle entreprise obtient quel score. "
                   + "Une même organisation garde partout la même désignation, et une entreprise qui est son propre bénéficiaire reste « Promoteur N » : la lecture croisée reste possible. "
                   + "Le masque s'applique aussi à la fiche PDF et aux exports tableur produits pendant qu'il est actif. "
@@ -5871,17 +5957,16 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                     </span>
                   )}
                 </h2>
+                {/* Il y avait ici un second bouton, « Déconnexion », collé à
+                    « Actualiser ». Retiré le 22/09/2026 : sur une page qui
+                    sert à administrer LES AUTRES comptes, un bouton rouge qui
+                    ferme LA VÔTRE est au mauvais endroit, et sa proximité avec
+                    « Actualiser » en faisait un piège au clic. La déconnexion
+                    reste à ses deux places légitimes, le bas de la barre
+                    latérale et le menu du compte. */}
                 <div className="flex items-center gap-2">
                   <button onClick={() => { chargerComptes(); chargerConnexions(); }} title="Recharger la liste des comptes et le journal des connexions depuis la base."
                     className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50 flex items-center gap-1.5"><Icone n="rotation" t={14} /> Actualiser</button>
-                  {/* C'était une liste déroulante « Options ▾ » qui ne
-                      sélectionnait rien : son seul choix déclenchait une
-                      déconnexion. Annoncée comme une liste, elle promettait un
-                      réglage et fermait la session. Une action se commande par
-                      un bouton, et il porte le nom de ce qu'il fait. */}
-                  <button onClick={() => { if (sb) sb.auth.signOut(); setSession(null); }}
-                    title="Fermer votre session sur cet appareil."
-                    className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-red-50 text-red-600 flex items-center gap-1.5"><Icone n="deconnexion" t={14} /> Déconnexion</button>
                 </div>
               </div>
               <p className="text-sm text-stone-500 mb-4">Sélectionnez un rôle pour chaque utilisateur. Les comptes « En attente » n'ont aucun accès tant qu'aucun rôle ne leur est attribué. Seul l'administrateur lead peut modifier les rôles.</p>
