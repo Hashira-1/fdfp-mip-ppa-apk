@@ -248,6 +248,64 @@ export function echeancesSuivi(dateFin, origineParDefaut) {
   return Object.fromEntries(JALONS_SUIVI.map(([j, n]) => [j, ajouterMois(base, n)]));
 }
 
+/* Jalons de suivi auxquels un indicateur se note, d'après sa phase.
+   ---------------------------------------------------------------------------
+   Les phases sont des libellés libres, modifiables par l'administrateur : on
+   ne compare donc pas des chaînes exactes, on y lit les mois cités.
+   « Suivi post-formation (6 mois) » donne M+6. Une phase qui cite plusieurs
+   mois, comme l'ancienne « Suivi post-formation (3 / 6 / 12 mois) », est
+   départagée par l'intitulé de l'indicateur (« mesuré au suivi M+6 ») ; à
+   défaut, l'indicateur se note à chacun des jalons cités. Une phase sans mois
+   (« À la conception », « En fin de formation ») ne relève d'aucun jalon de
+   suivi : ses indicateurs se notent avant la clôture du projet. */
+const MOIS_SUIVI = new Map(JALONS_SUIVI.map(([j, n]) => [n, j]));
+
+export function jalonsDeLaPhase(phase, label = "") {
+  const p = String(phase || "");
+  if (!/mois|M\s*\+/i.test(p)) return [];
+  const cites = [...new Set([...p.matchAll(/\d+/g)].map((m) => Number(m[0])))].filter((n) => MOIS_SUIVI.has(n));
+  if (cites.length <= 1) return cites.map((n) => MOIS_SUIVI.get(n));
+  const duLabel = [...String(label || "").matchAll(/M\s*\+\s*(\d+)/gi)].map((m) => Number(m[1])).filter((n) => cites.includes(n));
+  const retenus = duLabel.length ? [...new Set(duLabel)] : cites;
+  return JALONS_SUIVI.filter(([, n]) => retenus.includes(n)).map(([j]) => j);
+}
+
+/* Indicateurs à noter à un jalon de suivi, dans l'ordre du référentiel, avec
+   leur dimension et la note déjà saisie (null si l'indicateur n'est pas noté).
+   « notees » et « total » alimentent le compteur « 2 sur 3 notés ». */
+export function indicateursDuJalon(referentiel, jalon, notes = {}) {
+  const liste = [];
+  (referentiel || []).forEach((d) => {
+    (d.indicateurs || []).forEach((i) => {
+      if (!jalonsDeLaPhase(i.phase, i.label).includes(jalon)) return;
+      const n = notes ? notes[i.id] : undefined;
+      liste.push({ ...i, dimId: d.id, dimension: d.nom, note: n === undefined || n === null ? null : n });
+    });
+  });
+  return { liste, total: liste.length, notees: liste.filter((i) => i.note !== null).length };
+}
+
+/* Indicateurs qui se notent AVANT les jalons de suivi (« À la conception »,
+   « En fin de formation »…), regroupés par phase dans l'ordre du référentiel.
+   Ce sont toutes les phases qui ne relèvent d'aucun jalon M+n : la page Suivi
+   les affiche à côté des jalons, pour que tout le cycle du projet se note au
+   même endroit. Même forme de résultat que « indicateursDuJalon ». */
+export function indicateursHorsSuivi(referentiel, notes = {}) {
+  const groupes = new Map();
+  (referentiel || []).forEach((d) => {
+    (d.indicateurs || []).forEach((i) => {
+      if (jalonsDeLaPhase(i.phase, i.label).length) return;
+      const phase = i.phase || "Phase non précisée";
+      if (!groupes.has(phase)) groupes.set(phase, []);
+      const n = notes ? notes[i.id] : undefined;
+      groupes.get(phase).push({ ...i, dimId: d.id, dimension: d.nom, note: n === undefined || n === null ? null : n });
+    });
+  });
+  return [...groupes].map(([phase, liste]) => ({
+    phase, liste, total: liste.length, notees: liste.filter((i) => i.note !== null).length,
+  }));
+}
+
 /* Incohérences de calendrier : ce que les deux dates permettent enfin de voir.
    ---------------------------------------------------------------------------
    Ce sont des ANOMALIES DE SAISIE, pas des jugements sur le projet : chacune

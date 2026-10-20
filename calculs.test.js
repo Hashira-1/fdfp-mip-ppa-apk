@@ -10,8 +10,9 @@ import {
   scoreDimension, scoreGlobal, couvertureModele, niveau, margeSeuil,
   indicateursNonNotes, instantane, ajouterInstantane, trajectoire,
   estDateISO, jourUTC, fmtDateFr, ajouterMois, dureeJours, dureeLisible,
-  echeancesSuivi, anomaliesCalendrier,
+  echeancesSuivi, anomaliesCalendrier, jalonsDeLaPhase, indicateursDuJalon, indicateursHorsSuivi,
 } from "./calculs.js";
+import { REFERENTIEL_DEFAUT, PHASES_DEFAUT, nbIndicateurs, controleSmart } from "./referentiel.js";
 
 /* Référentiel réduit : cinq dimensions et 23 indicateurs, comme le modèle réel.
    Les poids 20/25/20/25/10 sont ceux d'un double de test, FIGÉS À DESSEIN. Ils
@@ -465,5 +466,123 @@ describe("anomaliesCalendrier", () => {
     expect(anomaliesCalendrier({ dateDebut: "2026-01-05", dateFin: "2026-05-30", statut: "En cours" }, "")).toEqual([]);
     expect(anomaliesCalendrier({ dateDebut: "2026-05-30", dateFin: "2026-01-05", statut: "En cours" }, "").map((a) => a.code))
       .toEqual(["finAvantDebut"]);
+  });
+});
+
+describe("jalonsDeLaPhase : à quel suivi un indicateur se note", () => {
+  it("lit le mois d'une phase à un seul jalon", () => {
+    expect(jalonsDeLaPhase("Suivi post-formation (3 mois)")).toEqual(["M+3"]);
+    expect(jalonsDeLaPhase("Suivi post-formation (6 mois)")).toEqual(["M+6"]);
+    expect(jalonsDeLaPhase("Suivi post-formation (12 mois)")).toEqual(["M+12"]);
+    expect(jalonsDeLaPhase("Suivi M+6")).toEqual(["M+6"]);
+  });
+
+  it("n'attache aucun jalon aux phases d'avant la clôture", () => {
+    expect(jalonsDeLaPhase("À la conception")).toEqual([]);
+    expect(jalonsDeLaPhase("En fin de formation")).toEqual([]);
+    expect(jalonsDeLaPhase("")).toEqual([]);
+    expect(jalonsDeLaPhase(undefined)).toEqual([]);
+  });
+
+  it("départage l'ancienne phase commune par l'intitulé", () => {
+    const commune = "Suivi post-formation (3 / 6 / 12 mois)";
+    expect(jalonsDeLaPhase(commune, "Taux d'insertion mesuré au suivi M+6 (cible : ≥ 70 %)")).toEqual(["M+6"]);
+    expect(jalonsDeLaPhase(commune, "Réduction entre M+0 et M+12")).toEqual(["M+12"]);
+    expect(jalonsDeLaPhase(commune, "Constatée à M+6 puis M+12")).toEqual(["M+6", "M+12"]);
+  });
+
+  it("note à chaque jalon cité quand l'intitulé ne dit rien", () => {
+    expect(jalonsDeLaPhase("Suivi post-formation (3 / 6 / 12 mois)", "Sans précision")).toEqual(["M+3", "M+6", "M+12"]);
+  });
+
+  it("ne confond pas une durée de contrat avec un jalon", () => {
+    expect(jalonsDeLaPhase("Suivi post-formation (6 mois)", "Emploi stable (contrat ≥ 12 mois)")).toEqual(["M+6"]);
+  });
+});
+
+describe("indicateursDuJalon", () => {
+  it("répartit les indicateurs de suivi du référentiel sur les trois jalons", () => {
+    const ids = (j) => indicateursDuJalon(REFERENTIEL_DEFAUT, j).liste.map((i) => i.id);
+    expect(ids("M+3")).toEqual(["IE1", "IE2", "IO4"]);
+    expect(ids("M+6")).toEqual(["IE3", "IO1", "IO2", "IO3", "DC1", "DC4"]);
+    expect(ids("M+12")).toEqual(["IO5", "DC2", "DC3"]);
+  });
+
+  it("compte les indicateurs déjà notés, la note 0 comprise", () => {
+    const r = indicateursDuJalon(REFERENTIEL_DEFAUT, "M+3", { IE1: 0, IO4: 3 });
+    expect(r.total).toBe(3);
+    expect(r.notees).toBe(2);
+    expect(r.liste.find((i) => i.id === "IE2").note).toBeNull();
+    expect(r.liste.find((i) => i.id === "IE1").note).toBe(0);
+    expect(r.liste[0].dimension).toBe("Insertion et employabilité");
+  });
+
+  it("renvoie une liste vide pour un jalon inconnu ou un référentiel absent", () => {
+    expect(indicateursDuJalon(REFERENTIEL_DEFAUT, "M+24").total).toBe(0);
+    expect(indicateursDuJalon(null, "M+3").total).toBe(0);
+  });
+});
+
+describe("référentiel par défaut (celui de l'application en ligne)", () => {
+  const tous = REFERENTIEL_DEFAUT.flatMap((d) => d.indicateurs);
+
+  it("compte 22 indicateurs et des pondérations qui totalisent 100", () => {
+    expect(nbIndicateurs(REFERENTIEL_DEFAUT)).toBe(22);
+    expect(REFERENTIEL_DEFAUT.reduce((s, d) => s + d.poids, 0)).toBe(100);
+    expect(REFERENTIEL_DEFAUT.map((d) => d.indicateurs.length)).toEqual([4, 6, 3, 5, 4]);
+  });
+
+  it("garde des codes uniques, ceux du référentiel d'origine, sans IE4", () => {
+    const codes = tous.map((i) => i.id);
+    expect(new Set(codes).size).toBe(codes.length);
+    expect(codes).not.toContain("IE4");
+  });
+
+  it("rattache chaque indicateur à une phase connue", () => {
+    tous.forEach((i) => expect(PHASES_DEFAUT, i.id).toContain(i.phase));
+  });
+});
+
+describe("controleSmart", () => {
+  it("reconnaît un indicateur dont les cinq critères sont renseignés", () => {
+    const c = controleSmart({ id: "IE1", label: "Taux d'insertion", mesure: "insérés ÷ formés × 100", cible: "≥ 70 %", phase: "Suivi post-formation (3 mois)" }, PHASES_DEFAUT);
+    expect(c.complet).toBe(true);
+  });
+
+  it("signale ce qui manque à un indicateur du référentiel en ligne", () => {
+    const c = controleSmart(REFERENTIEL_DEFAUT[0].indicateurs[0], PHASES_DEFAUT);
+    expect(c).toMatchObject({ S: true, M: false, A: false, R: true, T: true, complet: false });
+  });
+
+  it("signale un indicateur nouvellement créé", () => {
+    const c = controleSmart({ id: "X1", label: "Nouvel indicateur à définir", phase: "À définir" }, PHASES_DEFAUT);
+    expect(c).toMatchObject({ S: false, M: false, A: false, T: false, complet: false });
+  });
+});
+
+describe("indicateursHorsSuivi : conception et fin de formation", () => {
+  it("regroupe par phase, dans l'ordre du référentiel, les indicateurs d'avant les jalons", () => {
+    const g = indicateursHorsSuivi(REFERENTIEL_DEFAUT, {});
+    expect(g.map((x) => x.phase)).toEqual(["À la conception", "En fin de formation"]);
+    expect(g[0].liste.map((i) => i.id)).toEqual(["P1", "P2", "P3", "P4"]);
+    expect(g[1].liste.map((i) => i.id)).toEqual(["EP1", "EP2", "EP3", "EP4", "EP5", "EP6"]);
+  });
+
+  it("compte les notes déjà posées", () => {
+    const g = indicateursHorsSuivi(REFERENTIEL_DEFAUT, { P1: 4, P2: 0, EP6: 3 });
+    expect([g[0].notees, g[0].total, g[1].notees, g[1].total]).toEqual([2, 4, 1, 6]);
+  });
+
+  it("couvre, avec les jalons, tout le référentiel sans doublon", () => {
+    const avant = indicateursHorsSuivi(REFERENTIEL_DEFAUT).flatMap((g) => g.liste.map((i) => i.id));
+    const apres = ["M+3", "M+6", "M+12"].flatMap((j) => indicateursDuJalon(REFERENTIEL_DEFAUT, j).liste.map((i) => i.id));
+    const tous = [...avant, ...apres];
+    expect(new Set(tous).size).toBe(tous.length);
+    expect(tous.length).toBe(nbIndicateurs(REFERENTIEL_DEFAUT));
+  });
+
+  it("range sous une phase par défaut un indicateur sans phase", () => {
+    const g = indicateursHorsSuivi([{ id: "X", nom: "X", poids: 100, indicateurs: [{ id: "X1", label: "x" }] }]);
+    expect(g[0].phase).toBe("Phase non précisée");
   });
 });

@@ -15,7 +15,7 @@ import {
   COULEURS_NIVEAU, scoreDimension, scoreGlobal, couvertureModele, margeSeuil,
   indicateursNonNotes, niveau, JALONS, instantane, ajouterInstantane, trajectoire,
   estDateISO, fmtDateFr, dureeLisible, echeancesSuivi, anomaliesCalendrier,
-  JALONS_SUIVI,
+  JALONS_SUIVI, jalonsDeLaPhase, indicateursDuJalon, indicateursHorsSuivi,
 } from "./calculs.js";
 /* Géographie des zones de couverture, dans un fichier à part pour la même
    raison que « calculs.js » : ce sont des données engendrées (108 contours
@@ -32,7 +32,7 @@ import {
   normaliserRegion, LOCALITES_PAR_ZONE, DEP_PAR_LOCALITE, localitesDe,
   localiteParDefaut, normaliserLocalite, PROJET_VIERGE, PERMS, STATUTS_PROJET,
   normaliserStatut, memeNom, masqueOrganisations, nomMasque, repartitionSexe,
-  APPRENANTS_MINIMUM, effectifSuffisant,
+  APPRENANTS_MINIMUM, effectifSuffisant, PHASES_DEFAUT, nbIndicateurs, controleSmart,
 } from "./referentiel.js";
 /* « nettoyerPdf » est la seule partie purement calculatoire de la génération
    de fiches, et la plus délicate. Isolée pour être testée (pdf.test.js). */
@@ -43,7 +43,7 @@ import { nettoyerPdf } from "./pdf.js";
 /* ================================================================
    FDFP · MIP-PPA : Suivi des projets de formation de type apprentissage dans l'industrie agro-alimentaire
    Reconstruction fidèle de l'application (modèle : 5 dimensions,
-   23 indicateurs, notes 0–4, suivi post-formation à 3/6/12 mois)
+   22 indicateurs, notes 0–4, suivi post-formation à 3/6/12 mois)
    ================================================================ */
 
 // ----------------- RÉFÉRENTIEL PAR DÉFAUT -----------------------
@@ -378,7 +378,9 @@ function Icone({ n, t = 18, className = "" }) {
 const DESCR_NAV = {
   dashboard: "Vision consolidée du portefeuille : scores, radar, secteurs.",
   projets: "Portefeuille des projets de formation financés par le FDFP.",
-  evaluation: "Noter un projet sur les 5 dimensions et 23 indicateurs.",
+  /* Pas de chiffre ici : le référentiel est modifiable, un nombre écrit en
+     dur (« 23 indicateurs ») cesse d'être vrai au premier changement. */
+  evaluation: "Noter un projet sur les dimensions et les indicateurs du modèle.",
   suivi: "Suivi du niveau de performance : jalons M+3 / M+6 / M+12.",
   indicateurs: "Référentiel MIP-PPA : dimensions, pondérations, indicateurs.",
   alertes: "Projets de formation de type apprentissage sous-performantes et suivis en retard.",
@@ -401,6 +403,9 @@ const C = {
 
 // ----------------- CALCULS --------------------------------------
 const noteLabel = (n) => (n === 4 ? "Excellent" : n === 3 ? "Bon" : n === 2 ? "Partiel" : n === 1 ? "Faible" : n === 0 ? "Insuffisant" : "Non noté");
+/* Fond et texte d'une pastille de note (0 à 4), null pour un indicateur non noté. */
+const teinteNote = (n) => (n === null || n === undefined ? null
+  : n >= 4 ? ["#e3f4e8", "#15803d"] : n === 3 ? ["#dcebf7", "#1d5f8f"] : n === 2 ? ["#fdf0da", "#b07515"] : ["#fde8e8", "#b91c1c"]);
 
 /* scoreDimension, scoreGlobal, couvertureModele et niveau sont importés depuis
    « calculs.js » : le modèle est isolé pour être testé (npm test). */
@@ -552,6 +557,23 @@ function LogoFDFP({ h = 32 }) {
 }
 
 // ----------------- PETITS COMPOSANTS ----------------------------
+/* Détail SMART d'un indicateur sous son intitulé : la cible d'abord, car la
+   note s'y rapporte, puis le mode de calcul et, sur demande, la source.
+   Rien n'est affiché pour un indicateur saisi avant l'ajout de ces champs. */
+function DetailSmart({ ind, avecSource = false }) {
+  if (!ind || !(ind.cible || ind.mesure || (avecSource && ind.source))) return null;
+  return (
+    <div className="text-xs text-stone-500 mt-1 space-y-0.5 break-words">
+      {(ind.cible || ind.mesure) && (
+        <div>
+          {ind.cible && <span className="font-semibold text-stone-700">Cible : {ind.cible}</span>}
+          {ind.cible && ind.mesure ? " · " : ""}{ind.mesure}
+        </div>
+      )}
+      {avecSource && ind.source && <div>Source : {ind.source}</div>}
+    </div>
+  );
+}
 function Badge({ score }) {
   const n = niveau(score);
   return (
@@ -1730,7 +1752,7 @@ export default function MipPpaApp() {
   const [formations, setFormationsBrut] = useState([]);
   const [suivis, setSuivisBrut] = useState([]);
   const [secteurs, setSecteursBrut] = useState(SECTEURS_DEFAUT);
-  const [phases, setPhasesBrut] = useState(["À la conception", "En fin de formation", "Suivi post-formation (3 / 6 / 12 mois)"]);
+  const [phases, setPhasesBrut] = useState(PHASES_DEFAUT);
   const [chargementData, setChargementData] = useState(true);
 
   // --- Ecriture Supabase : projets (upsert individuel) ---
@@ -2356,6 +2378,84 @@ export default function MipPpaApp() {
   const [indEdit, setIndEdit] = useState(null);     // fenêtre Modifier l'indicateur
   const [docVu, setDocVu] = useState(null);          // visionneuse de document
   const [detailStat, setDetailStat] = useState(null); // "projets" | "apprenants" | "scores"
+  /* Détail d'une carte de la page Suivi : "tous" | "retard" | "sous14" | "realisation". */
+  const [detailSuivi, setDetailSuivi] = useState(null);
+  /* Jalon dont la notation est dépliée sur la page Suivi (identifiant du suivi),
+     et jalon à mettre en évidence quand on y arrive depuis une fenêtre. */
+  const [suiviNotation, setSuiviNotation] = useState(null);
+  const [suiviVise, setSuiviVise] = useState(null);
+  /* Section « Avant la clôture » de la page Suivi, repliable ; le choix est
+     gardé dans ce navigateur (préférence d'affichage, rien d'autre). */
+  const [avantClotureVisible, setAvantClotureVisible] = useState(() => {
+    try { return localStorage.getItem("mip-ppa-suivi-avant-cloture") !== "0"; } catch { return true; }
+  });
+  const basculerAvantCloture = () => {
+    const n = !avantClotureVisible;
+    setAvantClotureVisible(n);
+    try { localStorage.setItem("mip-ppa-suivi-avant-cloture", n ? "1" : "0"); } catch { /* navigation privée */ }
+  };
+  useEffect(() => {
+    if (!suiviVise) return;
+    const el = document.getElementById("suivi-" + suiviVise);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    const t = setTimeout(() => setSuiviVise(null), 2600);
+    return () => clearTimeout(t);
+  }, [suiviVise]);
+
+  /* CONFIRMATION AVANT SUPPRESSION
+     Toute suppression passe par cette fenêtre, et non par « window.confirm » :
+     même allure que les autres fenêtres de l'application, action nommée sur
+     un bouton rouge (« Supprimer l'indicateur » plutôt que « OK »), focus posé
+     sur « Annuler » pour qu'une touche Entrée distraite ne supprime rien, et
+     « Échap » pour renoncer. La promesse garde le code appelant aussi simple
+     qu'avec la boîte du navigateur :
+         if (!(await confirmer({ titre, message, libelle }))) return;
+     Une seule demande à la fois : une nouvelle demande refuse la précédente. */
+  const [confirmation, setConfirmation] = useState(null);
+  const confirmationRef = useRef(null);
+  const confirmer = (o) => new Promise((resolve) => {
+    if (confirmationRef.current) confirmationRef.current.resolve(false);
+    const c = { danger: true, libelle: "Supprimer", ...(typeof o === "string" ? { message: o } : o), resolve };
+    confirmationRef.current = c;
+    setConfirmation(c);
+  });
+  const repondreConfirmation = (ok) => {
+    const c = confirmationRef.current;
+    confirmationRef.current = null;
+    setConfirmation(null);
+    if (c) c.resolve(ok);
+  };
+  /* Suppression d'un projet : corbeille quand la migration est passée,
+     effacement sinon. La fenêtre dit lequel des deux, et combien de suivis
+     partent avec le projet. */
+  /* Photographie datée de l'évaluation d'un projet, rattachée à un jalon.
+     Appelée depuis la fiche d'évaluation et depuis un jalon de la page Suivi. */
+  const figerEvaluation = async (f, jalon) => {
+    const snap = instantane(referentiel, f.notes, jalon);
+    if (snap.score === null) { notif("Aucun indicateur noté : rien à figer."); return; }
+    const deja = (f.historique || []).some((h) => h.jalon === jalon);
+    if (deja && !(await confirmer({
+      titre: `Remplacer l'évaluation figée au jalon ${jalon} ?`,
+      message: "La photographie déjà enregistrée pour ce jalon sera remplacée par l'évaluation actuelle.",
+      libelle: "Remplacer",
+    }))) return;
+    setFormations((fs) => fs.map((x) => x.id === f.id
+      ? { ...x, historique: ajouterInstantane(x.historique, snap) } : x));
+    notif(`Évaluation figée au jalon ${jalon}`);
+  };
+  const supprimerProjet = async (f) => {
+    const n = suivis.filter((x) => x.formationId === f.id).length;
+    const ok = await confirmer(corbeilleDispo ? {
+      titre: "Mettre ce projet à la corbeille ?",
+      message: `« ${f.titre} »\n\nLe projet et ${n ? `ses ${n} jalon${n > 1 ? "s" : ""} de suivi` : "ses suivis"} seront masqués. Ils resteront restaurables depuis la corbeille de la page Projets.`,
+      libelle: "Mettre à la corbeille", irreversible: false,
+    } : {
+      titre: "Supprimer définitivement ce projet ?",
+      message: `« ${f.titre} »\n\nLa corbeille n'est pas active : le projet, ses notes et ${n ? `ses ${n} jalon${n > 1 ? "s" : ""} de suivi` : "ses suivis"} seront effacés de la base.`,
+      libelle: "Supprimer définitivement",
+    });
+    if (ok) mettreALaCorbeille(f);
+  };
   const [detailLocalite, setDetailLocalite] = useState(null); // nom d'une localité de la carte
   const [lectureCarte, setLectureCarte] = useState("implantation"); // ou "score"
   /* Sens des barres du graphique « Score moyen par secteur ».
@@ -2393,7 +2493,7 @@ export default function MipPpaApp() {
         if (cfg.secteurs && Object.keys(cfg.secteurs).length) setSecteursBrut(normaliserSecteurs(cfg.secteurs));
         else sauverConfig("secteurs", SECTEURS_DEFAUT);
         if (Array.isArray(cfg.phases) && cfg.phases.length) setPhasesBrut(cfg.phases);
-        else sauverConfig("phases", ["À la conception", "En fin de formation", "Suivi post-formation (3 / 6 / 12 mois)"]);
+        else sauverConfig("phases", PHASES_DEFAUT);
       }
       /* Projets + suivis.
          L'ERREUR EST RÉCUPÉRÉE, et c'est capital. Elle était ignorée : sur
@@ -2634,6 +2734,27 @@ export default function MipPpaApp() {
         })
       : P.portee === "tous" ? formations : [],
     [formations, P, monCompte]);
+
+  /* Jalons de suivi visibles, rangés comme sur la page Suivi. Calculés une
+     seule fois ici : la page et la fenêtre de détail de ses cartes lisent les
+     mêmes listes, donc affichent les mêmes chiffres. Chaque jalon porte la
+     liste des indicateurs à noter à ce moment (« ind »), d'après leur phase,
+     et le nombre de jours qui le séparent de son échéance (« j »). */
+  const classementSuivis = useMemo(() => {
+    const enrichis = suivis
+      .map((s) => ({ ...s, f: formationsVisibles.find((f) => f.id === s.formationId) }))
+      .filter((s) => s.f && (P.suivisJalons === "tous" || s.jalon === P.suivisJalons))
+      .map((s) => ({ ...s, j: joursRestants(s.echeance), ind: indicateursDuJalon(referentiel, s.jalon, s.f.notes) }))
+      .sort((a, b) => String(a.echeance || "9999").localeCompare(String(b.echeance || "9999")));
+    const programme = (s) => s.statut === "programmé";
+    return {
+      enrichis,
+      retard: enrichis.filter((s) => programme(s) && s.j < 0),
+      sous14: enrichis.filter((s) => programme(s) && s.j >= 0 && s.j <= 14),
+      programmes: enrichis.filter((s) => programme(s) && s.j > 14),
+      effectues: enrichis.filter((s) => s.statut === "effectué"),
+    };
+  }, [suivis, formationsVisibles, P, referentiel]);
 
   // ---------- Calculs consolidés ----------
   const stats = useMemo(() => {
@@ -3151,12 +3272,12 @@ export default function MipPpaApp() {
     const nouveaux = data.projets.filter((p) => p && p.id && !connus.has(p.id));
     const remplaces = data.projets.filter((p) => p && p.id && connus.has(p.id));
     const quand = data.le ? new Date(data.le).toLocaleString("fr-FR") : "date inconnue";
-    if (!window.confirm(
+    if (!(await confirmer({ titre: "Restaurer cette sauvegarde ?", libelle: "Restaurer", danger: false, message:
       `Sauvegarde du ${quand}, ${data.projets.length} projets.\n\n` +
       `${nouveaux.length} seront ajoutés.\n` +
       `${remplaces.length} déjà présents seront remplacés par la version sauvegardée.\n` +
-      `Aucun projet ne sera supprimé.\n\n` +
-      `Restaurer ?`)) return;
+      `Aucun projet ne sera supprimé.`,
+    }))) return;
 
     sauvegardeSecours(formations, suivis);
     // Les notes et l'historique sont repris tels quels ; la zone et la
@@ -3344,7 +3465,7 @@ export default function MipPpaApp() {
     const nouveaux = a.lignes.filter((l) => !formations.some((f) => memeProjet(f, l)));
     const deja = a.lignes.length - nouveaux.length;
 
-    if (!window.confirm(
+    if (!(await confirmer({ titre: "Reprendre ce classeur ?", libelle: "Reprendre les projets", danger: false, message:
       `Reprise d'un classeur exporté : ${a.lignes.length} projets lus.\n\n` +
       `${nouveaux.length} seront ajoutés.\n` +
       `${deja} sont déjà présents et seront laissés intacts.\n\n` +
@@ -3360,8 +3481,8 @@ export default function MipPpaApp() {
       `Dimensions reconnues dans le fichier : ${a.dimensionsLues} sur ${referentiel.length}.` +
       (a.dimensionsLues < referentiel.length
         ? ` Les autres ont dû être renommées depuis l'export : leurs scores ne seront pas repris.`
-        : "") + `\n\n` +
-      `Continuer ?`)) return;
+        : ""),
+    }))) return;
 
     sauvegardeSecours(formations, suivis);
     const base = Date.now();
@@ -3605,7 +3726,7 @@ export default function MipPpaApp() {
     doc.setFillColor(13, 34, 51); doc.rect(0, 0, W, 30, "F");
     poserLogo(M, 5.5, 42, 19, 2.6);
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(14);
-    doc.text(nettoyerPdf("FICHE D'EVALUATION MIP-PPA"), W - M, 13, { align: "right" });
+    doc.text(nettoyerPdf("FICHE D'ÉVALUATION MIP-PPA"), W - M, 13, { align: "right" });
     doc.setFont("helvetica", "normal"); doc.setFontSize(9);
     doc.text(nettoyerPdf("Projet Apprentissage - Industrie agro-alimentaire"), W - M, 19, { align: "right" });
     doc.setDrawColor(...orange); doc.setLineWidth(1.6); doc.line(0, 30, W, 30);
@@ -3665,16 +3786,16 @@ export default function MipPpaApp() {
     /* Couverture : la fiche PDF circule hors de l'application, souvent seule et
        parfois imprimée. Sans cette ligne, rien n'indique au lecteur qu'un
        « 100 % - Excellent » peut ne reposer que sur les 4 indicateurs de
-       conception, sur les 23 que compte le modèle. */
+       conception, sur l'ensemble des indicateurs du modèle. */
     {
       const c = couvertureModele(referentiel, f.notes);
       doc.setFont("helvetica", c.pct < 100 ? "bold" : "normal"); doc.setFontSize(8.5);
       doc.setTextColor(...(c.pct < 100 ? [150, 90, 10] : gris));
       doc.text(nettoyerPdf(
         c.notees
-          ? `Couverture du modele : ${Math.round(c.pct)} % - ${c.notees} indicateur(s) note(s) sur ${c.indicateurs}`
-            + (c.pct < 100 ? " - evaluation partielle, score non comparable a une evaluation complete." : "")
-          : "Aucun indicateur note a ce jour."),
+          ? `Couverture du modèle : ${Math.round(c.pct)} % - ${c.notees} indicateur(s) noté(s) sur ${c.indicateurs}`
+            + (c.pct < 100 ? " - évaluation partielle, score non comparable à une évaluation complète." : "")
+          : "Aucun indicateur noté à ce jour."),
         W / 2, y, { align: "center" });
       y += 5;
     }
@@ -3711,7 +3832,7 @@ export default function MipPpaApp() {
 
     // ------ Tableau des dimensions ------
     doc.setTextColor(...bleu); doc.setFontSize(11.5);
-    doc.text(nettoyerPdf("Synthese par dimension"), M, y); y += 6;
+    doc.text(nettoyerPdf("Synthèse par dimension"), M, y); y += 6;
     doc.setFontSize(9.5);
     referentiel.forEach((d) => {
       const s = scoreDimension(referentiel, d.id, f.notes);
@@ -3763,7 +3884,7 @@ export default function MipPpaApp() {
       doc.text(nettoyerPdf(`${d.nom} - ${fmtPct(scoreDimension(referentiel, d.id, f.notes))}`), M + 2, y); y += 8;
       doc.setFontSize(8.8);
       d.indicateurs.forEach((ind) => {
-        const lignes = doc.splitTextToSize(nettoyerPdf(`${ind.id} · ${ind.label}`), W - 2 * M - 30);
+        const lignes = doc.splitTextToSize(nettoyerPdf(`${ind.id} · ${ind.label}${ind.cible ? ` (cible : ${ind.cible})` : ""}`), W - 2 * M - 30);
         sautSiBesoin(lignes.length * 4 + 3);
         doc.setTextColor(45, 45, 45); doc.setFont("helvetica", "normal");
         doc.text(lignes, M + 2, y);
@@ -3782,7 +3903,7 @@ export default function MipPpaApp() {
       sautSiBesoin(16);
       doc.setFillColor(232, 240, 247); doc.rect(M, y - 4.5, W - 2 * M, 7.5, "F");
       doc.setTextColor(...bleu); doc.setFont("helvetica", "bold"); doc.setFontSize(10);
-      doc.text(nettoyerPdf("Documents de suivi rattaches"), M + 2, y); y += 8;
+      doc.text(nettoyerPdf("Documents de suivi rattachés"), M + 2, y); y += 8;
       doc.setFontSize(8.8);
       suivisF.forEach((s) => {
         (s.docs || []).forEach((d) => {
@@ -3793,7 +3914,7 @@ export default function MipPpaApp() {
             doc.setTextColor(45, 45, 45); doc.setFont("helvetica", "bold");
             doc.text(nettoyerPdf(`${s.jalon} - ${d.nom}`), M + 2, y); y += 5;
             doc.setFont("helvetica", "normal"); doc.setTextColor(...gris); doc.setFontSize(7.5);
-            doc.text(nettoyerPdf(`${(d.taille / 1024).toFixed(0)} Ko - ajoute le ${d.date}`), M + 2, y); y += 4;
+            doc.text(nettoyerPdf(`${(d.taille / 1024).toFixed(0)} Ko - ajouté le ${d.date}`), M + 2, y); y += 4;
             doc.setFontSize(8.8);
             try {
               const props = doc.getImageProperties(d.data);
@@ -3820,7 +3941,7 @@ export default function MipPpaApp() {
               : (d.type || "").includes("word") || d.nom.match(/\.docx$/i) ? "Document Word (texte integre en annexe de cette fiche)"
               : d.nom.match(/\.doc$/i) ? "Document Word ancien format (a consulter dans la plateforme)"
               : (d.type || "").includes("sheet") || d.nom.match(/\.xlsx?$/i) ? "Classeur Excel (a consulter dans la plateforme)" : "Document (a consulter dans la plateforme)";
-            doc.text(nettoyerPdf(`${typeLisible} - ${(d.taille / 1024).toFixed(0)} Ko - ajoute le ${d.date}`), M + 6, y + 6.5);
+            doc.text(nettoyerPdf(`${typeLisible} - ${(d.taille / 1024).toFixed(0)} Ko - ajouté le ${d.date}`), M + 6, y + 6.5);
             doc.setFontSize(8.8);
             y += 15;
           }
@@ -3996,7 +4117,7 @@ export default function MipPpaApp() {
   const NAV = [
     { section: "Pilotage", items: [
       ["dashboard", "grid", "Tableau de bord"], ["formations", "cap", "Projets"],
-      ["evaluation", "clipboard", "Évaluation"], ["suivi", "calendrier", "Suivi niveau de performance"],
+      ["evaluation", "clipboard", "Évaluation"], ["suivi", "calendrier", "Suivi du niveau de performance"],
       ["indicateurs", "graphique", "Indicateurs"], ["alertes", "cloche", "Alertes"], ["exports", "telecharger", "Exports"],
     ].filter(([id]) => P.pages.includes(id)) },
     { section: "Aide", items: [["guide", "livre", "Guide d'utilisation"]] },
@@ -4006,7 +4127,7 @@ export default function MipPpaApp() {
     dashboard: ["Tableau de bord MIP-PPA", "Vision consolidée des projets de formation de type Apprentissage (emploi-qualification) dans les industries agro-alimentaires."],
     formations: ["Projets de formation de type apprentissage", "Portefeuille des projets de formation financés par le FDFP."],
     evaluation: ["Évaluation", fEval ? fEval.titre : "Sélectionnez un projet à évaluer."],
-    suivi: ["Suivi du niveau de performance", "Évaluations à 3, 6 et 12 mois."],
+    suivi: ["Suivi du niveau de performance", "Évaluations aux différentes phases de mesure."],
     indicateurs: ["Référentiel des indicateurs", "Modèle MIP-PPA (dimensions, pondérations, indicateurs)."],
     alertes: ["Alertes & risques", "Projets sous-performants et suivis en retard."],
     exports: ["Exports", "Fiches PDF et tableaux Excel pour les rapports FDFP."],
@@ -4020,6 +4141,8 @@ export default function MipPpaApp() {
      une référence à poser sur le panneau de sa fenêtre. */
   const refDocVu = useFenetreModale(!!docVu, () => setDocVu(null));
   const refDetailStat = useFenetreModale(!!detailStat, () => setDetailStat(null));
+  const refDetailSuivi = useFenetreModale(!!detailSuivi, () => setDetailSuivi(null));
+  const refConfirmation = useFenetreModale(!!confirmation, () => repondreConfirmation(false));
   /* Fenêtre d'édition d'un projet. « fermerEdition » remet l'édition à
      zéro : sans cela, rouvrir « + Nouveau projet » après avoir annulé
      une modification présenterait les valeurs du projet abandonné. */
@@ -4339,6 +4462,11 @@ export default function MipPpaApp() {
         .stat-cliquable:hover .stat-chevron{ transform:translateX(3px); opacity:1; color:#1d6fa8; }
         .sombre .stat-chevron{ color:#7b8896; }
         .sombre .stat-cliquable:hover .stat-chevron{ color:#6fb3e0; }
+
+        /* Jalon de la page Suivi atteint depuis la fenêtre de détail d'une
+           carte : un halo bref dit « c'est celui-ci », puis s'efface. */
+        .suivi-vise{ box-shadow:0 0 0 2px #1d6fa8, 0 0 0 7px rgba(29,111,168,.14); background:rgba(29,111,168,.04); }
+        .sombre .suivi-vise{ box-shadow:0 0 0 2px #6fb3e0, 0 0 0 7px rgba(111,179,224,.18); background:rgba(111,179,224,.06); }
 
         .carte-hover { transition: transform .18s ease, box-shadow .18s ease; }
         .carte-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(13,34,51,.10); }
@@ -4869,7 +4997,7 @@ export default function MipPpaApp() {
                      distingue ce qui est supprimé de ce qui est réécrit. */}
               {P.supprimerFormation && (
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     const n = formations.length;
                     const idsDemo = new Set(FORMATIONS_DEMO.map((d) => d.id));
                     const perdus = formations.filter((f) => !idsDemo.has(f.id)).length;
@@ -4877,12 +5005,14 @@ export default function MipPpaApp() {
                     const lignes = [];
                     if (perdus) lignes.push(`· ${perdus} projet${perdus > 1 ? "s" : ""} sur ${n} ${perdus > 1 ? "seront supprimés" : "sera supprimé"} de la base, avec leurs suivis et leurs notes ;`);
                     if (reecrits) lignes.push(`· ${reecrits} projet${reecrits > 1 ? "s" : ""} ${reecrits > 1 ? "seront réécrits" : "sera réécrit"} par la fiche de démonstration correspondante : les notes saisies seront perdues.`);
-                    if (!window.confirm(
-                      `Cette action REMPLACE le portefeuille par les ${FORMATIONS_DEMO.length} projets de démonstration.\n\n` +
-                      (lignes.length ? lignes.join("\n") + "\n\n" : "") +
-                      `⚠ Si cette base est la base de travail, les évaluations réelles seront perdues.\n\n` +
-                      `Une copie de secours sera gardée dans ce navigateur, mais elle ne vaut pas une sauvegarde.\n\n` +
-                      `Confirmer le remplacement ?`)) return;
+                    if (!(await confirmer({
+                      titre: "Remplacer le portefeuille par la démonstration ?",
+                      message: `Cette action remplace le portefeuille par les ${FORMATIONS_DEMO.length} projets de démonstration.`,
+                      details: [...lignes.map((l) => l.replace(/^· /, "")),
+                        "Si cette base est la base de travail, les évaluations réelles seront perdues.",
+                        "Une copie de secours sera gardée dans ce navigateur, mais elle ne vaut pas une sauvegarde."],
+                      libelle: "Remplacer le portefeuille",
+                    }))) return;
                     sauvegardeSecours(formations, suivis);
                     setFormations(FORMATIONS_DEMO, { autoriserSuppressionMultiple: true });
                     setSuivis(SUIVIS_DEMO, { autoriserSuppressionMultiple: true });
@@ -4905,11 +5035,12 @@ export default function MipPpaApp() {
               {/* Retour en arrière, tant que la copie de secours est là. */}
               {P.sauvegarde && secours && (
                 <button
-                  onClick={() => {
-                    if (!window.confirm(
-                      `Restaurer les ${secours.projets.length} projets de la copie du ` +
-                      `${new Date(secours.le).toLocaleString("fr-FR")} ?\n\n` +
-                      `Les projets actuellement en base ne sont pas supprimés : ceux de la copie sont réécrits par-dessus.`)) return;
+                  onClick={async () => {
+                    if (!(await confirmer({
+                      titre: `Restaurer les ${secours.projets.length} projets de la copie de secours ?`,
+                      message: `Copie du ${new Date(secours.le).toLocaleString("fr-FR")}.\n\nLes projets actuellement en base ne sont pas supprimés : ceux de la copie sont réécrits par-dessus.`,
+                      libelle: "Restaurer", danger: false,
+                    }))) return;
                     setFormations((fs) => {
                       const ids = new Set(secours.projets.map((p) => p.id));
                       return [...fs.filter((f) => !ids.has(f.id)), ...secours.projets];
@@ -4974,11 +5105,7 @@ export default function MipPpaApp() {
                   <div className="col-span-2 flex justify-end items-center gap-3">
                     <button onClick={() => { setEvalId(f.id); setPage("evaluation"); }} className="text-sm font-medium hover:underline" style={{ color: C.vert }}>Évaluer</button>
                     {P.editerFormation && <button title="Modifier la formation" onClick={() => editerFormation(f)} className="text-stone-500 hover:text-stone-800" aria-label="Modifier la formation"><Icone n="crayon" t={16} /></button>}
-                    {P.supprimerFormation && <button onClick={() => { if (window.confirm(corbeilleDispo ? `Mettre « ${f.titre} » à la corbeille ?
-
-Le projet et ses suivis seront masqués, et resteront restaurables depuis la page Projets.` : `Supprimer définitivement « ${f.titre} » et ses suivis ?
-
-La corbeille n'est pas active : cette suppression est irréversible.`)) mettreALaCorbeille(f); }} className="text-red-500 hover:text-red-700" ><Icone n="poubelle" t={16} /></button>}
+                    {P.supprimerFormation && <button onClick={() => supprimerProjet(f)} title={corbeilleDispo ? "Mettre ce projet à la corbeille." : "Supprimer ce projet."} aria-label={"Supprimer le projet " + f.titre} className="text-red-500 hover:text-red-700" ><Icone n="poubelle" t={16} /></button>}
                   </div>
                 </div>
               ))}
@@ -4999,11 +5126,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3">
                       <button onClick={() => { setEvalId(f.id); setPage("evaluation"); }} className="text-sm font-medium hover:underline" style={{ color: C.vert }}>Évaluer</button>
                       {P.editerFormation && <button title="Modifier la formation" onClick={() => editerFormation(f)} className="text-stone-500 hover:text-stone-800" aria-label="Modifier la formation"><Icone n="crayon" t={16} /></button>}
-                      {P.supprimerFormation && <button onClick={() => { if (window.confirm(corbeilleDispo ? `Mettre « ${f.titre} » à la corbeille ?
-
-Le projet et ses suivis seront masqués, et resteront restaurables depuis la page Projets.` : `Supprimer définitivement « ${f.titre} » et ses suivis ?
-
-La corbeille n'est pas active : cette suppression est irréversible.`)) mettreALaCorbeille(f); }} className="text-red-500 hover:text-red-700" ><Icone n="poubelle" t={16} /></button>}
+                      {P.supprimerFormation && <button onClick={() => supprimerProjet(f)} title={corbeilleDispo ? "Mettre ce projet à la corbeille." : "Supprimer ce projet."} aria-label={"Supprimer le projet " + f.titre} className="text-red-500 hover:text-red-700" ><Icone n="poubelle" t={16} /></button>}
                     </div>
                   </div>
                 ))}
@@ -5257,15 +5380,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                       {JALONS.map((j) => <option key={j} value={j}>{j}</option>)}
                     </select>
                     <button
-                      onClick={() => {
-                        const snap = instantane(referentiel, fEval.notes, jalonAFiger);
-                        if (snap.score === null) { notif("Aucun indicateur noté : rien à figer."); return; }
-                        const deja = (fEval.historique || []).some((h) => h.jalon === jalonAFiger);
-                        if (deja && !window.confirm(`Le jalon ${jalonAFiger} est déjà figé. Le remplacer par l'évaluation actuelle ?`)) return;
-                        setFormations((fs) => fs.map((x) => x.id === fEval.id
-                          ? { ...x, historique: ajouterInstantane(x.historique, snap) } : x));
-                        notif(`Évaluation figée au jalon ${jalonAFiger}`);
-                      }}
+                      onClick={() => figerEvaluation(fEval, jalonAFiger)}
                       className="text-sm font-semibold text-white px-3.5 py-1.5 rounded-lg"
                       style={{ background: C.vert }}
                       title="Enregistrer une photographie datée du score actuel, rattachée à ce jalon.">
@@ -5356,9 +5471,10 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                     {d.indicateurs.map((ind) => (
                       <div key={ind.id} className="border border-stone-200 rounded-xl p-4">
                         <div className="flex justify-between items-start gap-3">
-                          <div>
+                          <div className="min-w-0">
                             <div className="text-xs text-stone-500 font-mono">{ind.id} · {ind.phase}</div>
-                            <div className="font-semibold mt-0.5">{ind.label}</div>
+                            <div className="font-semibold mt-0.5 break-words">{ind.label}</div>
+                            <DetailSmart ind={ind} />
                           </div>
                           <span className="text-sm text-stone-500 shrink-0">{noteLabel(fEval.notes[ind.id])}</span>
                         </div>
@@ -5385,54 +5501,212 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
 
           {/* =========== SUIVI POST-FORMATION =========== */}
           {page === "suivi" && (() => {
-            const enrichis = suivis.map((s) => ({ ...s, f: formationsVisibles.find((f) => f.id === s.formationId) })).filter((s) => s.f && (P.suivisJalons === "tous" || s.jalon === P.suivisJalons));
-            const retard = enrichis.filter((s) => s.statut === "programmé" && joursRestants(s.echeance) < 0);
-            const sous14 = enrichis.filter((s) => s.statut === "programmé" && joursRestants(s.echeance) >= 0 && joursRestants(s.echeance) <= 14);
-            const programmes = enrichis.filter((s) => s.statut === "programmé" && joursRestants(s.echeance) > 14);
-            const effectues = enrichis.filter((s) => s.statut === "effectué");
-            const Pile = ({ titre, icone, liste, teinte }) => (
+            const { enrichis, retard, sous14, programmes, effectues } = classementSuivis;
+            const aNoter = enrichis.filter((s) => s.statut === "programmé").reduce((n, s) => n + (s.ind.total - s.ind.notees), 0);
+            /* Phases d'avant la clôture, projet par projet : la « lucarne » qui met
+               la conception et la fin de formation sous les yeux, à côté des jalons. */
+            const avant = formationsVisibles
+              .map((f) => ({ f, groupes: indicateursHorsSuivi(referentiel, f.notes) }))
+              .filter((x) => x.groupes.length);
+            const resteAvant = avant.reduce((n, x) => n + x.groupes.reduce((m, g) => m + g.total - g.notees, 0), 0);
+            /* Des fonctions de rendu, et non des composants déclarés ici : un
+               composant redéfini à chaque rendu serait démonté puis remonté à
+               chaque note posée, et le focus clavier sauterait. */
+            const pile = (titre, icone, liste, teinte) => (
               <section className="bg-white rounded-2xl border border-stone-200 p-5">
                 <h2 className="font-bold flex items-center gap-2">{icone} {titre} <span className="text-xs bg-stone-100 px-2 py-0.5 rounded-full">{liste.length}</span></h2>
-                {!liste.length ? <p className="text-sm text-stone-400 mt-2">Aucun élément.</p> : liste.map((s) => (
-                  <div key={s.id} className="border-t border-stone-100 py-3.5 flex flex-col items-start gap-2.5 first:border-t-0 mt-1">
-                    <div className="min-w-0 w-full">
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full mr-2" style={{ background: teinte, color: "#1c1917" }}>{s.jalon}</span>
-                      <span className="font-semibold">{s.f.titre}</span>
-                      <div className="text-sm text-stone-500 mt-0.5">{orgAff(s.f.entreprise)} · {libelleSecteur(s.f, secteurs)} · échéance {s.echeance}{/* « dans 0 j » se lisait comme une erreur d'affichage alors qu'il
-                          désignait le cas le plus pressant : l'échéance du jour.
-                          On l'écrit en toutes lettres, et « demain » avec. */}
-                      {s.statut === "programmé" ? ` · ${(() => {
-                        const j = joursRestants(s.echeance);
-                        if (j < 0) return Math.abs(j) + " j de retard";
-                        if (j === 0) return "aujourd'hui";
-                        if (j === 1) return "demain";
-                        return "dans " + j + " j";
-                      })()}` : ""}</div>
-                      {s.note && <div className="text-xs text-stone-500 italic mt-1"><Icone n="note" t={13} /> {s.note}</div>}
-                      {(s.docs || []).length > 0 && <div className="text-xs text-sky-700 mt-1"><Icone n="trombone" t={13} /> {s.docs.length} document{s.docs.length > 1 ? "s" : ""} de suivi rattaché{s.docs.length > 1 ? "s" : ""}</div>}
-                    </div>
-                    <div className="flex gap-2">
-                      {!P.lectureSeule && <button onClick={() => setSuiviEdit({ id: s.id, jalon: s.jalon, titreF: s.f.titre + " · " + orgAff(s.f.entreprise), echeance: s.echeance, note: s.note, docs: s.docs || [] })}
-                        className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50" title="Modifier la date, les observations et les documents."><Icone n="crayon" t={14} /> Notes & date</button>}
-                      {P.suiviValider && (s.statut === "programmé"
-                        ? <button onClick={() => { setSuivis((ss) => ss.map((x) => x.id === s.id ? { ...x, statut: "effectué" } : x)); notif("Suivi marqué effectué"); }} className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50" title="Valider la réalisation de ce suivi."><Icone n="coche" t={14} /> Marquer effectué</button>
-                        : <button onClick={() => setSuivis((ss) => ss.map((x) => x.id === s.id ? { ...x, statut: "programmé" } : x))} className="text-sm text-stone-500 hover:text-stone-800" title="Repasser ce suivi en programmé."><Icone n="rotation" t={14} /> Ré-ouvrir</button>)}
-                    </div>
-                  </div>
-                ))}
+                {!liste.length ? <p className="text-sm text-stone-400 mt-2">Aucun élément.</p> : liste.map((s) => jalon(s, teinte))}
               </section>
             );
+            const jalon = (s, teinte) => {
+              const reste = s.ind.total - s.ind.notees;
+              return (
+                <div key={s.id} id={"suivi-" + s.id}
+                  className={"border-t border-stone-100 py-3.5 flex flex-col items-start gap-2.5 first:border-t-0 mt-1 rounded-lg transition-shadow" + (suiviVise === s.id ? " suivi-vise" : "")}>
+                  <div className="min-w-0 w-full">
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full mr-2" style={{ background: teinte, color: "#1c1917" }}>{s.jalon}</span>
+                    <span className="font-semibold">{s.f.titre}</span>
+                    <div className="text-sm text-stone-500 mt-0.5">{orgAff(s.f.entreprise)} · {libelleSecteur(s.f, secteurs)} · échéance {s.echeance}{/* « dans 0 j » se lisait comme une erreur d'affichage alors qu'il
+                        désignait le cas le plus pressant : l'échéance du jour.
+                        On l'écrit en toutes lettres, et « demain » avec. */}
+                    {s.statut === "programmé" ? ` · ${(() => {
+                      const j = s.j;
+                      if (j < 0) return Math.abs(j) + " j de retard";
+                      if (j === 0) return "aujourd'hui";
+                      if (j === 1) return "demain";
+                      return "dans " + j + " j";
+                    })()}` : ""}</div>
+                    {s.note && <div className="text-xs text-stone-500 italic mt-1"><Icone n="note" t={13} /> {s.note}</div>}
+                    {(s.docs || []).length > 0 && <div className="text-xs text-sky-700 mt-1"><Icone n="trombone" t={13} /> {s.docs.length} document{s.docs.length > 1 ? "s" : ""} de suivi rattaché{s.docs.length > 1 ? "s" : ""}</div>}
+                  </div>
+                  {blocIndicateurs({ cle: s.id, ind: s.ind, f: s.f, jalon: s.jalon, moment: "à " + s.jalon })}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {!P.lectureSeule && <button onClick={() => setSuiviEdit({ id: s.id, jalon: s.jalon, titreF: s.f.titre + " · " + orgAff(s.f.entreprise), echeance: s.echeance, note: s.note, docs: s.docs || [] })}
+                      className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50" title="Modifier la date, les observations et les documents."><Icone n="crayon" t={14} /> Notes & date</button>}
+                    {P.suiviValider && (s.statut === "programmé"
+                      ? <button onClick={() => { setSuivis((ss) => ss.map((x) => x.id === s.id ? { ...x, statut: "effectué" } : x)); notif("Suivi marqué effectué"); }} className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50" title="Valider la réalisation de ce suivi."><Icone n="coche" t={14} /> Marquer effectué</button>
+                      : <button onClick={() => setSuivis((ss) => ss.map((x) => x.id === s.id ? { ...x, statut: "programmé" } : x))} className="text-sm text-stone-500 hover:text-stone-800" title="Repasser ce suivi en programmé."><Icone n="rotation" t={14} /> Ré-ouvrir</button>)}
+                    {s.statut === "programmé" && reste > 0 && (
+                      <span className="text-xs font-medium" style={{ color: "#b07515" }}>{reste} indicateur{reste > 1 ? "s restent" : " reste"} à noter</span>
+                    )}
+                  </div>
+                </div>
+              );
+            };
+            /* Indicateurs d'un jalon M+n, ou d'une phase d'avant la clôture
+               (conception, fin de formation) : une ligne de pastilles toujours
+               visible (code et note), dépliable en notation complète. La note se
+               pose ici comme sur la fiche d'évaluation : même fonction, mêmes
+               droits, un second clic sur la note retenue la retire.
+               « cle » identifie le bloc déplié : l'identifiant du suivi pour un
+               jalon, « projet|phase » pour une phase d'avant la clôture. */
+            const blocIndicateurs = ({ cle, ind, f, jalon = null, moment }) => {
+              const { liste, total, notees } = ind;
+              if (!total) {
+                if (!jalon) return null;
+                return (
+                  <p className="text-xs text-stone-400">
+                    Aucun indicateur du référentiel n'est rattaché au jalon {jalon}
+                    {admin ? `. Rattachez-en à la phase « Suivi post-formation (${jalon.replace("M+", "")} mois) » dans la page Indicateurs.` : "."}
+                  </p>
+                );
+              }
+              const ouvert = suiviNotation === cle;
+              const idDom = "notation-" + String(cle).replace(/[^A-Za-z0-9_-]/g, "_");
+              return (
+                <div className="w-full rounded-xl border border-stone-200 bg-stone-50">
+                  <button type="button" onClick={() => setSuiviNotation(ouvert ? null : cle)} aria-expanded={ouvert}
+                    aria-controls={idDom}
+                    className="w-full flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-left rounded-xl hover:bg-stone-100"
+                    title={ouvert ? "Replier" : `${P.lectureSeule ? "Voir" : "Noter"} les indicateurs ${jalon ? "de ce jalon" : "de cette phase"}`}>
+                    <span className="text-sm">
+                      <span className="font-semibold">Indicateurs à noter {moment}</span>
+                      <span className="text-stone-500"> · {notees} sur {total} noté{notees > 1 ? "s" : ""}</span>
+                    </span>
+                    <span className="flex items-center gap-1.5 flex-wrap">
+                      {liste.map((i) => {
+                        const t = teinteNote(i.note);
+                        return (
+                          <span key={i.id} title={`${i.id} · ${i.label} · ${i.note === null ? "à noter" : `${i.note}/4 ${noteLabel(i.note)}`}`}
+                            className={"text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded-md border" + (t ? "" : " bg-white border-dashed border-stone-300 text-stone-500")}
+                            style={t ? { background: t[0], color: t[1], borderColor: "transparent" } : undefined}>
+                            {i.id}{i.note !== null ? ` · ${i.note}` : ""}
+                          </span>
+                        );
+                      })}
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"
+                        className="text-stone-400 transition-transform" style={{ transform: ouvert ? "rotate(180deg)" : "none" }} aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                    </span>
+                  </button>
+                  {ouvert && (
+                    <div id={idDom} className="border-t border-stone-200 px-3 pb-3">
+                      {liste.map((i) => {
+                        const notable = !P.lectureSeule && (P.evalDims === "toutes" || i.dimId === P.evalDims);
+                        return (
+                          <div key={i.id} className="py-3 border-b border-stone-100 last:border-b-0">
+                            <div className="flex justify-between items-start gap-3">
+                              <div className="min-w-0">
+                                <div className="text-xs text-stone-500 font-mono">{i.id} · {i.dimension}</div>
+                                <div className="font-semibold text-sm mt-0.5 break-words">{i.label}</div>
+                                {(i.cible || i.mesure) && (
+                                  <div className="text-xs text-stone-500 mt-1 break-words">
+                                    {i.cible && <span className="font-semibold text-stone-700">Cible : {i.cible}</span>}
+                                    {i.cible && i.mesure ? " · " : ""}{i.mesure}
+                                  </div>
+                                )}
+                              </div>
+                              <span className="text-sm text-stone-500 shrink-0">{noteLabel(i.note)}</span>
+                            </div>
+                            {notable && (
+                              <div className="grid grid-cols-5 gap-1.5 mt-2 max-w-sm" role="group" aria-label={"Note de l'indicateur " + i.id}>
+                                {[0, 1, 2, 3, 4].map((v) => {
+                                  const sel = i.note === v;
+                                  return (
+                                    <button key={v} type="button" onClick={() => noter(f.id, i.id, v)} aria-pressed={sel}
+                                      title={sel ? "Cliquer de nouveau pour retirer la note" : `${v} · ${noteLabel(v)}`}
+                                      className={"py-1.5 rounded-lg border text-sm font-semibold transition" + (sel ? "" : " bg-white border-stone-200 hover:bg-stone-50")}
+                                      style={sel ? { background: C.vertFonce, color: "#fff", borderColor: C.vertFonce } : undefined}>
+                                      {v}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      <div className="flex flex-wrap items-center gap-3 pt-3">
+                        {jalon && !P.lectureSeule && notees > 0 && (
+                          <button type="button" onClick={() => figerEvaluation(f, jalon)}
+                            className="text-sm font-semibold text-white px-3.5 py-1.5 rounded-lg" style={{ background: C.vert }}
+                            title={`Enregistrer une photographie datée du score du projet, rattachée au jalon ${jalon}.`}>
+                            Figer l'évaluation à {jalon}
+                          </button>
+                        )}
+                        {(P.pages || []).includes("evaluation") && (
+                          <button type="button" onClick={() => { setEvalId(f.id); setPage("evaluation"); }}
+                            className="text-sm font-medium hover:underline" style={{ color: C.vert }}>
+                            Ouvrir la fiche d'évaluation →
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            };
             return (<>
               <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-                <StatCard icone={<Icone n="calendrier" t={20} />} titre="Suivis planifiés" valeur={enrichis.length} />
-                <StatCard icone={<Icone n="alerte" t={20} />} titre="En retard" valeur={retard.length} sous="À traiter en priorité" teinte="#fde8e8" fg={C.insuffisant} />
-                <StatCard icone={<Icone n="horloge" t={20} />} titre="À faire sous 14 j" valeur={sous14.length} teinte="#fdf0da" fg="#b07515" />
-                <StatCard icone={<Icone n="cocheCercle" t={20} />} titre="Taux de réalisation" valeur={`${enrichis.length ? Math.round((effectues.length / enrichis.length) * 100) : 0} %`} sous={`${effectues.length} sur ${enrichis.length} effectués`} teinte="#e3f4e8" fg={C.excellent} />
+                <StatCard icone={<Icone n="calendrier" t={20} />} titre="Suivis planifiés" valeur={enrichis.length}
+                  sous={aNoter ? `${aNoter} indicateur${aNoter > 1 ? "s" : ""} à noter` : "Tous les indicateurs sont notés"}
+                  surClic={() => setDetailSuivi("tous")} indice="Voir chaque jalon planifié, par échéance" />
+                <StatCard icone={<Icone n="alerte" t={20} />} titre="En retard" valeur={retard.length} sous="À traiter en priorité" teinte="#fde8e8" fg={C.insuffisant}
+                  surClic={() => setDetailSuivi("retard")} indice="Voir les jalons dont l'échéance est dépassée" />
+                <StatCard icone={<Icone n="horloge" t={20} />} titre="À faire sous 14 j" valeur={sous14.length} teinte="#fdf0da" fg="#b07515"
+                  surClic={() => setDetailSuivi("sous14")} indice="Voir les jalons des deux prochaines semaines" />
+                <StatCard icone={<Icone n="cocheCercle" t={20} />} titre="Taux de réalisation" valeur={`${enrichis.length ? Math.round((effectues.length / enrichis.length) * 100) : 0} %`} sous={`${effectues.length} sur ${enrichis.length} effectués`} teinte="#e3f4e8" fg={C.excellent}
+                  surClic={() => setDetailSuivi("realisation")} indice="Voir la réalisation par jalon et par projet" />
               </section>
-              {retard.length > 0 && <Pile titre="En retard" icone={<Icone n="alerte" t={17} className="text-red-600" />} liste={retard} teinte="#fecaca" />}
-              <Pile titre="À faire sous 14 jours" icone={<Icone n="horloge" t={17} className="text-amber-600" />} liste={sous14} teinte="#dcebf7" />
-              <Pile titre="Programmés" icone={<Icone n="calendrier" t={17} className="text-stone-500" />} liste={programmes} teinte="#f0efe9" />
-              <Pile titre="Effectués" icone={<Icone n="cocheCercle" t={17} className="text-emerald-600" />} liste={effectues} teinte="#cfe6f6" />
+              {avant.length > 0 && (
+                <section className="bg-white rounded-2xl border border-stone-200 p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2 className="font-bold flex items-center gap-2 flex-wrap">
+                        <Icone n="cible" t={17} className="text-sky-700" /> Avant la clôture : conception et fin de formation
+                        <span className="text-xs bg-stone-100 px-2 py-0.5 rounded-full">{avant.length}</span>
+                      </h2>
+                      <p className="text-sm text-stone-500 mt-0.5">
+                        Indicateurs notés avant les jalons de suivi : à la conception, avant le démarrage du projet, puis à la fin de la formation.
+                        {resteAvant ? ` ${resteAvant} indicateur${resteAvant > 1 ? "s restent" : " reste"} à noter.` : " Tous sont notés."}
+                      </p>
+                    </div>
+                    <button type="button" onClick={basculerAvantCloture} aria-expanded={avantClotureVisible}
+                      className="text-sm border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50 shrink-0">
+                      {avantClotureVisible ? "Masquer" : "Afficher"}
+                    </button>
+                  </div>
+                  {avantClotureVisible && avant.map(({ f, groupes }) => (
+                    <div key={f.id} className="border-t border-stone-100 pt-3.5 mt-3.5">
+                      <div className="font-semibold break-words">{f.titre}</div>
+                      <div className="text-sm text-stone-500 mt-0.5 break-words">
+                        {orgAff(f.entreprise)} · {libelleSecteur(f, secteurs)} · {f.statut || "statut non renseigné"}
+                        {" · "}{f.dateDebut || f.dateFin ? `du ${fmtDateFr(f.dateDebut, "?")} au ${fmtDateFr(f.dateFin, "?")}` : "dates non renseignées"}
+                      </div>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 mt-2.5 items-start">
+                        {groupes.map((g) => (
+                          <React.Fragment key={g.phase}>
+                            {blocIndicateurs({ cle: f.id + "|" + g.phase, ind: g, f, moment: g.phase.charAt(0).toLowerCase() + g.phase.slice(1) })}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </section>
+              )}
+              {retard.length > 0 && pile("En retard", <Icone n="alerte" t={17} className="text-red-600" />, retard, "#fecaca")}
+              {pile("À faire sous 14 jours", <Icone n="horloge" t={17} className="text-amber-600" />, sous14, "#dcebf7")}
+              {pile("Programmés", <Icone n="calendrier" t={17} className="text-stone-500" />, programmes, "#f0efe9")}
+              {pile("Effectués", <Icone n="cocheCercle" t={17} className="text-emerald-600" />, effectues, "#cfe6f6")}
             </>);
           })()}
 
@@ -5450,8 +5724,29 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                     return [...r, { id: "D" + k, nom: "Nouvelle dimension", poids: 0, desc: "Description à compléter.", indicateurs: [] }];
                   })}
                     className="text-white text-sm font-semibold px-4 py-2 rounded-xl" style={{ background: C.vertFonce }}>+ Nouvelle dimension</button>
-                  <button onClick={() => { setReferentiel(REFERENTIEL_DEFAUT); notif("Référentiel par défaut restauré"); }}
-                    className="bg-white border border-stone-200 text-sm px-4 py-2 rounded-xl hover:bg-stone-50" title="Revenir aux 5 dimensions et 23 indicateurs d'origine."><Icone n="rotation" t={14} /> Restaurer le référentiel par défaut</button>
+                  <button onClick={async () => {
+                    /* Les notes sont rangées par code d'indicateur : un indicateur
+                       qui garde son code garde ses notes. Celles d'un code absent du
+                       référentiel d'origine restent en base mais ne comptent plus. */
+                    const codesDefaut = new Set(REFERENTIEL_DEFAUT.flatMap((d) => d.indicateurs.map((i) => i.id)));
+                    const absents = referentiel.flatMap((d) => d.indicateurs).filter((i) => !codesDefaut.has(i.id)).map((i) => i.id);
+                    const phasesManquantes = PHASES_DEFAUT.filter((x) => !phases.includes(x));
+                    if (!(await confirmer({
+                      titre: "Restaurer le référentiel par défaut ?",
+                      message: `Le référentiel actuel (${referentiel.length} dimensions, ${nbIndicateurs(referentiel)} indicateurs) sera remplacé par le référentiel MIP-PPA d'origine : ${REFERENTIEL_DEFAUT.length} dimensions et ${nbIndicateurs(REFERENTIEL_DEFAUT)} indicateurs.`,
+                      details: [
+                        "Les intitulés, phases et pondérations modifiés à la main seront perdus.",
+                        "Les notes déjà saisies restent attachées à leur code : un indicateur qui garde son code garde ses notes.",
+                        ...(absents.length ? [`Indicateur${absents.length > 1 ? "s" : ""} absent${absents.length > 1 ? "s" : ""} du référentiel d'origine, dont les notes ne compteront plus : ${absents.join(", ")}.`] : []),
+                        ...(phasesManquantes.length ? [`Phase${phasesManquantes.length > 1 ? "s" : ""} ajoutée${phasesManquantes.length > 1 ? "s" : ""} : ${phasesManquantes.join(", ")}.`] : []),
+                      ],
+                      libelle: "Restaurer le référentiel",
+                    }))) return;
+                    setReferentiel(REFERENTIEL_DEFAUT);
+                    if (phasesManquantes.length) setPhases((ph) => [...ph, ...PHASES_DEFAUT.filter((x) => !ph.includes(x))]);
+                    notif("Référentiel par défaut restauré");
+                  }}
+                    className="bg-white border border-stone-200 text-sm px-4 py-2 rounded-xl hover:bg-stone-50" title={`Revenir aux ${REFERENTIEL_DEFAUT.length} dimensions et ${nbIndicateurs(REFERENTIEL_DEFAUT)} indicateurs d'origine.`}><Icone n="rotation" t={14} /> Restaurer le référentiel par défaut</button>
                 </div>
               )}
               <div className="flex flex-wrap gap-2 mt-4">
@@ -5468,8 +5763,14 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                 {/* La hiérarchie est stockée en base : sans ce bouton, une mise
                     à jour de la nomenclature livrée avec l'application resterait
                     invisible sur une installation déjà en service. */}
-                <button onClick={() => {
-                  if (!window.confirm("Remplacer toute la hiérarchie actuelle par la nomenclature d'origine ?\n\nLes secteurs, matières premières et domaines que vous avez ajoutés ou renommés seront perdus. Les projets déjà saisis conservent leurs libellés actuels.")) return;
+                <button onClick={async () => {
+                  if (!(await confirmer({
+                    titre: "Restaurer la nomenclature par défaut ?",
+                    message: "Toute la hiérarchie actuelle sera remplacée par la nomenclature d'origine.",
+                    details: ["Les secteurs, matières premières et domaines ajoutés ou renommés seront perdus.",
+                      "Les projets déjà saisis conservent leurs libellés actuels."],
+                    libelle: "Restaurer la nomenclature",
+                  }))) return;
                   setSecteurs(SECTEURS_DEFAUT); notif("Nomenclature par défaut restaurée");
                 }}
                   className="bg-white border border-stone-200 text-sm px-4 py-2 rounded-xl hover:bg-stone-50 mb-4" title="Revenir aux secteurs, matières premières et domaines d'origine."><Icone n="rotation" t={14} /> Restaurer la nomenclature par défaut</button>
@@ -5485,8 +5786,19 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                           }}
                           className="font-semibold bg-transparent outline-none border-b border-transparent focus:border-stone-300 flex-1" />
                         <span className="text-xs text-stone-400">{Object.keys(branches || {}).length} matières premières</span>
-                        <button onClick={() => { if (window.confirm(`Supprimer « ${grand} » et tout son contenu ?`)) setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; delete n[grand]; return n; }); }}
-                          className="text-red-400 hover:text-red-600" title="Supprimer ce secteur"><Icone n="poubelle" t={15} /></button>
+                        <button onClick={async () => {
+                          const nb = Object.keys(branches || {}).length;
+                          const lies = formations.filter((f) => (f.secteurGrand || grandSecteurDe(secteurs, f.filiere)) === grand).length;
+                          if (!(await confirmer({
+                            titre: `Supprimer le secteur « ${grand} » ?`,
+                            message: `Le secteur, ses ${nb} matière${nb > 1 ? "s" : ""} première${nb > 1 ? "s" : ""} et leurs domaines seront retirés de la nomenclature.`,
+                            details: lies ? [`${lies} projet${lies > 1 ? "s y sont rattachés : ils conservent" : " y est rattaché : il conserve"} leur libellé, qui ne sera plus proposé dans le formulaire.`] : [],
+                            libelle: "Supprimer le secteur",
+                          }))) return;
+                          setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; delete n[grand]; return n; });
+                          notif("Secteur supprimé");
+                        }}
+                          className="text-red-400 hover:text-red-600" title="Supprimer ce secteur" aria-label={"Supprimer le secteur " + grand}><Icone n="poubelle" t={15} /></button>
                       </div>
                       <div className="space-y-3 mt-3">
                         {Object.entries(branches || {}).map(([branche, domaines]) => (
@@ -5503,8 +5815,19 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                                   notif(`Matière première renommée${messagePropagation(n2)}`);
                                 }}
                                 className="text-sm font-medium bg-transparent outline-none border-b border-transparent focus:border-stone-300 flex-1" />
-                              <button onClick={() => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; const bo = { ...n[grand] }; delete bo[branche]; n[grand] = bo; return n; })}
-                                className="text-red-400 hover:text-red-600" title="Supprimer cette matière première."><Icone n="fermer" t={13} /></button>
+                              <button onClick={async () => {
+                                const nb = (domaines || []).length;
+                                const lies = formations.filter((f) => f.filiere === branche && (f.secteurGrand || grandSecteurDe(secteurs, f.filiere)) === grand).length;
+                                if (!(await confirmer({
+                                  titre: `Supprimer la matière première « ${branche} » ?`,
+                                  message: `Elle sera retirée du secteur « ${grand} », avec ${nb ? `ses ${nb} domaine${nb > 1 ? "s" : ""}` : "ses domaines"}.`,
+                                  details: lies ? [`${lies} projet${lies > 1 ? "s y sont rattachés : ils conservent" : " y est rattaché : il conserve"} leur libellé, qui ne sera plus proposé dans le formulaire.`] : [],
+                                  libelle: "Supprimer la matière première",
+                                }))) return;
+                                setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; const bo = { ...n[grand] }; delete bo[branche]; n[grand] = bo; return n; });
+                                notif("Matière première supprimée");
+                              }}
+                                className="text-red-400 hover:text-red-600" title="Supprimer cette matière première." aria-label={"Supprimer la matière première " + branche}><Icone n="fermer" t={13} /></button>
                             </div>
                             <div className="flex flex-wrap gap-1.5 mt-2">
                               {(domaines || []).map((d, i) => (
@@ -5518,8 +5841,18 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                                       notif(`Domaine renommé${messagePropagation(n3)}`);
                                     }}
                                     className="bg-transparent outline-none" />
-                                  <button onClick={() => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; n[grand] = { ...n[grand], [branche]: n[grand][branche].filter((_, j) => j !== i) }; return n; })}
-                                    className="text-stone-300 hover:text-red-600" title="Supprimer ce domaine"><Icone n="fermer" t={10} /></button>
+                                  <button onClick={async () => {
+                                    const lies = formations.filter((f) => f.filiere === branche && f.domaine === d).length;
+                                    if (!(await confirmer({
+                                      titre: `Supprimer le domaine « ${d} » ?`,
+                                      message: `Il sera retiré de la matière première « ${branche} ».`,
+                                      details: lies ? [`${lies} projet${lies > 1 ? "s y sont rattachés : ils conservent" : " y est rattaché : il conserve"} leur libellé, qui ne sera plus proposé dans le formulaire.`] : [],
+                                      libelle: "Supprimer le domaine",
+                                    }))) return;
+                                    setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; n[grand] = { ...n[grand], [branche]: n[grand][branche].filter((_, j) => j !== i) }; return n; });
+                                    notif("Domaine supprimé");
+                                  }}
+                                    className="text-stone-300 hover:text-red-600" title="Supprimer ce domaine" aria-label={"Supprimer le domaine " + d}><Icone n="fermer" t={10} /></button>
                                 </span>
                               ))}
                               <button onClick={() => setSecteurs((s) => { const n = { ...normaliserSecteurs(s) }; n[grand] = { ...n[grand], [branche]: [...(n[grand][branche] || []), nomLibre("Nouveau domaine", n[grand][branche] || [])] }; return n; })}
@@ -5548,8 +5881,18 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                           notif(`Phase renommée${messagePropagation(propagerRenommagePhase(s, nom), "indicateur")}`);
                         }}
                         className="bg-transparent outline-none" />
-                      <button onClick={() => setPhases((ss) => ss.filter((_, j) => j !== i))}
-                        className="text-stone-400 hover:text-red-600 w-5 h-5 rounded-full flex items-center justify-center" title="Supprimer cette phase" aria-label="Supprimer cette phase"><Icone n="fermer" t={12} /></button>
+                      <button onClick={async () => {
+                        const lies = referentiel.flatMap((dd) => dd.indicateurs).filter((ind) => ind.phase === s).map((ind) => ind.id);
+                        if (!(await confirmer({
+                          titre: `Supprimer la phase « ${s} » ?`,
+                          message: "Elle ne sera plus proposée dans la fenêtre d'un indicateur.",
+                          details: lies.length ? [`${lies.length > 1 ? "Ces indicateurs gardent" : "Cet indicateur garde"} ce libellé de phase tant qu'on ne ${lies.length > 1 ? "les" : "le"} rattache pas à une autre : ${lies.join(", ")}.`] : [],
+                          libelle: "Supprimer la phase",
+                        }))) return;
+                        setPhases((ss) => ss.filter((_, j) => j !== i));
+                        notif("Phase supprimée");
+                      }}
+                        className="text-stone-400 hover:text-red-600 w-5 h-5 rounded-full flex items-center justify-center" title="Supprimer cette phase" aria-label={"Supprimer la phase " + s}><Icone n="fermer" t={12} /></button>
                     </span>
                   ))}
                   <button onClick={() => setPhases((ss) => [...ss, "Nouvelle phase"])}
@@ -5570,7 +5913,21 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                     {admin && <button title="Modifier cette dimension (code, nom, pondération, description)."
                       onClick={() => setDimEdit({ ancienId: d.id, id: d.id, nom: d.nom, poids: d.poids, desc: d.desc })}
                       className="text-stone-500 hover:text-stone-800"><Icone n="crayon" t={16} /></button>}
-                    {admin && <button title="Supprimer cette dimension et ses indicateurs." onClick={() => { if (window.confirm(`Supprimer la dimension « ${d.nom} » et ses indicateurs ?`)) setReferentiel((r) => r.filter((x) => x.id !== d.id)); }} className="text-red-500 hover:text-red-700"><Icone n="poubelle" t={16} /></button>}
+                    {admin && <button title="Supprimer cette dimension et ses indicateurs." aria-label={"Supprimer la dimension " + d.nom} onClick={async () => {
+                      const codes = d.indicateurs.map((i) => i.id);
+                      const notes = formations.filter((f) => codes.some((c) => f.notes && f.notes[c] !== undefined && f.notes[c] !== null)).length;
+                      if (!(await confirmer({
+                        titre: `Supprimer la dimension « ${d.nom} » ?`,
+                        message: `La dimension (${d.poids} % du score) et ses ${codes.length} indicateur${codes.length > 1 ? "s" : ""} seront retirés du référentiel.`,
+                        details: [
+                          ...(notes ? [`${notes} projet${notes > 1 ? "s ont" : " a"} des notes sur ces indicateurs : elles restent enregistrées mais ne compteront plus dans les scores.`] : []),
+                          "La somme des pondérations ne fera plus 100 % : ajustez les autres dimensions ensuite.",
+                        ],
+                        libelle: "Supprimer la dimension",
+                      }))) return;
+                      setReferentiel((r) => r.filter((x) => x.id !== d.id));
+                      notif("Dimension supprimée");
+                    }} className="text-red-500 hover:text-red-700"><Icone n="poubelle" t={16} /></button>}
                   </div>
                 </div>
                 <div className="space-y-2.5 mt-4">
@@ -5579,12 +5936,26 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                       <div className="min-w-0">
                         <div className="text-xs font-mono text-stone-400">{ind.id} <span className="uppercase tracking-wide ml-2">{ind.phase}</span></div>
                         <div className="font-medium mt-0.5 leading-snug whitespace-normal break-words">{ind.label}</div>
+                        <DetailSmart ind={ind} avecSource />
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        {admin && <button title="Modifier cet indicateur (code, intitulé, phase)."
-                          onClick={() => setIndEdit({ dimId: d.id, ancienId: ind.id, id: ind.id, label: ind.label, phase: ind.phase })}
+                        {admin && <button title="Modifier cet indicateur (code, intitulé, mode de calcul, cible, source, phase)."
+                          onClick={() => setIndEdit({ dimId: d.id, ancienId: ind.id, id: ind.id, label: ind.label, phase: ind.phase, mesure: ind.mesure || "", cible: ind.cible || "", source: ind.source || "" })}
                           className="text-stone-500 hover:text-stone-800"><Icone n="crayon" t={15} /></button>}
-                        {admin && <button title="Supprimer cet indicateur" onClick={() => setReferentiel((r) => r.map((x) => x.id === d.id ? { ...x, indicateurs: x.indicateurs.filter((i) => i.id !== ind.id) } : x))} className="text-red-400 hover:text-red-600"><Icone n="poubelle" t={15} /></button>}
+                        {admin && <button title="Supprimer cet indicateur" aria-label={"Supprimer l'indicateur " + ind.id} onClick={async () => {
+                          const notes = formations.filter((f) => f.notes && f.notes[ind.id] !== undefined && f.notes[ind.id] !== null).length;
+                          if (!(await confirmer({
+                            titre: `Supprimer l'indicateur ${ind.id} ?`,
+                            message: `« ${ind.label} »`,
+                            details: [
+                              `La dimension « ${d.nom} » passera de ${d.indicateurs.length} à ${d.indicateurs.length - 1} indicateur${d.indicateurs.length - 1 > 1 ? "s" : ""}.`,
+                              ...(notes ? [`${notes} projet${notes > 1 ? "s ont" : " a"} une note sur cet indicateur : elle reste enregistrée mais ne comptera plus dans les scores.`] : []),
+                            ],
+                            libelle: "Supprimer l'indicateur",
+                          }))) return;
+                          setReferentiel((r) => r.map((x) => x.id === d.id ? { ...x, indicateurs: x.indicateurs.filter((i) => i.id !== ind.id) } : x));
+                          notif(`Indicateur ${ind.id} supprimé`);
+                        }} className="text-red-400 hover:text-red-600"><Icone n="poubelle" t={15} /></button>}
                       </div>
                     </div>
                   ))}
@@ -5598,7 +5969,7 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                       const pris = new Set(r.flatMap((x) => x.indicateurs.map((i) => i.id)));
                       let k = dim.indicateurs.length + 1;
                       while (pris.has(d.id + k)) k++;
-                      return r.map((x) => x.id === d.id ? { ...x, indicateurs: [...x.indicateurs, { id: d.id + k, phase: "À définir", label: "Nouvel indicateur à définir" }] } : x);
+                      return r.map((x) => x.id === d.id ? { ...x, indicateurs: [...x.indicateurs, { id: d.id + k, phase: "À définir", label: "Nouvel indicateur à définir", mesure: "", cible: "", source: "" }] } : x);
                     })}
                       className="w-full border border-dashed border-stone-300 rounded-xl py-2.5 text-sm text-stone-500 hover:bg-stone-50">+ Ajouter un indicateur</button>
                   )}
@@ -5882,21 +6253,21 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
 
               if ((P.pages || []).includes("evaluation")) {
                 g.push([P.evalDims === "toutes" ? "Évaluer un projet" : "Lire une évaluation",
-                "Le modèle MIP-PPA mesure la valeur d'un projet par 5 dimensions et 23 indicateurs notés de 0 à 4. "
+                `Le modèle MIP-PPA mesure la valeur d'un projet par ${referentiel.length} dimensions et ${nbIndicateurs(referentiel)} indicateurs notés de 0 à 4. `
                 + (P.evalDims === "toutes"
                   ? "Notez chaque indicateur depuis la fiche du projet ; le score se recalcule et s'enregistre aussitôt. Les indicateurs non encore mesurables peuvent rester vides. "
                   : "Ouvrez un projet depuis la page Projets pour consulter sa fiche. ")
                 + "Le score global va de 0 à 100 % et se lit sur quatre paliers : Insuffisant (0–40 %), Moyen (40–60 %), Satisfaisant (60–80 %), Excellent (80–100 %). "
-                + "La fiche affiche aussi la COUVERTURE du modèle : un score de 100 % obtenu sur 4 indicateurs sur 23 n'a pas la même portée qu'un score complet, et la mention le dit."]);
+                + `La fiche affiche aussi la COUVERTURE du modèle : un score de 100 % obtenu sur 4 indicateurs sur ${nbIndicateurs(referentiel)} n'a pas la même portée qu'un score complet, et la mention le dit.`]);
               }
 
               if ((P.pages || []).includes("suivi")) {
-                g.push(["Suivi à 3, 6 et 12 mois", "Chaque projet porte 3 jalons, comptés à partir de sa DATE DE FIN : M+3 (transfert des acquis au poste), M+6 (effets organisationnels), M+12 (pérennité et retour sur investissement). Sans date de fin, ils sont calés sur le jour de la saisie ; la renseigner ensuite recale les échéances, sauf celles des jalons déjà effectués. Les jalons sont regroupés en 4 piles : En retard, À faire sous 14 jours, Programmés, Effectués."
+                g.push(["Suivi à 3, 6 et 12 mois", "Chaque projet porte 3 jalons, comptés à partir de sa DATE DE FIN : M+3 (transfert des acquis au poste), M+6 (effets organisationnels), M+12 (pérennité et retour sur investissement). Sans date de fin, ils sont calés sur le jour de la saisie ; la renseigner ensuite recale les échéances, sauf celles des jalons déjà effectués. Les jalons sont regroupés en 4 piles : En retard, À faire sous 14 jours, Programmés, Effectués. Chaque jalon affiche les indicateurs à noter à ce moment, d'après leur phase de mesure, et les cartes du haut ouvrent le détail de leur chiffre. La section « Avant la clôture » réunit, projet par projet, les indicateurs de conception et de fin de formation : tout le cycle se note depuis cette page."
                   + (P.suiviValider ? " Vous pouvez marquer un jalon effectué, y consigner vos observations et y joindre des documents." : " Vous pouvez lire les observations de terrain et ouvrir les documents joints.")]);
               }
 
               if (P.referentiel) {
-                g.push(["Référentiel", "La page Indicateurs expose les 5 dimensions, leurs pondérations et les 23 indicateurs. Vous pouvez les ajouter, les modifier ou les supprimer ; la somme des pondérations doit rester à 100 %. Renommer une dimension, un secteur ou une phase met à jour tous les projets concernés. Un bouton restaure le référentiel MIP-PPA d'origine."
+                g.push(["Référentiel", `La page Indicateurs expose les ${referentiel.length} dimensions, leurs pondérations et les ${nbIndicateurs(referentiel)} indicateurs, chacun avec sa phase de mesure et, s'ils sont renseignés, son mode de calcul, sa cible et sa source de vérification. Vous pouvez les ajouter, les modifier ou les supprimer ; la somme des pondérations doit rester à 100 %. Renommer une dimension, un secteur ou une phase met à jour tous les projets concernés. Un bouton restaure le référentiel MIP-PPA d'origine ; toute suppression demande confirmation.`
                   + (P.secteurs ? " Vous gérez également la nomenclature sectorielle." : "")]);
               }
 
@@ -6082,7 +6453,14 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                             vers la droite et la colonne se met à zigzaguer. */}
                         <span className="w-6 shrink-0 flex justify-center">
                           {u.role !== "En attente d'activation" && (
-                            <button title="Retirer l'accès (repasse le compte en attente)." onClick={() => attribuerRole(u.id, "En attente d'activation")}
+                            <button title="Retirer l'accès (repasse le compte en attente)." onClick={async () => {
+                              if (!(await confirmer({
+                                titre: `Retirer l'accès de ${u.nom || u.email || "ce compte"} ?`,
+                                message: `Le compte repasse « En attente d'activation » : il ne voit plus aucun projet tant qu'un rôle ne lui est pas de nouveau attribué.`,
+                                libelle: "Retirer l'accès", irreversible: false,
+                              }))) return;
+                              attribuerRole(u.id, "En attente d'activation");
+                            }}
                               className="text-red-500 hover:text-red-700" aria-label={"Retirer l'accès de " + u.nom + " (repasse le compte en attente)."}><Icone n="poubelle" t={16} /></button>
                           )}
                         </span>
@@ -6225,6 +6603,120 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
           </div>
         </div>
       )}
+
+      {detailSuivi && (() => {
+        const { enrichis, retard, sous14, effectues } = classementSuivis;
+        const entetes = {
+          tous:        ["Suivis planifiés", "Chaque jalon M+3, M+6 et M+12 du portefeuille, par échéance, avec ses indicateurs à noter."],
+          retard:      ["Suivis en retard", "Jalons programmés dont l'échéance est dépassée, du plus ancien au plus récent."],
+          sous14:      ["À faire sous 14 jours", "Jalons à réaliser dans les deux prochaines semaines."],
+          realisation: ["Taux de réalisation", "Jalons effectués sur l'ensemble des jalons planifiés, par jalon et par projet."],
+        }[detailSuivi];
+        const liste = { tous: enrichis, retard, sous14, realisation: enrichis }[detailSuivi];
+        const etat = (s) => {
+          if (s.statut === "effectué") return ["Effectué", "#e3f4e8", C.excellent];
+          if (s.j < 0) return [`${Math.abs(s.j)} j de retard`, "#fde8e8", C.insuffisant];
+          if (s.j === 0) return ["Aujourd'hui", "#fdf0da", "#b07515"];
+          if (s.j <= 14) return [s.j === 1 ? "Demain" : `Dans ${s.j} j`, "#fdf0da", "#b07515"];
+          return [`Dans ${s.j} j`, "#f0efe9", "#57534e"];
+        };
+        const aller = (s) => { setDetailSuivi(null); setSuiviNotation(s.ind.total ? s.id : null); setSuiviVise(s.id); };
+        const taux = (a, b) => (b ? Math.round((a / b) * 100) : 0);
+        const parJalon = JALONS_SUIVI.map(([j]) => {
+          const tous = enrichis.filter((s) => s.jalon === j);
+          return { j, total: tous.length, faits: tous.filter((s) => s.statut === "effectué").length };
+        }).filter((x) => x.total);
+        const parProjet = [...new Map(enrichis.map((s) => [s.f.id, s.f])).values()].map((f) => {
+          const tous = enrichis.filter((s) => s.f.id === f.id);
+          return { f, total: tous.length, faits: tous.filter((s) => s.statut === "effectué").length };
+        });
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(10,25,38,.55)" }}
+            onClick={(e) => e.target === e.currentTarget && setDetailSuivi(null)}>
+            <div ref={refDetailSuivi} role="dialog" aria-modal="true" tabIndex={-1} aria-label={entetes[0]}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl p-5 md:p-7 page-anim max-h-[92vh] overflow-y-auto outline-none">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="text-xl font-bold break-words">{entetes[0]}</h2>
+                  <p className="text-sm text-stone-500 break-words">{entetes[1]}</p>
+                </div>
+                <button onClick={() => setDetailSuivi(null)} className="text-stone-400 hover:text-stone-700 shrink-0" title="Fermer" aria-label="Fermer"><Icone n="fermer" t={18} /></button>
+              </div>
+
+              {detailSuivi === "realisation" && enrichis.length > 0 && (
+                <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[["Par jalon", parJalon.map((x) => [x.j, x.faits, x.total])],
+                    ["Par projet", parProjet.map((x) => [x.f.titre, x.faits, x.total])]].map(([titre, lignes]) => (
+                    <div key={titre} className="border border-stone-200 rounded-2xl p-4">
+                      <div className="text-[11px] uppercase tracking-wide text-stone-500 font-medium">{titre}</div>
+                      <div className="mt-2 space-y-2.5">
+                        {lignes.map(([nom, faits, total]) => (
+                          <div key={nom}>
+                            <div className="flex items-baseline justify-between gap-3 text-sm">
+                              <span className="min-w-0 break-words font-medium">{nom}</span>
+                              <span className="shrink-0 text-stone-500">{faits}/{total} · <b className="text-stone-800">{taux(faits, total)} %</b></span>
+                            </div>
+                            <div className="h-1.5 rounded-full bg-stone-100 mt-1 overflow-hidden">
+                              <div className="h-full rounded-full" style={{ width: `${taux(faits, total)}%`, background: C.excellent }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!liste.length ? (
+                <p className="text-sm text-stone-500 mt-6">
+                  {detailSuivi === "retard" ? "Aucun jalon en retard." : detailSuivi === "sous14" ? "Aucun jalon dans les deux prochaines semaines." : "Aucun jalon de suivi pour le moment."}
+                </p>
+              ) : (<>
+                <div className="mt-5 border-t border-stone-100">
+                  {liste.map((s) => {
+                    const [txt, bg, fg] = etat(s);
+                    return (
+                      <button key={s.id} onClick={() => aller(s)}
+                        title={s.ind.total ? `Aller au jalon et noter ses ${s.ind.total} indicateurs.` : "Aller au jalon sur la page Suivi."}
+                        className="w-full text-left flex items-center justify-between gap-3 py-3 px-2 rounded-lg border-b border-stone-50 hover:bg-stone-50">
+                        <div className="min-w-0">
+                          <div className="break-words">
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full mr-2 bg-stone-100 text-stone-700">{s.jalon}</span>
+                            <span className="font-medium">{s.f.titre}</span>
+                          </div>
+                          <div className="text-xs text-stone-500 break-words mt-0.5">
+                            {orgAff(s.f.entreprise)} · échéance {s.echeance || "non fixée"}
+                            {s.ind.total ? ` · indicateurs ${s.ind.liste.map((i) => i.id).join(", ")}` : ""}
+                          </div>
+                        </div>
+                        <div className="shrink-0 flex flex-col items-end gap-1">
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: bg, color: fg }}>{txt}</span>
+                          {s.ind.total > 0 && (
+                            <span className="text-xs text-stone-500">{s.ind.notees}/{s.ind.total} noté{s.ind.notees > 1 ? "s" : ""}</span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-4 pt-3 border-t border-stone-200 flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <span className="text-stone-500">{liste.length} jalon{liste.length > 1 ? "s" : ""}</span>
+                  {detailSuivi === "retard" && (
+                    <span className="font-semibold">Retard le plus ancien : {Math.max(...liste.map((s) => -s.j))} jours</span>
+                  )}
+                  {detailSuivi === "realisation" && (
+                    <span className="font-semibold">{effectues.length} sur {enrichis.length} effectués · {taux(effectues.length, enrichis.length)} %</span>
+                  )}
+                  {(detailSuivi === "tous" || detailSuivi === "sous14") && (() => {
+                    const r = liste.filter((s) => s.statut === "programmé").reduce((n, s) => n + (s.ind.total - s.ind.notees), 0);
+                    return <span className="font-semibold">{r ? `${r} indicateur${r > 1 ? "s" : ""} à noter` : "Tous les indicateurs sont notés"}</span>;
+                  })()}
+                </div>
+              </>)}
+            </div>
+          </div>
+        );
+      })()}
 
       {detailStat && (() => {
         const entetes = {
@@ -6527,16 +7019,47 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                 </select>
               </label>
             </div>
-            <label className="block text-sm font-semibold text-stone-800 mt-4">Intitulé complet
-              <textarea rows={3} value={indEdit.label} onChange={(e) => setIndEdit({ ...indEdit, label: e.target.value })}
+            <label className="block text-sm font-semibold text-stone-800 mt-4">Intitulé <span className="font-normal text-stone-400">(S : ce qui est mesuré, sur qui)</span>
+              <textarea rows={2} value={indEdit.label} onChange={(e) => setIndEdit({ ...indEdit, label: e.target.value })}
                 className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600 resize-y" />
             </label>
+            <label className="block text-sm font-semibold text-stone-800 mt-4">Mode de calcul <span className="font-normal text-stone-400">(facultatif ; M : numérateur ÷ dénominateur)</span>
+              <textarea rows={2} value={indEdit.mesure} placeholder="Ex. : apprenants employés à M+3 ÷ apprenants ayant achevé la formation × 100"
+                onChange={(e) => setIndEdit({ ...indEdit, mesure: e.target.value })}
+                className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600 resize-y" />
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+              <label className="text-sm font-semibold text-stone-800">Cible <span className="font-normal text-stone-400">(facultatif ; A : seuil de la note 4)</span>
+                <input value={indEdit.cible} placeholder="Ex. : ≥ 70 %" onChange={(e) => setIndEdit({ ...indEdit, cible: e.target.value })}
+                  className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
+              </label>
+              <label className="text-sm font-semibold text-stone-800">Source de vérification <span className="font-normal text-stone-400">(facultatif)</span>
+                <input value={indEdit.source} placeholder="Ex. : registre du personnel" onChange={(e) => setIndEdit({ ...indEdit, source: e.target.value })}
+                  className="mt-1.5 w-full border border-stone-300 rounded-xl px-3.5 py-2.5 font-normal outline-none focus:border-sky-600" />
+              </label>
+            </div>
+            {(() => {
+              const c = controleSmart(indEdit, phases);
+              const criteres = [["S", "Spécifique", "intitulé"], ["M", "Mesurable", "mode de calcul"], ["A", "Atteignable", "cible"], ["R", "Pertinent", "dimension"], ["T", "Temporel", "phase"]];
+              return (
+                <div className="mt-4 flex flex-wrap gap-1.5" aria-label="Contrôle SMART de l'indicateur">
+                  {criteres.map(([k, nom, champ]) => (
+                    <span key={k} title={`${nom} : ${champ} ${c[k] ? "renseigné" : "à renseigner"}`}
+                      className="text-xs font-semibold px-2 py-1 rounded-full"
+                      style={c[k] ? { background: "#e3f4e8", color: "#15803d" } : { background: "#fdf0da", color: "#b07515" }}>
+                      {c[k] ? "✓" : "○"} {k} · {nom}
+                    </span>
+                  ))}
+                </div>
+              );
+            })()}
+            <p className="text-xs text-stone-400 mt-2">La note se lit au regard de la cible : 4 si elle est atteinte, 3 à partir de 75 %, 2 à partir de 50 %, 1 à partir de 25 %, 0 en deçà.</p>
             <div className="flex justify-end gap-3 mt-6">
               <button onClick={() => setIndEdit(null)} className="border border-stone-300 px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50">Annuler</button>
               <button onClick={() => {
                 if (!indEdit.id.trim() || !indEdit.label.trim()) { notif("Le code et l'intitulé sont obligatoires"); return; }
                 if (indEdit.id !== indEdit.ancienId && referentiel.some((x) => x.indicateurs.some((i) => i.id === indEdit.id))) { notif("Ce code est déjà utilisé par un autre indicateur"); return; }
-                setReferentiel((r) => r.map((x) => x.id !== indEdit.dimId ? x : { ...x, indicateurs: x.indicateurs.map((i) => i.id === indEdit.ancienId ? { id: indEdit.id, label: indEdit.label, phase: indEdit.phase } : i) }));
+                setReferentiel((r) => r.map((x) => x.id !== indEdit.dimId ? x : { ...x, indicateurs: x.indicateurs.map((i) => i.id === indEdit.ancienId ? { id: indEdit.id, label: indEdit.label.trim(), phase: indEdit.phase, mesure: (indEdit.mesure || "").trim(), cible: (indEdit.cible || "").trim(), source: (indEdit.source || "").trim() } : i) }));
                 // conserver les notes déjà saisies si le code change
                 if (indEdit.id !== indEdit.ancienId) setFormations((fs) => fs.map((f) => { const n = { ...f.notes }; if (n[indEdit.ancienId] !== undefined) { n[indEdit.id] = n[indEdit.ancienId]; delete n[indEdit.ancienId]; } return { ...f, notes: n }; }));
                 setIndEdit(null); notif("Indicateur mis à jour");
@@ -6597,7 +7120,14 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                           <div className="text-xs text-stone-400">{(d.taille / 1024).toFixed(0)} Ko · ajouté le {d.date}</div>
                         </div>
                       </button>
-                      <button onClick={() => setSuiviEdit((se) => ({ ...se, docs: se.docs.filter((_, j) => j !== i) }))} className="text-red-400 hover:text-red-600 shrink-0" ><Icone n="poubelle" t={16} /></button>
+                      <button onClick={async () => {
+                        if (!(await confirmer({
+                          titre: "Retirer ce document du suivi ?",
+                          message: `« ${d.nom} »` + "\n\n" + "Il sera retiré du suivi à l'enregistrement de cette fenêtre.",
+                          libelle: "Retirer le document", irreversible: false,
+                        }))) return;
+                        setSuiviEdit((se) => se && ({ ...se, docs: se.docs.filter((_, j) => j !== i) }));
+                      }} className="text-red-400 hover:text-red-600 shrink-0" title="Retirer ce document" aria-label={"Retirer le document " + d.nom}><Icone n="poubelle" t={16} /></button>
                     </div>
                   ))}
                 </div>
@@ -6609,6 +7139,45 @@ La corbeille n'est pas active : cette suppression est irréversible.`)) mettreAL
                 setSuivis((ss) => ss.map((x) => x.id === suiviEdit.id ? { ...x, echeance: suiviEdit.echeance, note: suiviEdit.note, docs: suiviEdit.docs } : x));
                 setSuiviEdit(null); notif("Suivi enregistré");
               }} className="text-white px-6 py-2.5 rounded-xl text-sm font-semibold" style={{ background: C.vertFonce }}>Enregistrer</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ---------- FENÊTRE : CONFIRMATION AVANT SUPPRESSION ----------
+          z-[60] : elle peut s'ouvrir par-dessus une autre fenêtre (retirer un
+          document depuis la fenêtre d'un suivi) et doit passer devant. */}
+      {confirmation && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "rgba(10,25,38,.6)" }}
+          onClick={(e) => e.target === e.currentTarget && repondreConfirmation(false)}>
+          <div ref={refConfirmation} role="alertdialog" aria-modal="true" tabIndex={-1}
+            aria-labelledby="confirmation-titre" aria-describedby="confirmation-message"
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-5 md:p-6 page-anim max-h-[92vh] overflow-y-auto outline-none">
+            <div className="flex items-start gap-4">
+              <span className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                style={confirmation.danger ? { background: "#fde8e8", color: C.insuffisant } : { background: "#e3eef7", color: C.vert }}>
+                <Icone n={confirmation.danger ? "poubelle" : "rotation"} t={20} />
+              </span>
+              <div className="min-w-0">
+                <h2 id="confirmation-titre" className="text-lg font-bold break-words">{confirmation.titre || "Confirmer la suppression ?"}</h2>
+                {confirmation.message && (
+                  <p id="confirmation-message" className="text-sm text-stone-600 mt-1.5 whitespace-pre-line break-words">{confirmation.message}</p>
+                )}
+                {confirmation.details && confirmation.details.length > 0 && (
+                  <ul className="text-sm text-stone-600 mt-2 space-y-1 list-disc pl-5">
+                    {confirmation.details.map((d, i) => <li key={i} className="break-words">{d}</li>)}
+                  </ul>
+                )}
+                {confirmation.danger && confirmation.irreversible !== false && (
+                  <p className="text-xs text-stone-400 mt-3">Cette action ne peut pas être annulée depuis l'application.</p>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-wrap justify-end gap-3 mt-6">
+              <button onClick={() => repondreConfirmation(false)}
+                className="border border-stone-300 px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50">Annuler</button>
+              <button onClick={() => repondreConfirmation(true)}
+                className="text-white px-5 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ background: confirmation.danger ? C.insuffisant : C.vertFonce }}>{confirmation.libelle}</button>
             </div>
           </div>
         </div>

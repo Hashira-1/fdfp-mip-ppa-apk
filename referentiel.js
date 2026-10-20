@@ -1,6 +1,6 @@
 /* referentiel.js : Le vocabulaire métier de la plateforme.
  *
- * Ce que le FDFP évalue (les 5 dimensions et leurs 23 indicateurs), avec quoi
+ * Ce que le FDFP évalue (les 5 dimensions et leurs 22 indicateurs), avec quoi
  * il le range (secteurs, matières premières, domaines), où il opère (les sept
  * implantations et les 108 localités qu'elles couvrent), et qui a le droit de
  * quoi (les rôles et leur matrice de permissions).
@@ -15,65 +15,109 @@
  * Les valeurs ci-dessous sont des valeurs PAR DÉFAUT : le référentiel et la
  * nomenclature sectorielle sont modifiables dans l'application et rechargés
  * depuis Supabase. Elles servent au premier démarrage et au bouton
- * « Restaurer la nomenclature par défaut ».
+ * « Restaurer la nomenclature par défaut » (et « Restaurer le référentiel par
+ * défaut »).
  */
 import { DEPARTEMENTS } from "./geo-civ.js";
 
+/* Phases de mesure par défaut. Les trois jalons post-formation sont des
+   phases distinctes : chaque indicateur de suivi est ainsi rattaché à UN
+   moment de mesure (critère « T » de SMART), et la page Suivi sait quels
+   indicateurs noter à M+3, à M+6 et à M+12 (voir « jalonsDeLaPhase »). */
+export const PHASES_DEFAUT = [
+  "À la conception",
+  "En fin de formation",
+  "Suivi post-formation (3 mois)",
+  "Suivi post-formation (6 mois)",
+  "Suivi post-formation (12 mois)",
+];
+
+/* Référentiel par défaut : celui de l'application EN LIGNE au 18/10/2026
+   (table « configuration » de Supabase), choisi par l'auteur : 22 indicateurs,
+   IE4 (délivrance de la certification) retiré, un moment de mesure par
+   indicateur de suivi. Les codes sont ceux d'origine : les notes déjà saisies
+   restent rattachées au bon indicateur.
+   Chaque indicateur peut aussi porter, en option, les attributs SMART
+   « mesure » (mode de calcul), « cible » et « source » (source de
+   vérification), saisis dans la fenêtre d'un indicateur. Une proposition de
+   reformulation SMART complète est tenue à part, sans être appliquée :
+   EDIT_EM/imprimer6_2026/proposition_smart_1810.json et le document Word
+   qui l'accompagne. */
 export const REFERENTIEL_DEFAUT = [
   {
     id: "P", nom: "Pertinence", poids: 25,
-    desc: "Alignement de la formation aux besoins métiers et aux normes de l'industrie agro-alimentaire.",
+    desc: "Alignement de la formation aux besoins métiers et aux normes de l'agro-industrie.",
     indicateurs: [
-      { id: "P1", phase: "À la conception", label: "Part des objectifs pédagogiques rattachés à un besoin en compétences identifié par diagnostic formalisé avec l'entreprise, validée avant le démarrage (cible : 100 %)" },
-      { id: "P2", phase: "À la conception", label: "Part des modules du programme alignés sur les référentiels métiers du secteur, vérifiée à l'instruction du dossier (cible : 100 %)" },
-      { id: "P3", phase: "À la conception", label: "Part des formateurs justifiant d'une qualification et d'une expérience conformes aux contenus dispensés, contrôlée avant le démarrage (cible : 100 %)" },
-      { id: "P4", phase: "À la conception", label: "Part des exigences HACCP et réglementaires applicables couvertes par le programme, vérifiée avant le démarrage (cible : 100 %)" },
+      { id: "P1", phase: "À la conception", label: "Alignement des objectifs pédagogiques avec les besoins en compétences" },
+      { id: "P2", phase: "À la conception", label: "Adéquation du contenu avec les référentiels métiers du secteur agro-industriel" },
+      { id: "P3", phase: "À la conception", label: "Pertinence du profil des formateurs par rapport aux contenus dispensés" },
+      { id: "P4", phase: "À la conception", label: "Conformité avec les normes HACCP et réglementations alimentaires applicables" },
     ],
   },
   {
     id: "EP", nom: "Efficacité pédagogique", poids: 20,
     desc: "Acquisition réelle des connaissances et gestes techniques.",
     indicateurs: [
-      { id: "EP1", phase: "En fin de formation", label: "Progression moyenne des connaissances théoriques entre le test initial et le test final (cible : ≥ 30 points de pourcentage)" },
-      { id: "EP2", phase: "En fin de formation", label: "Part des apprenants maîtrisant les gestes techniques aux points critiques pour la maîtrise (CCP) du procédé, évalués en situation de travail en fin de formation (cible : ≥ 80 %)" },
-      { id: "EP3", phase: "En fin de formation", label: "Taux d'assiduité moyen des apprenants sur la durée totale de la formation (cible : ≥ 90 %)" },
-      { id: "EP4", phase: "En fin de formation", label: "Taux de satisfaction des apprenants mesuré par questionnaire en fin de formation (cible : ≥ 80 %)" },
-      { id: "EP5", phase: "En fin de formation", label: "Taux de satisfaction des tuteurs en entreprise sur la qualité pédagogique, recueilli en fin de formation (cible : ≥ 80 %)" },
-      { id: "EP6", phase: "En fin de formation", label: "Taux de réussite aux épreuves de certification ou d'attestation en fin de formation (cible : ≥ 85 %)" },
+      { id: "EP1", phase: "En fin de formation", label: "Taux d'acquisition des connaissances théoriques (test avant/après)" },
+      { id: "EP2", phase: "En fin de formation", label: "Taux de maîtrise des gestes techniques évalués en situation de travail" },
+      { id: "EP3", phase: "En fin de formation", label: "Taux d'assiduité et de participation active des apprenants" },
+      { id: "EP4", phase: "En fin de formation", label: "Satisfaction globale des apprenants envers la formation" },
+      { id: "EP5", phase: "En fin de formation", label: "Satisfaction des tuteurs en entreprise envers la qualité pédagogique" },
+      { id: "EP6", phase: "En fin de formation", label: "Taux d'obtention de la certification ou attestation visée" },
     ],
   },
   {
     id: "IE", nom: "Insertion et employabilité", poids: 20,
     desc: "Insertion professionnelle des apprenants à l'issue du projet : accès à l'emploi, adéquation emploi-qualification et reconnaissance des compétences (OIT, Recommandation n° 208 sur les apprentissages de qualité, 2023).",
     indicateurs: [
-      { id: "IE1", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Taux d'insertion des apprenants dans l'emploi (salarié ou auto-emploi) mesuré au suivi M+6 (cible : ≥ 70 %)" },
-      { id: "IE2", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des apprenants insérés occupant un emploi en adéquation avec la qualification visée, mesurée à M+6 (cible : ≥ 80 %)" },
-      { id: "IE3", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des apprenants insérés en emploi stable (contrat ≥ 6 mois ou CDI, rémunération ≥ SMIG) mesurée à M+12 (cible : ≥ 60 %)" },
-      { id: "IE4", phase: "En fin de formation", label: "Part des apprenants ayant reçu leur certification officielle (CQP, titre, attestation) dans le mois suivant la fin de la formation, la délivrance systématique étant attendue (cible : 100 % dans le délai)" },
+      { id: "IE1", phase: "Suivi post-formation (3 mois)", label: "Taux d'insertion des apprenants dans l'entreprise" },
+      { id: "IE2", phase: "Suivi post-formation (3 mois)", label: "Adéquation entre l'emploi occupé et la qualification visée par le projet (emploi-qualification)" },
+      { id: "IE3", phase: "Suivi post-formation (6 mois)", label: "Part des apprenants insérés en emploi stable (contrat ≥ 6 mois ou CDI, rémunération ≥ SMIG)" },
     ],
   },
   {
     id: "IO", nom: "Impact organisationnel", poids: 25,
     desc: "Effets mesurables sur la qualité, la productivité et la sécurité.",
     indicateurs: [
-      { id: "IO1", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Réduction du taux de non-conformité qualité et sanitaire (plan HACCP / ISO 22000) sur les postes concernés entre M+0 et M+6 (cible : ≥ 20 %)" },
-      { id: "IO2", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Amélioration de la productivité et du rendement matière de la ligne ou du poste concerné entre M+0 et M+6 (cible : ≥ 10 %)" },
-      { id: "IO3", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Réduction du nombre d'accidents et d'incidents de sécurité alimentaire sur les postes concernés entre M+0 et M+12 (cible : ≥ 25 %)" },
-      { id: "IO4", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des compétences acquises effectivement mobilisées au poste de travail, constatée par le management à M+3 (cible : ≥ 70 %)" },
-      { id: "IO5", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Taux de satisfaction du management sur l'atteinte des objectifs de performance du projet, mesuré à M+6 (cible : ≥ 80 %)" },
+      { id: "IO1", phase: "Suivi post-formation (6 mois)", label: "Réduction du taux de non-conformité qualité après formation" },
+      { id: "IO2", phase: "Suivi post-formation (6 mois)", label: "Amélioration du taux de productivité / rendement matière de la ligne ou du poste concerné" },
+      { id: "IO3", phase: "Suivi post-formation (6 mois)", label: "Réduction du taux d'accidents ou d'incidents de sécurité alimentaire" },
+      { id: "IO4", phase: "Suivi post-formation (3 mois)", label: "Part des compétences acquises effectivement mobilisées au poste de travail" },
+      { id: "IO5", phase: "Suivi post-formation (12 mois)", label: "Satisfaction du management sur l'amélioration des performances par les personnes formées" },
     ],
   },
   {
     id: "DC", nom: "Durabilité des compétences", poids: 10,
-    desc: "Ancrage durable des compétences acquises (6 et 12 mois).",
+    desc: "Ancrage durable des compétences acquises.",
     indicateurs: [
-      { id: "DC1", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Taux de rétention des apprenants dans l'entreprise mesuré à M+6 (cible : ≥ 80 %)" },
-      { id: "DC2", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des apprenants promus ou ayant évolué vers un poste supérieur, mesurée à M+12 (cible : ≥ 30 %)" },
-      { id: "DC3", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des compétences acquises intégrées aux fiches de poste, au plan de maîtrise sanitaire et aux procédures de traçabilité, vérifiée à M+12 (cible : ≥ 50 %)" },
-      { id: "DC4", phase: "Suivi post-formation (3 / 6 / 12 mois)", label: "Part des apprenants appliquant les pratiques apprises sans supervision, constatée par observation à M+6 puis M+12 (cible : ≥ 70 %)" },
+      { id: "DC1", phase: "Suivi post-formation (6 mois)", label: "Taux de rétention des apprenants dans l'entreprise" },
+      { id: "DC2", phase: "Suivi post-formation (12 mois)", label: "Part des apprenants ayant évolué vers un poste supérieur" },
+      { id: "DC3", phase: "Suivi post-formation (12 mois)", label: "Part des compétences acquises intégrées aux fiches de poste, au plan de maîtrise sanitaire et aux procédures de traçabilité" },
+      { id: "DC4", phase: "Suivi post-formation (6 mois)", label: "Part des apprenants appliquant les pratiques apprises sans supervision" },
     ],
   },
 ];
+
+/* Nombre d'indicateurs d'un référentiel, pour les textes de l'interface :
+   un chiffre écrit en dur (« 23 indicateurs ») cesse d'être vrai dès qu'un
+   administrateur ajoute ou retire un indicateur. */
+export const nbIndicateurs = (referentiel) =>
+  (referentiel || []).reduce((n, d) => n + ((d && d.indicateurs) || []).length, 0);
+
+/* Contrôle SMART d'un indicateur, pour la fenêtre d'édition et la page du
+   référentiel : chaque critère dit s'il est renseigné. La pertinence (R)
+   tient au rattachement à une dimension, toujours vrai ici. */
+export const controleSmart = (ind, phases = PHASES_DEFAUT) => {
+  const plein = (v) => typeof v === "string" && v.trim().length > 0;
+  const c = {
+    S: plein(ind && ind.label) && !/^Nouvel indicateur/.test(ind.label),
+    M: plein(ind && ind.mesure),
+    A: plein(ind && ind.cible),
+    R: true,
+    T: plein(ind && ind.phase) && ind.phase !== "À définir" && (!phases || !phases.length || phases.includes(ind.phase)),
+  };
+  return { ...c, complet: c.S && c.M && c.A && c.R && c.T };
+};
 
 export const ROLES = ["Administrateur lead", "Administrateur FDFP", "Agent FDFP", "Promoteur", "Opérateur", "En attente d'activation"];
 export const SECTEURS_DEFAUT = {
